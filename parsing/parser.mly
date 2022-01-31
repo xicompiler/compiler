@@ -1,6 +1,3 @@
-(* Indentifier *)
-%token <string> ID
-
 (* Keywords *)
 %token USE
 %token IF
@@ -25,14 +22,11 @@
 (* Assignment operator, [=] *)
 %token GETS
 
-(* Unary operators *)
-%token NOT
-
 (* Binary operators *)
 %token MULT
 %token HIGHMULT
 %token DIV
-%token REM
+%token MOD
 %token PLUS
 %token MINUS
 %token LT
@@ -43,13 +37,17 @@
 %token NEQ
 
 (* Logical Operators *)
-%token LAND
-%token LOR
+%token NOT
+%token AND
+%token OR
 
 (* Other punctuation *)
 %token COLON
 %token SEMICOLON
 %token COMMA
+
+(* Indentifier *)
+%token <string> ID
 
 (* End of file *)
 %token EOF
