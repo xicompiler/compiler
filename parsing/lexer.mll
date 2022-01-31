@@ -91,4 +91,5 @@ rule read =
     { INT (lexbuf |> Lexing.lexeme |> int_of_string) }
   | id
     { ID (Lexing.lexeme lexbuf) }
-  
+  | eof
+    { EOF }
