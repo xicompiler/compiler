@@ -4,6 +4,7 @@
 }
 
 let white = [' ' '\t']+
+let newline = '\n'
 let digit = ['0'-'9']
 let letter = ['a'-'z' 'A'-'z']
 let int = '-'? digit+
@@ -11,76 +12,83 @@ let id = letter (letter | digit | '_' | '\'')*
 
 rule read =
   parse
-  | "use" 
-      { USE }
+  | newline
+      { 
+        Lexing.new_line lexbuf;
+        read lexbuf
+      }
+  | white
+    { read lexbuf }
+  | "use"
+    { USE }
   | "if" 
-      { IF }
-  | "else"
-      { ELSE }
+    { IF }
+  | "else" 
+    { ELSE }
   | "while"
-      { WHILE }
+    { WHILE }
   | "return"
-      { RETURN }
+    { RETURN }
   | "("
-      { LPAREN }
+    { LPAREN }
   | ")"
-      { RPAREN }
+    { RPAREN }
   | "["
-      { LBRACKET }
+    { LBRACKET }
   | "]"
-      { RBRACKET }
+    { RBRACKET }
   | "{"
-      { LBRACE }
+    { LBRACE }
   | "}"
-      { RBRACE }
+    { RBRACE }
   | "="
-      { GETS }
+    { GETS }
   | "*"
-      { MULT }
+    { MULT }
   | "*>>"
-      { HIGHMULT }
+    { HIGHMULT }
   | "/"
-      { DIV }
+    { DIV }
   | "%"
-      { MOD }
+    { MOD }
   | "+"
-      { PLUS }
+    { PLUS }
   | "-"
-      { MINUS }
+    { MINUS }
   | "<"
-      { LT }
+    { LT }
   | "<="
-      { LEQ }
+    { LEQ }
   | ">="
-      { GEQ }
+    { GEQ }
   | ">"
-      { GT }
+    { GT }
   | "=="
-      { EQ }
+    { EQ }
   | "!="
-      { NEQ }
+    { NEQ }
   | "!"
-      { NOT }
+    { NOT }
   | "&"
-      { AND }
+    { AND }
   | "|"
-      { OR }
+    { OR }
   | ":"
-      { COLON }
+    { COLON }
   | ";"
-      { SEMICOLON }
+    { SEMICOLON }
   | ","
-      { COMMA }
+    { COMMA }
   | "int"
-      { TYPE Type.Int }
+    { TYPE Type.Int }
   | "bool"
-      { TYPE Type.Bool }
+    { TYPE Type.Bool }
   | "true"
-      { BOOL true }
+    { BOOL true }
   | "false"
-      { BOOL false }
+    { BOOL false }
   | int
-      { INT (lexbuf |> Lexing.lexeme |> int_of_string) }
+    { INT (lexbuf |> Lexing.lexeme |> int_of_string) }
   | id
-      { ID (Lexing.lexeme lexbuf) }
+    { ID (Lexing.lexeme lexbuf) }
   
