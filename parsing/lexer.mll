@@ -13,10 +13,10 @@ let id = letter (letter | digit | '_' | '\'')*
 rule read =
   parse
   | newline
-      { 
-        Lexing.new_line lexbuf;
-        read lexbuf
-      }
+    { 
+      Lexing.new_line lexbuf;
+      read lexbuf
+    }
   | white
     { read lexbuf }
   | "use"
