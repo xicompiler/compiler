@@ -11,15 +11,15 @@ let id = letter (letter | digit | '_' | '\'')*
 
 rule read =
   parse
-  | "USE" 
+  | "use" 
       { USE }
-  | "IF" 
+  | "if" 
       { IF }
-  | "ELSE"
+  | "else"
       { ELSE }
-  | "WHILE"
+  | "while"
       { WHILE }
-  | "RETURN"
+  | "return"
       { RETURN }
   | "("
       { LPAREN }
