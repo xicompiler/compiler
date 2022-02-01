@@ -46,7 +46,7 @@
 %token SEMICOLON
 %token COMMA
 
-(* Indentifier *)
+(* Identifier *)
 %token <string> ID
 
 (* End of file *)
