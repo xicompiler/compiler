@@ -171,7 +171,7 @@ and read_string buf =
   | '"'
     { STRING (Buffer.contents buf) }
   | _ | eof
-    { raise InvalidChar }
+    { raise InvalidString }
 
 and read_comment =
   parse
