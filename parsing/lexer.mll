@@ -2,21 +2,21 @@
 open Parser
 exception InvalidChar
 
-(** [parse_unicode s] is the unicode character represented by string
-    [s]. Raises: [InvalidChar] if [s] is in the format [\x{n}] where [n]
+(** [parse_unicode s e] is the unicode character represented by string
+    [s]. Raises: [e] if [s] is in the format [\x{n}] where [n]
     is a valid hexidecimal number. *)
-let parse_unicode s =
+let parse_unicode s e =
   let codepoint = Scanf.sscanf s "\\x{%x}" Fun.id in
-  if Uchar.is_valid codepoint then codepoint else raise InvalidChar
+  if Uchar.is_valid codepoint then codepoint else raise e
 
-(** [unescaped_byte s] is the byte represented by the escaped string
-    [s]. Raises: [InvalidChar] if no such conversion is possible *)
-let unescaped_byte s =
+(** [unescaped_byte s e] is the byte represented by the escaped string
+    [s]. Raises: [e] if no such conversion is possible *)
+let unescaped_byte s e =
   try
     let unesc = Scanf.unescaped s in
     int_of_char (String.get unesc 0)
   with
-  | _ -> raise InvalidChar
+  | _ -> raise e
 
 }
 
@@ -31,6 +31,7 @@ let codepoint = hex hex? hex? hex? hex? hex?
 let escaped = '\\' (('x' hex hex) | _)
 let unicode =  "\\x{" codepoint '}'
 let ascii_char_literal = [^ '\\' '\''] | escaped
+let ascii_string_literal = [^ '\\' '"'] | escaped
 
 rule read =
   parse
@@ -125,9 +126,9 @@ rule read =
 and read_char =
   parse
   | (unicode as u) '\''
-    { CHAR (parse_unicode u) }
+    { CHAR (parse_unicode u InvalidChar) }
   | (ascii_char_literal as c) '\''
-    { CHAR (unescaped_byte c) }
+    { CHAR (unescaped_byte c InvalidChar) }
   | _ | eof
     { raise InvalidChar }
 

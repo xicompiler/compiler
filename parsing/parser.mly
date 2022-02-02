@@ -7,7 +7,7 @@
 
 (* Literals *)
 %token <int> CHAR
-%token <string> STRING
+%token <int list> STRING
 %token <int> INT
 %token <bool> BOOL
 
