@@ -6,7 +6,7 @@
 %token RETURN
 
 (* Literals *)
-%token <char> CHAR
+%token <int> CHAR
 %token <string> STRING
 %token <int> INT
 %token <bool> BOOL

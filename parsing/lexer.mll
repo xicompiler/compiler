@@ -1,25 +1,23 @@
 {
-  open Parser
-  exception InvalidChar
+open Parser
+exception InvalidChar
 
-  (** [escaped_char c] is the character represented by string [c] *)
-  let escaped_char = function
-    | "\\" -> '\\'
-    | "\\n" -> '\n'
-    | "\\'" -> '\''
-    | _ -> failwith "Precondition violation"
+(** [parse_unicode s] is the unicode character represented by string
+    [s]. Raises: [InvalidChar] if [s] is in the format [\x{n}] where [n]
+    is a valid hexidecimal number. *)
+let parse_unicode s =
+  let codepoint = Scanf.sscanf s "\\x{%x}" Fun.id in
+  if Uchar.is_valid codepoint then codepoint else raise InvalidChar
 
-  let splice_end s = String.sub s 0 ((String.length s) - 1)
+(** [unescaped_byte s] is the byte represented by the escaped string
+    [s]. Raises: [InvalidChar] if no such conversion is possible *)
+let unescaped_byte s =
+  try
+    let unesc = Scanf.unescaped s in
+    int_of_char (String.get unesc 0)
+  with
+  | _ -> raise InvalidChar
 
-  let char_of_string s = s.[0]
-
-  let parse_unicode s =
-    let start = 3 in
-    String.length s - 4
-    |> String.sub s start
-    |> ( ^ ) "0x"
-    |> int_of_string_opt
-    |> Option.map Char.chr
 }
 
 let white = [' ' '\t']+
@@ -30,8 +28,9 @@ let int = '-'? digit+
 let id = letter (letter | digit | '_' | '\'')*
 let hex = ['0'-'9' 'a'-'f' 'A'-'F']
 let codepoint = hex hex? hex? hex? hex? hex?
-let escaped = '\\' ('\\' | 'n' | '\'')
-let unicode = '\\' 'x' '{' codepoint '}'
+let escaped = '\\' (('x' hex hex) | _)
+let unicode =  "\\x{" codepoint '}'
+let ascii_char_literal = [^ '\\' '\''] | escaped
 
 rule read =
   parse
@@ -116,10 +115,14 @@ rule read =
     { INT (int_of_string i) }
   | id as ident
     { ID ident }
-  | "'"
-    { read_char lexbuf }
   | "\""
-    { read_string lexbuf }
+    { failwith "lexing string literals: unimplemented" }
+  | '\'' (unicode as u) '\''
+    { CHAR (parse_unicode u) }
+  | '\'' (ascii_char_literal as c) '\''
+    { CHAR (unescaped_byte c) }
+  | '\'' _* '\''
+    { raise InvalidChar }
   | eof
     { EOF }
 
@@ -134,29 +137,3 @@ and read_comment =
     { EOF }
   | _
     { read_comment lexbuf }
-
-and read_char =
-  parse
-  | escaped "'" as c
-    { 
-      CHAR (c |> splice_end |> escaped_char)
-    }
-  | unicode "'" as u
-    {
-      match u |> splice_end |> parse_unicode with
-      | None -> raise InvalidChar
-      | Some c -> CHAR c
-    }
-  | _ "'" as c
-    { CHAR (c |> splice_end |> char_of_string) }
-  | _* "'"
-    { raise InvalidChar }
-
-and read_string =
-  parse
-  | "\\\""
-    { STRING "escaped quote" }
-  | "\""
-    { STRING "end" }
-  | _
-    { STRING "char" }
