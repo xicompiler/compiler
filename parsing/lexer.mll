@@ -115,16 +115,22 @@ rule read =
     { INT (int_of_string i) }
   | id as ident
     { ID ident }
+  | '\''
+    { read_char lexbuf }
   | "\""
     { failwith "lexing string literals: unimplemented" }
-  | '\'' (unicode as u) '\''
-    { CHAR (parse_unicode u) }
-  | '\'' (ascii_char_literal as c) '\''
-    { CHAR (unescaped_byte c) }
-  | '\'' _* '\''
-    { raise InvalidChar }
   | eof
     { EOF }
+
+and read_char =
+  parse
+  | (unicode as u) '\''
+    { CHAR (parse_unicode u) }
+  | (ascii_char_literal as c) '\''
+    { CHAR (unescaped_byte c) }
+  | _ | eof
+    { raise InvalidChar }
+
 
 and read_comment =
   parse
