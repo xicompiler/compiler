@@ -1,23 +1,34 @@
 {
 open Parser
 exception InvalidChar
+exception InvalidString
 
-(** [parse_unicode s e] is the unicode character represented by string
-    [s]. Raises: [e] if [s] is in the format [\x{n}] where [n]
-    is a valid hexidecimal number. *)
-let parse_unicode s e =
+(** [parse_unicode] is [Some c] where [c] the unicode character
+    represented by string [s] in the format [\x{n}] for hex number [n],
+    or [None] if no such conversion is possible *)
+let parse_unicode s =
   let codepoint = Scanf.sscanf s "\\x{%x}" Fun.id in
-  if Uchar.is_valid codepoint then codepoint else raise e
+  if Uchar.is_valid codepoint then Some (Uchar.of_int codepoint)
+  else None
 
-(** [unescaped_byte s e] is the byte represented by the escaped string
-    [s]. Raises: [e] if no such conversion is possible *)
-let unescaped_byte s e =
+(** [unescaped_char s] is [Some c] if [c] is the unicode charcter
+    represented by escaped string [s], or [None] if no such converstion
+    is possible. *)
+let unescaped_char s =
   try
     let unesc = Scanf.unescaped s in
-    int_of_char (String.get unesc 0)
+    0 |> String.get unesc |> Uchar.of_char |> Option.some
   with
-  | _ -> raise e
+  | _ -> None
 
+(** [get_or_throw e o] is [x] if [o] is [Some x]. Raises: [e] if [o] is
+    [None] *)
+let get_or_throw e = function
+  | Some x -> x
+  | None -> raise e
+
+(** The default length of the string buffer *)
+let buf_length = 16
 }
 
 let white = [' ' '\t']+
@@ -119,19 +130,50 @@ rule read =
   | '\''
     { read_char lexbuf }
   | "\""
-    { failwith "lexing string literals: unimplemented" }
+    { read_string (Buffer.create buf_length) lexbuf }
   | eof
     { EOF }
 
 and read_char =
   parse
   | (unicode as u) '\''
-    { CHAR (parse_unicode u InvalidChar) }
-  | (ascii_char_literal as c) '\''
-    { CHAR (unescaped_byte c InvalidChar) }
+    { CHAR (u |> parse_unicode |> get_or_throw InvalidChar) }
+  | [^ '\\' '\'']
+    { CHAR (0 |> Lexing.lexeme_char lexbuf |> Uchar.of_char) }
+  | (escaped as esc) '\''
+    { CHAR (esc |> unescaped_char |> get_or_throw InvalidChar) }
   | _ | eof
     { raise InvalidChar }
 
+and read_string buf =
+  parse
+  | (unicode as u)
+    { 
+      u
+      |> parse_unicode 
+      |> get_or_throw InvalidString 
+      |> Buffer.add_utf_8_uchar buf;
+      read_string buf lexbuf
+    }
+  | [^ '\\' '\"']
+    { 
+      0
+      |> Lexing.lexeme_char lexbuf
+      |> Buffer.add_char buf;
+      read_string buf lexbuf
+    }
+  | (escaped as esc)
+    {
+      esc
+      |> unescaped_char
+      |> get_or_throw InvalidString
+      |> Buffer.add_utf_8_uchar buf;
+      read_string buf lexbuf
+    }
+  | '"'
+    { STRING (Buffer.contents buf) }
+  | _ | eof
+    { raise InvalidChar }
 
 and read_comment =
   parse
@@ -144,3 +186,13 @@ and read_comment =
     { EOF }
   | _
     { read_comment lexbuf }
+
+{
+(** [lex buf] is the list of all tokens lexed from buffer [buf], excluding [EOF] *)
+let rec lex buf =
+  match read buf with
+  | EOF -> []
+  | tok -> tok :: lex buf
+
+let lex_string s = s |> Lexing.from_string |> lex
+}

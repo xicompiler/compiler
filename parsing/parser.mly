@@ -6,8 +6,8 @@
 %token RETURN
 
 (* Literals *)
-%token <int> CHAR
-%token <int list> STRING
+%token <Uchar.t> CHAR
+%token <string> STRING
 %token <int> INT
 %token <bool> BOOL
 
