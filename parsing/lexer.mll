@@ -21,9 +21,9 @@ let unescaped_char s =
   with
   | _ -> None
 
-(** [get_or_throw e o] is [x] if [o] is [Some x]. Raises: [e] if [o] is
+(** [get_or_raise e o] is [x] if [o] is [Some x]. Raises: [e] if [o] is
     [None] *)
-let get_or_throw e = function
+let get_or_raise e = function
   | Some x -> x
   | None -> raise e
 
@@ -34,15 +34,13 @@ let buf_length = 16
 let white = [' ' '\t']+
 let newline = '\n'
 let digit = ['0'-'9']
-let letter = ['a'-'z' 'A'-'z']
+let letter = ['a'-'z' 'A'-'Z']
 let int = '-'? digit+
 let id = letter (letter | digit | '_' | '\'')*
 let hex = ['0'-'9' 'a'-'f' 'A'-'F']
-let codepoint = hex hex? hex? hex? hex? hex?
 let escaped = '\\' (('x' hex hex) | _)
+let codepoint = hex hex? hex? hex? hex? hex?
 let unicode =  "\\x{" codepoint '}'
-let ascii_char_literal = [^ '\\' '\''] | escaped
-let ascii_string_literal = [^ '\\' '"'] | escaped
 
 rule read =
   parse
@@ -137,11 +135,11 @@ rule read =
 and read_char =
   parse
   | (unicode as u) '\''
-    { CHAR (u |> parse_unicode |> get_or_throw InvalidChar) }
+    { CHAR (u |> parse_unicode |> get_or_raise InvalidChar) }
   | [^ '\\' '\'']
     { CHAR (0 |> Lexing.lexeme_char lexbuf |> Uchar.of_char) }
   | (escaped as esc) '\''
-    { CHAR (esc |> unescaped_char |> get_or_throw InvalidChar) }
+    { CHAR (esc |> unescaped_char |> get_or_raise InvalidChar) }
   | _ | eof
     { raise InvalidChar }
 
@@ -151,7 +149,7 @@ and read_string buf =
     { 
       u
       |> parse_unicode 
-      |> get_or_throw InvalidString 
+      |> get_or_raise InvalidString 
       |> Buffer.add_utf_8_uchar buf;
       read_string buf lexbuf
     }
@@ -166,7 +164,7 @@ and read_string buf =
     {
       esc
       |> unescaped_char
-      |> get_or_throw InvalidString
+      |> get_or_raise InvalidString
       |> Buffer.add_utf_8_uchar buf;
       read_string buf lexbuf
     }
