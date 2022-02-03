@@ -48,7 +48,7 @@ let ok_or_raise e = function
 let get_position (lb : Lexing.lexbuf) =
   let p = lb.lex_start_p in {
     line = p.pos_lnum;
-    column = p.pos_cnum - p.pos_bol;
+    column = p.pos_cnum - p.pos_bol + 1;
   }
 
 let (>>=) = Result.bind
@@ -151,13 +151,15 @@ rule read =
   | "'"
     {
       let pos = get_position lexbuf in
-      CHAR (lexbuf |> read_char |> ok_or_raise (InvalidChar pos))
+      let c = lexbuf |> read_char |> ok_or_raise (InvalidChar pos) in
+      CHAR c
     }
   | '"'
     {
       let pos = get_position lexbuf in
       let buf = Buffer.create buf_length in
-      STRING (lexbuf |> read_string buf |> ok_or_raise (InvalidString pos))
+      let s = lexbuf |> read_string buf |> ok_or_raise (InvalidString pos) in
+      STRING s
     }
   | eof
     { EOF }
@@ -202,7 +204,7 @@ and read_string buf =
   | [^ '\\' '"' '\n']+ as s
     { 
       Buffer.add_string buf s;
-      read_string buf lexbuf 
+      read_string buf lexbuf
     }
   | (escaped as esc)
     {
@@ -233,21 +235,43 @@ and read_comment =
 
 {
 (** [lex buf] is the list of all tokens lexed from buffer [buf], excluding [EOF] *)
-let rec lex buf =
+let rec lex_tok buf =
   match read buf with
   | EOF -> []
-  | tok -> tok :: lex buf
+  | tok -> tok :: lex_tok buf
 
-let lex_string s = s |> Lexing.from_string |> lex
+let lex_tok_string s = s |> Lexing.from_string |> lex_tok
 
-let rec lex_pos buf =
+let rec lex_pos_tok buf =
+  let token = read buf in
   let pos = get_position buf in
-  match read buf with
+  match token with
   | EOF -> []
-  | tok -> (pos, tok) :: lex_pos buf
+  | tok -> (pos, tok) :: lex_pos_tok buf
   | exception e -> let {line;column} = pos in
       Printf.printf "%d:%d error\n" line column;
       raise e
 
-let lex_pos_string s = s |> Lexing.from_string |> lex_pos
+let lex_pos_tok_string s = s |> Lexing.from_string |> lex_pos_tok
+
+let lex in_file out_file =
+  let print_token oc (pos, tok) = 
+    let {line;column} : token_position = pos in
+    Printf.fprintf oc "%d:%d\n" line column;
+    flush stdout; in
+
+  let file_contents =
+    let ch = open_in in_file in
+    let s = really_input_string ch (in_channel_length ch) in
+    close_in ch;
+    s in
+
+  let oc = open_out out_file in begin
+    try
+      file_contents |> lex_pos_tok_string |> List.iter (print_token oc);
+      close_out oc;
+    with e ->
+      close_out_noerr oc;
+      raise e
+  end
 }
