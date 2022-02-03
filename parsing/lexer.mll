@@ -125,20 +125,20 @@ rule read =
     { INT (int_of_string i) }
   | id as ident
     { ID ident }
-  | '\''
+  | "'"
     { read_char lexbuf }
-  | "\""
+  | '"'
     { read_string (Buffer.create buf_length) lexbuf }
   | eof
     { EOF }
 
 and read_char =
   parse
-  | (unicode as u) '\''
+  | (unicode as u) "'"
     { CHAR (u |> parse_unicode |> get_or_raise InvalidChar) }
   | [^ '\\' '\'']
     { CHAR (0 |> Lexing.lexeme_char lexbuf |> Uchar.of_char) }
-  | (escaped as esc) '\''
+  | (escaped as esc) "'"
     { CHAR (esc |> unescaped_char |> get_or_raise InvalidChar) }
   | _ | eof
     { raise InvalidChar }
@@ -153,7 +153,7 @@ and read_string buf =
       |> Buffer.add_utf_8_uchar buf;
       read_string buf lexbuf
     }
-  | [^ '\\' '\"']+ as s
+  | [^ '\\' '"']+ as s
     { 
       Buffer.add_string buf s;
       read_string buf lexbuf 
