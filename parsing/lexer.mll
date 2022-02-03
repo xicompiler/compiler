@@ -153,12 +153,10 @@ and read_string buf =
       |> Buffer.add_utf_8_uchar buf;
       read_string buf lexbuf
     }
-  | [^ '\\' '\"']
+  | [^ '\\' '\"']+ as s
     { 
-      0
-      |> Lexing.lexeme_char lexbuf
-      |> Buffer.add_char buf;
-      read_string buf lexbuf
+      Buffer.add_string buf s;
+      read_string buf lexbuf 
     }
   | (escaped as esc)
     {
