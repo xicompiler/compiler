@@ -6,7 +6,7 @@
 %token RETURN
 
 (* Literals *)
-%token <char> CHAR
+%token <Uchar.t> CHAR
 %token <string> STRING
 %token <int> INT
 %token <bool> BOOL
@@ -46,7 +46,7 @@
 %token SEMICOLON
 %token COMMA
 
-(* Indentifier *)
+(* Identifier *)
 %token <string> ID
 
 (* End of file *)
