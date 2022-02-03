@@ -1,7 +1,20 @@
 {
 open Parser
-exception InvalidChar
-exception InvalidString
+
+type token_position = {
+  line : int;
+  column : int;
+}
+
+exception InvalidChar of token_position
+exception InvalidString of token_position
+
+(** A [literal_error] describes a lexical error due to a error in string or character literal *)
+type literal_error =
+  | InvalidEscape of string
+  | InvalidUnicode of string
+  | EOF
+  | Other
 
 (** [parse_unicode] is [Some c] where [c] the unicode character
     represented by string [s] in the format [\x{n}] for hex number [n],
@@ -21,14 +34,21 @@ let unescaped_char s =
   with
   | _ -> None
 
-(** [get_or_raise e o] is [x] if [o] is [Some x]. Raises: [e] if [o] is
-    [None] *)
-let get_or_raise e = function
-  | Some x -> x
-  | None -> raise e
-
 (** The default length of the string buffer *)
 let buf_length = 16
+
+(** [ok_or_raise e r] is [x] if [r] is [Ok x] and raises [e] otherwise *)
+let ok_or_raise e = function
+  | Ok x -> x
+  | Error _ -> raise e
+
+let get_position (lb : Lexing.lexbuf) =
+  let p = lb.lex_start_p in {
+    line = p.pos_lnum;
+    column = p.pos_cnum - p.pos_bol;
+  }
+
+let (>>=) = Result.bind
 }
 
 let white = [' ' '\t']+
@@ -126,22 +146,31 @@ rule read =
   | id as ident
     { ID ident }
   | "'"
-    { read_char lexbuf }
+    {
+      let pos = get_position lexbuf in
+      CHAR (lexbuf |> read_char |> ok_or_raise (InvalidChar pos))
+    }
   | '"'
-    { read_string (Buffer.create buf_length) lexbuf }
+    {
+      let pos = get_position lexbuf in
+      let buf = Buffer.create buf_length in
+      STRING (lexbuf |> read_string buf |> ok_or_raise (InvalidString pos))
+    }
   | eof
     { EOF }
 
 and read_char =
   parse
   | (unicode as u) "'"
-    { CHAR (u |> parse_unicode |> get_or_raise InvalidChar) }
+    { u |> parse_unicode |> Option.to_result ~none:(InvalidUnicode u) }
   | [^ '\\' '\'']
-    { CHAR (0 |> Lexing.lexeme_char lexbuf |> Uchar.of_char) }
+    { 0 |> Lexing.lexeme_char lexbuf |> Uchar.of_char |> Result.ok }
   | (escaped as esc) "'"
-    { CHAR (esc |> unescaped_char |> get_or_raise InvalidChar) }
-  | _ | eof
-    { raise InvalidChar }
+    { esc |> unescaped_char |> Option.to_result ~none:(InvalidEscape esc) }
+  | eof
+    { Error EOF }
+  | _
+    { Error Other }
 
 and read_string buf =
   parse
@@ -149,8 +178,8 @@ and read_string buf =
     { 
       u
       |> parse_unicode 
-      |> get_or_raise InvalidString 
-      |> Buffer.add_utf_8_uchar buf;
+      |> Option.to_result ~none:(InvalidUnicode u) >>= fun u -> 
+      Buffer.add_utf_8_uchar buf u;
       read_string buf lexbuf
     }
   | [^ '\\' '"']+ as s
@@ -162,14 +191,16 @@ and read_string buf =
     {
       esc
       |> unescaped_char
-      |> get_or_raise InvalidString
-      |> Buffer.add_utf_8_uchar buf;
+      |> Option.to_result ~none:(InvalidEscape esc) >>= fun u ->
+      Buffer.add_utf_8_uchar buf u;
       read_string buf lexbuf
     }
   | '"'
-    { STRING (Buffer.contents buf) }
-  | _ | eof
-    { raise InvalidString }
+    { Ok (Buffer.contents buf) }
+  | eof
+    { Error EOF }
+  | _
+    { Error Other }
 
 and read_comment =
   parse
@@ -191,4 +222,12 @@ let rec lex buf =
   | tok -> tok :: lex buf
 
 let lex_string s = s |> Lexing.from_string |> lex
+
+let rec lex_pos buf =
+  let pos = get_position buf in
+  match read buf with
+  | EOF -> []
+  | tok -> (pos, tok) :: lex_pos buf
+
+let lex_pos_string s = s |> Lexing.from_string |> lex_pos
 }
