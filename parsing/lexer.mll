@@ -1,6 +1,8 @@
 {
 open Parser
 
+exception LexicalError
+
 type token_position = {
   line : int;
   column : int;
@@ -13,6 +15,7 @@ exception InvalidString of token_position
 type literal_error =
   | InvalidEscape of string
   | InvalidUnicode of string
+  | Newline
   | EOF
   | Other
 
@@ -158,12 +161,21 @@ rule read =
     }
   | eof
     { EOF }
+  | _
+    {
+      raise LexicalError
+    }
 
 and read_char =
   parse
+  | newline
+    { 
+      Lexing.new_line lexbuf;
+      Error Newline
+    }
   | (unicode as u) "'"
     { u |> parse_unicode |> Option.to_result ~none:(InvalidUnicode u) }
-  | [^ '\\' '\'']
+  | [^ '\\' '\'' '\n']
     { 0 |> Lexing.lexeme_char lexbuf |> Uchar.of_char |> Result.ok }
   | (escaped as esc) "'"
     { esc |> unescaped_char |> Option.to_result ~none:(InvalidEscape esc) }
@@ -174,6 +186,11 @@ and read_char =
 
 and read_string buf =
   parse
+  | newline
+    { 
+      Lexing.new_line lexbuf;
+      Error Newline
+    }
   | (unicode as u)
     { 
       u
@@ -182,7 +199,7 @@ and read_string buf =
       Buffer.add_utf_8_uchar buf u;
       read_string buf lexbuf
     }
-  | [^ '\\' '"']+ as s
+  | [^ '\\' '"' '\n']+ as s
     { 
       Buffer.add_string buf s;
       read_string buf lexbuf 
@@ -228,6 +245,9 @@ let rec lex_pos buf =
   match read buf with
   | EOF -> []
   | tok -> (pos, tok) :: lex_pos buf
+  | exception e -> let {line;column} = pos in
+      Printf.printf "%d:%d error\n" line column;
+      raise e
 
 let lex_pos_string s = s |> Lexing.from_string |> lex_pos
 }

@@ -1,3 +1,7 @@
+exception LexicalError
+(** [LexicalError] indicates a lexical error where the input symbol is
+    not part of the Xi language *)
+
 type token_position = {
   line : int;
   column : int;
