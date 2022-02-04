@@ -351,5 +351,6 @@ let lex_to_file ~src ~dst =
     close_out dst
   with e ->
     close_in_noerr src;
-    close_out_noerr dst
+    close_out_noerr dst;
+    raise e
 }
