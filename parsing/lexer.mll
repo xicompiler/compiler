@@ -292,6 +292,8 @@ let read_result lexbuf =
   try Ok (read lexbuf) with
   | Error e -> Result.Error e
 
+(** [lex_pos_rev lexbuf] is a reversed list of [(result, position)]
+    pairs of all tokens lexed from lexbuf *)
 let lex_pos_rev lexbuf =
   let rec help acc =
     let res = read_result lexbuf in
