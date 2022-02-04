@@ -6,16 +6,19 @@ type position = {
   column : int;
 }
 
-type lexical_error =
+type error_cause =
   | InvalidChar
   | InvalidString
   | InvalidSource
 
-exception
-  Error of {
-    cause : lexical_error;
-    position : position;
-  }
+type error = {
+  cause : error_cause;
+  position : position;
+}
+
+exception Error of error
+
+type result = (Parser.token, error) Result.t
 
 let ( >>= ) = Option.bind
 let ( >>| ) o f = Option.map f o
@@ -58,9 +61,9 @@ let get_position ({ lex_start_p = p; _ } : Lexing.lexbuf) =
     column = col_offset + p.pos_cnum - p.pos_bol 
   }
 
-(** [error cause lexbuf] is an [Error] with the specified cause and the
+(** [make_error cause lexbuf] is an [Error] with the specified cause and the
     current position of the lexer buffer. *)
-let error cause lexbuf =
+let make_error cause lexbuf =
   Error { cause; position = get_position lexbuf }
 
 (** [parse_ascii_char lexbuf] is the first character of the lexeme most
@@ -73,14 +76,14 @@ let parse_ascii_char lexbuf =
     [read_char lexbuf] is [Some c], and raises [Error] indicating the
     illegal char literal and its location in [lexbuf] *)
 let lex_char_literal read_char lexbuf =
-  let err = error InvalidChar lexbuf in
+  let err = make_error InvalidChar lexbuf in
   CHAR (lexbuf |> read_char |> get_or_raise err)
 
 (** [lex_string_literal read_string lexbuf] is [STRING s] if
     [read_string lexbuf] is [Some s] and indicating the illegal string
     literal and its location in [lexbuf] *)
 let lex_string_literal read_string lexbuf =
-  let err = error InvalidString lexbuf in
+  let err = make_error InvalidString lexbuf in
   let buf = Buffer.create buf_length in
   STRING (lexbuf |> read_string buf |> get_or_raise err)
 }
@@ -187,7 +190,7 @@ rule read =
   | eof
     { EOF }
   | any_char
-    { raise (error InvalidSource lexbuf) }
+    { raise (make_error InvalidSource lexbuf) }
 
 and read_char =
   parse
@@ -238,40 +241,107 @@ and read_comment =
 
 {
 
-(** [lex buf] is the list of all tokens lexed from buffer [buf], excluding [EOF] *)
-let rec lex_tok buf =
-  match read buf with
-  | EOF -> []
-  | tok -> tok :: lex_tok buf
+(** [string_of_uchar u] is the string containing unicode character [u] *)
+let string_of_uchar u =
+  let buf = Buffer.create 4 in
+  Buffer.add_utf_8_uchar buf u;
+  Buffer.contents buf
 
-let lex_tok_string s = s |> Lexing.from_string |> lex_tok
+(** [string_of_token tok] is the string representation of token [tok] *)
+let string_of_token = function
+  | USE -> "use"
+  | IF -> "if"
+  | ELSE -> "else"
+  | WHILE -> "while"
+  | RETURN -> "return"
+  | CHAR u -> u |> string_of_uchar |> Printf.sprintf "character %s"
+  | STRING s -> s |> String.escaped |> Printf.sprintf "string %s"
+  | INT i -> Printf.sprintf "integer %d" i
+  | BOOL b -> Printf.sprintf "boolean %B" b
+  | LPAREN -> "("
+  | RPAREN -> ")"
+  | LBRACKET -> "["
+  | RBRACKET -> "]"
+  | LBRACE -> "{"
+  | RBRACE -> "}"
+  | GETS -> "="
+  | MULT -> "*"
+  | HIGHMULT -> "*>>"
+  | DIV -> "/"
+  | MOD -> "%"
+  | PLUS -> "+"
+  | MINUS -> "-"
+  | LT -> "<"
+  | LEQ -> "<="
+  | GEQ -> ">="
+  | GT -> ">"
+  | EQ -> "=="
+  | NEQ -> "!="
+  | NOT -> "!"
+  | AND -> "&"
+  | OR -> "|"
+  | COLON -> ":"
+  | SEMICOLON -> ";"
+  | COMMA -> ","
+  | ID x -> Printf.sprintf "id %s" x
+  | EOF -> "EOF"
+  | TYPE Type.Int -> "int"
+  | TYPE Type.Bool -> "bool"
 
-let rec lex_pos_tok buf =
-  let token = read buf in
-  let pos = get_position buf in
-  match token with
-  | EOF -> []
-  | tok -> (pos, tok) :: lex_pos_tok buf
-  | exception e -> let {line;column} = pos in
-      Printf.printf "%d:%d error\n" line column;
-      raise e
+let read_result lexbuf =
+  try Ok (read lexbuf) with
+  | Error e -> Result.Error e
 
-let lex_pos_tok_string s = s |> Lexing.from_string |> lex_pos_tok
-
-let lex in_file out_file =
-  let oc = open_out out_file in
-  let print_token (pos, tok) = 
-    let { line; column } = pos in
-    Printf.fprintf oc "%d:%d\n" line column
+let lex_pos_rev lexbuf =
+  let rec help acc =
+    let res = read_result lexbuf in
+    let pos = get_position lexbuf in
+    match res with
+    | Ok EOF -> acc
+    | Ok _ -> help ((res, pos) :: acc)
+    | Result.Error _ -> (res, pos) :: acc
   in
+  help []
+
+let lex_pos lexbuf = 
+  let flatten (res, pos) =
+    let res' = Result.map_error (fun e -> e.cause) res in
+    (res', pos)
+  in
+  lexbuf |> lex_pos_rev |> List.rev_map flatten
+
+let lex lexbuf = 
+  lexbuf |> lex_pos_rev |> List.rev |> List.split |> fst
+
+let lex_string s = s |> Lexing.from_string |> lex
+
+(** [error_msg e] is the error message corresponding to [e] *)
+let error_msg = function
+  | InvalidChar -> "error:Invalid character constant"
+  | InvalidString -> "error:Invalid string constant"
+  | InvalidSource -> "error:Illegal character in source file"
+
+(** [string_of_result r] is the string representation of [r] *)
+let string_of_result = function
+  | Ok tok -> string_of_token tok
+  | Result.Error e -> error_msg e
+
+let lex_to_channel ~src ~dst =
+  let print_result (res, { line; column }) =
+    res
+    |> string_of_result
+    |> Printf.fprintf dst "%d:%d %s\n" line column
+  in
+  src |> Lexing.from_channel |> lex_pos |> List.iter print_result
+
+let lex_to_file ~src ~dst =
+  let src = open_in src in
+  let dst = open_out dst in
   try
-    in_file 
-    |> open_in 
-    |> Lexing.from_channel 
-    |> lex_pos_tok 
-    |> List.iter print_token;
-    close_out oc
+    lex_to_channel ~src ~dst;
+    close_in src;
+    close_out dst
   with e ->
-    close_out_noerr oc;
-    raise e
+    close_in_noerr src;
+    close_out_noerr dst
 }
