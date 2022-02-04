@@ -196,7 +196,7 @@ and read_char =
   parse
   | (unicode as u) "'"
     { parse_unicode u }
-  | [^ '\\' '\'']
+  | [^ '\\' '\''] "'"
     { Some (parse_ascii_char lexbuf) }
   | (escaped as esc) "'"
     { unescaped_char esc }

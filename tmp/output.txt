@@ -20,7 +20,6 @@
 5:9 int
 5:13 =
 5:16 character x
-5:18 character  
 5:19 +
 5:21 integer 47
 5:23 ;
