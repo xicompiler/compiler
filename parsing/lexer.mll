@@ -319,7 +319,18 @@ let lex_pos lexbuf =
   lexbuf |> lex_pos_rev |> List.rev_map flatten
 
 let lex lexbuf = 
-  lexbuf |> lex_pos_rev |> List.rev |> List.split |> fst
+  lexbuf |> lex_pos_rev |> List.rev_map fst
+
+let lex_file path =
+  let ic = open_in path in
+  let lexbuf = Lexing.from_channel ic in
+  try
+    let stream = lex lexbuf in
+    close_in ic;
+    stream
+  with e ->
+    close_in_noerr ic;
+    raise e
 
 let lex_string s = s |> Lexing.from_string |> lex
 
