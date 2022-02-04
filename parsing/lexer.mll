@@ -47,9 +47,16 @@ let get_or_raise e = function
   | Some x -> x
   | None -> raise e
 
+(** [col_offset] is the offset between the lexer buffer "column" and the
+    true file column *)
+let col_offset = 1
+
 (** [get_position lexbuf] is the current position of [lexbuf] *)
 let get_position ({ lex_start_p = p; _ } : Lexing.lexbuf) =
-  { line = p.pos_lnum; column = p.pos_cnum - p.pos_bol }
+  { 
+    line = p.pos_lnum; 
+    column = col_offset + p.pos_cnum - p.pos_bol 
+  }
 
 (** [error cause lexbuf] is an [Error] with the specified cause and the
     current position of the lexer buffer. *)
@@ -184,11 +191,6 @@ rule read =
 
 and read_char =
   parse
-  | newline
-    { 
-      Lexing.new_line lexbuf;
-      Error Newline
-    }
   | (unicode as u) "'"
     { parse_unicode u }
   | [^ '\\' '\'']
@@ -200,11 +202,6 @@ and read_char =
 
 and read_string buf =
   parse
-  | newline
-    { 
-      Lexing.new_line lexbuf;
-      Error Newline
-    }
   | (unicode as u)
     { 
       parse_unicode u >>= fun u ->
@@ -262,23 +259,19 @@ let rec lex_pos_tok buf =
 let lex_pos_tok_string s = s |> Lexing.from_string |> lex_pos_tok
 
 let lex in_file out_file =
-  let print_token oc (pos, tok) = 
-    let {line;column} : token_position = pos in
-    Printf.fprintf oc "%d:%d\n" line column;
-    flush stdout; in
-
-  let file_contents =
-    let ch = open_in in_file in
-    let s = really_input_string ch (in_channel_length ch) in
-    close_in ch;
-    s in
-
-  let oc = open_out out_file in begin
-    try
-      file_contents |> lex_pos_tok_string |> List.iter (print_token oc);
-      close_out oc;
-    with e ->
-      close_out_noerr oc;
-      raise e
-  end
+  let oc = open_out out_file in
+  let print_token (pos, tok) = 
+    let { line; column } = pos in
+    Printf.fprintf oc "%d:%d\n" line column
+  in
+  try
+    in_file 
+    |> open_in 
+    |> Lexing.from_channel 
+    |> lex_pos_tok 
+    |> List.iter print_token;
+    close_out oc
+  with e ->
+    close_out_noerr oc;
+    raise e
 }

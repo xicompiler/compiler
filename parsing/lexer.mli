@@ -33,11 +33,11 @@ val lex_tok_string : string -> Parser.token list
 (** [lex_tok_string s] consumes all tokens in [s] and returns them as a
     list. *)
 
-val lex_pos_tok : Lexing.lexbuf -> (token_position * Parser.token) list
+val lex_pos_tok : Lexing.lexbuf -> (position * Parser.token) list
 (** [lex_tok_pos buf] consumes all tokens in [buf] and returns them as a
     list with their positions. *)
 
-val lex_pos_tok_string : string -> (token_position * Parser.token) list
+val lex_pos_tok_string : string -> (position * Parser.token) list
 (** [lex_tok_pos_string s] consumes all tokens in [s] and returns them
     as a list with their positions. *)
 
