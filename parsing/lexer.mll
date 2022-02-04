@@ -75,17 +75,23 @@ let parse_ascii_char lexbuf =
 (** [lex_char_literal read_char lexbuf] is [CHAR c] if
     [read_char lexbuf] is [Some c], and raises [Error] indicating the
     illegal char literal and its location in [lexbuf] *)
-let lex_char_literal read_char lexbuf =
+let lex_char_literal read_char (lexbuf : Lexing.lexbuf) =
+  let start = lexbuf.lex_start_p in
   let err = make_error InvalidChar lexbuf in
-  CHAR (lexbuf |> read_char |> get_or_raise err)
+  let c = read_char lexbuf in
+  lexbuf.lex_start_p <- start;
+  CHAR (get_or_raise err c)
 
 (** [lex_string_literal read_string lexbuf] is [STRING s] if
     [read_string lexbuf] is [Some s] and indicating the illegal string
     literal and its location in [lexbuf] *)
-let lex_string_literal read_string lexbuf =
+let lex_string_literal read_string (lexbuf : Lexing.lexbuf) =
+  let start = lexbuf.lex_start_p in
   let err = make_error InvalidString lexbuf in
   let buf = Buffer.create buf_length in
-  STRING (lexbuf |> read_string buf |> get_or_raise err)
+  let s = read_string buf lexbuf in
+  lexbuf.lex_start_p <- start;
+  STRING (get_or_raise err s)
 }
 
 let white = [' ' '\t']+

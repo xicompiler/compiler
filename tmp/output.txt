@@ -13,13 +13,13 @@
 3:21 {
 4:3 id print
 4:8 (
-4:28 string Hello, World!\n
+4:9 string Hello, World!\n
 4:29 )
 5:3 id c3po
 5:7 :
 5:9 int
 5:13 =
-5:16 character x
+5:15 character x
 5:19 +
 5:21 integer 47
 5:23 ;
