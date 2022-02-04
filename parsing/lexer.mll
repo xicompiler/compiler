@@ -263,7 +263,7 @@ let string_of_token = function
   | CHAR u -> u |> string_of_uchar |> Printf.sprintf "character %s"
   | STRING s -> s |> String.escaped |> Printf.sprintf "string %s"
   | INT i -> Printf.sprintf "integer %d" i
-  | BOOL b -> Printf.sprintf "boolean %B" b
+  | BOOL b -> Bool.to_string b
   | LPAREN -> "("
   | RPAREN -> ")"
   | LBRACKET -> "["
