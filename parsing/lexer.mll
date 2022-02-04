@@ -184,6 +184,11 @@ rule read =
 
 and read_char =
   parse
+  | newline
+    { 
+      Lexing.new_line lexbuf;
+      Error Newline
+    }
   | (unicode as u) "'"
     { parse_unicode u }
   | [^ '\\' '\'']
@@ -195,16 +200,21 @@ and read_char =
 
 and read_string buf =
   parse
+  | newline
+    { 
+      Lexing.new_line lexbuf;
+      Error Newline
+    }
   | (unicode as u)
     { 
       parse_unicode u >>= fun u ->
       Buffer.add_utf_8_uchar buf u;
       read_string buf lexbuf
     }
-  | [^ '\\' '"']+ as s
+  | [^ '\\' '"' '\n']+ as s
     { 
       Buffer.add_string buf s;
-      read_string buf lexbuf 
+      read_string buf lexbuf
     }
   | (escaped as esc)
     {
@@ -231,18 +241,44 @@ and read_comment =
 
 {
 
-let lex_pos lexbuf =
-  let rec help acc = 
-    let pos = get_position lexbuf in
-    match read lexbuf with
-    | EOF -> List.rev acc
-    | tok -> acc |> List.cons (pos, tok) |> help
-  in
-  help []
+(** [lex buf] is the list of all tokens lexed from buffer [buf], excluding [EOF] *)
+let rec lex_tok buf =
+  match read buf with
+  | EOF -> []
+  | tok -> tok :: lex_tok buf
 
-let lex lexbuf = lexbuf |> lex_pos |> List.split |> snd
+let lex_tok_string s = s |> Lexing.from_string |> lex_tok
 
-let lex_string s = s |> Lexing.from_string |> lex
+let rec lex_pos_tok buf =
+  let token = read buf in
+  let pos = get_position buf in
+  match token with
+  | EOF -> []
+  | tok -> (pos, tok) :: lex_pos_tok buf
+  | exception e -> let {line;column} = pos in
+      Printf.printf "%d:%d error\n" line column;
+      raise e
 
-let lex_pos_string s = s |> Lexing.from_string |> lex_pos
+let lex_pos_tok_string s = s |> Lexing.from_string |> lex_pos_tok
+
+let lex in_file out_file =
+  let print_token oc (pos, tok) = 
+    let {line;column} : token_position = pos in
+    Printf.fprintf oc "%d:%d\n" line column;
+    flush stdout; in
+
+  let file_contents =
+    let ch = open_in in_file in
+    let s = really_input_string ch (in_channel_length ch) in
+    close_in ch;
+    s in
+
+  let oc = open_out out_file in begin
+    try
+      file_contents |> lex_pos_tok_string |> List.iter (print_token oc);
+      close_out oc;
+    with e ->
+      close_out_noerr oc;
+      raise e
+  end
 }

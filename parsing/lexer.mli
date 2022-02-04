@@ -25,18 +25,22 @@ val read : Lexing.lexbuf -> Parser.token
     corresponding token. Raises: [InvalidChar] if, on reading [lexbuf],
     an invalid character literal is encountered. *)
 
-val lex : Lexing.lexbuf -> Parser.token list
-(** [lex buf] consumes all tokens in [buf], excluding [EOF] and returns
-    them as a list. Requires: [buf] has no lexical errors *)
+val lex_tok : Lexing.lexbuf -> Parser.token list
+(** [lex_tok buf] consumes all tokens in [buf] and returns them as a
+    list. *)
 
-val lex_string : string -> Parser.token list
-(** [lex_string s] consumes all tokens in [s] and returns them as a
-    list. Requires: [s] has no lexical errors *)
+val lex_tok_string : string -> Parser.token list
+(** [lex_tok_string s] consumes all tokens in [s] and returns them as a
+    list. *)
 
-val lex_pos : Lexing.lexbuf -> (position * Parser.token) list
-(** [lex buf] consumes all tokens in [buf] and returns them as a list.
-    Requires: [buf] has no lexical errors *)
+val lex_pos_tok : Lexing.lexbuf -> (token_position * Parser.token) list
+(** [lex_tok_pos buf] consumes all tokens in [buf] and returns them as a
+    list with their positions. *)
 
-val lex_pos_string : string -> (position * Parser.token) list
-(** [lex_string s] consumes all tokens in [s] and returns them as a
-    list. Requires: [s] has no lexical errors *)
+val lex_pos_tok_string : string -> (token_position * Parser.token) list
+(** [lex_tok_pos_string s] consumes all tokens in [s] and returns them
+    as a list with their positions. *)
+
+val lex : string -> string -> unit
+(** [lex in_file out_file] lexes [in_file] and writes the output to
+    [out_file] *)
