@@ -1,13 +1,33 @@
 open Parsing.Lexer
 
-let in_file = "tmp/input.txt"
+let usage_msg = "Usage: xic [options] <source files>"
 
-let out_file = "tmp/output.txt"
+let input_files = ref []
 
-let empty_char_literal_src = "tmp/empty_char_literal_src.txt"
+let output_path = ref ""
 
-let empty_char_literal_dst = "tmp/empty_char_literal_dst.txt"
+let to_lex = ref false
 
-let () =
-  lex_to_file ~src:in_file ~dst:out_file;
-  lex_to_file ~src:empty_char_literal_src ~dst:empty_char_literal_dst
+let get_file_prefix filename = List.hd (String.split_on_char '.' filename)
+
+let lex_file_to_path input_file =
+  let file_prefix = get_file_prefix input_file in
+  let output_file_path = !output_path ^ "/" ^ file_prefix ^ ".lexed" in
+  try
+    Core.Unix.mkdir_p !output_path;
+  with
+    | _ -> ();
+  print_endline "here";
+  Parsing.Lexer.lex_to_file input_file output_file_path
+
+let lex_files intput_files = 
+  List.iter lex_file_to_path !input_files
+
+let speclist =
+  [("-D", Arg.Set_string output_path, "Specify where to place generated diagnostic files.");
+   ("--lex", Arg.Set to_lex, "Generate output from lexical analysis.")]
+
+let () = 
+  let _ = 
+    Arg.parse speclist (fun f -> input_files := f :: !input_files) usage_msg in
+  if !to_lex then lex_files ()

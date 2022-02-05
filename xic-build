@@ -1,0 +1,3 @@
+dune build --build-dir temp ./bin/main.exe
+cp temp/default/bin/main.exe ./
+mv main.exe xic
