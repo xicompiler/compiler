@@ -18,5 +18,8 @@ bisect*.coverage
 \#*\#
 .DS_Store
 
-*.zip
+# executable
+xic
 
+# deliverable
+*.zip
