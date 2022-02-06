@@ -1,3 +1,4 @@
 make clean
-dune build --build-dir temp ./bin/main.exe
-cp temp/default/bin/main.exe xic
+echo 'dune exec ./bin/main.exe' > xic
+chmod a+x xic
+ln -sf xic ~/bin
