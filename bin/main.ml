@@ -29,10 +29,6 @@ let lex_file_to_path input_file =
     Core.Unix.mkdir_p output_file_dir
   with
     | _ -> ());
-  (* let oc = open_out output_file_path in
-  close_out oc; *)
-  print_endline output_file_path;
-  print_endline output_file_dir;
   Parsing.Lexer.lex_to_file ~src:input_file ~dst:output_file_path
 
 let lex_files intput_files = 

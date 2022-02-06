@@ -127,6 +127,8 @@ rule read =
     { WHILE }
   | "return"
     { RETURN }
+  | "length"
+    { LENGTH }
   | "("
     { LPAREN }
   | ")"
@@ -260,6 +262,7 @@ let string_of_token = function
   | ELSE -> "else"
   | WHILE -> "while"
   | RETURN -> "return"
+  | LENGTH -> "length"
   | CHAR u -> u |> string_of_uchar |> Printf.sprintf "character %s"
   | STRING s -> s |> String.escaped |> Printf.sprintf "string %s"
   | INT i -> Printf.sprintf "integer %d" i
