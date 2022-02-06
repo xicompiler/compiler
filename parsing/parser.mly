@@ -4,6 +4,7 @@
 %token ELSE
 %token WHILE
 %token RETURN
+%token LENGTH
 
 (* Literals *)
 %token <Uchar.t> CHAR
