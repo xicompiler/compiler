@@ -49,6 +49,7 @@
 
 (* Identifier *)
 %token <string> ID
+%token WILDCARD
 
 (* End of file *)
 %token EOF
