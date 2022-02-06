@@ -98,7 +98,7 @@ let white = [' ' '\t']+
 let newline = '\n'
 let digit = ['0'-'9']
 let letter = ['a'-'z' 'A'-'Z']
-let int = '-'? digit+
+let int = digit+
 let id = letter (letter | digit | '_' | '\'')*
 let hex = ['0'-'9' 'a'-'f' 'A'-'F']
 let escaped = '\\' (('x' hex hex) | ['n' 'r' 't' 'b' '\\' '\'' '"'])
@@ -191,6 +191,8 @@ rule read =
     { INT (int_of_string i) }
   | id as ident
     { ID ident }
+  | "_"
+    { WILDCARD }
   | "'"
     { lex_char_literal read_char lexbuf }
   | '"'
@@ -329,6 +331,7 @@ let string_of_token = function
   | SEMICOLON -> ";"
   | COMMA -> ","
   | ID x -> string_of_id_token x
+  | WILDCARD -> "_"
   | EOF -> "EOF"
   | TYPE Type.Int -> "int"
   | TYPE Type.Bool -> "bool"
