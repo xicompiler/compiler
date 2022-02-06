@@ -6,8 +6,8 @@ lex:
 
 clean:
 	dune clean
-	rm -rf xic *.lexed
+	rm -rf xic *.lexed *.zip
 
 zip:
-	rm -f zak33.zip
+	clean
 	zip zak33.zip -r . -x@exclude.lst
