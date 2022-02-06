@@ -12,6 +12,8 @@ let display_help = ref true
 
 let get_file_prefix filename = List.hd (String.split_on_char '.' filename)
 
+(** [get_file_path filename] gets the output directory path to lex to given full 
+  path [filename]. *)
 let get_file_path filename = 
   let f = String.split_on_char '/' filename in
   let rec get_first_part path acc = match path with
@@ -20,6 +22,9 @@ let get_file_path filename =
     | h::t -> if acc = "" then get_first_part t h else get_first_part t (acc ^ "/" ^ h) in
   get_first_part f ""
 
+(** [lex_file_to_path input_file] lexes a given [input_file] to the previously specified
+ (or default root directory) path, putting the result in a file with the same
+ prefix as [input_file] but with a .lexed extension. *)
 let lex_file_to_path input_file =
   let file_prefix = get_file_prefix input_file in
   let output_file_path = if !output_path = "" then file_prefix ^ ".lexed" 
@@ -30,9 +35,6 @@ let lex_file_to_path input_file =
   with
     | _ -> ());
   Parsing.Lexer.lex_to_file ~src:input_file ~dst:output_file_path
-
-let lex_files intput_files = 
-  List.iter lex_file_to_path !input_files
 
 let speclist =
   [("-D", Arg.Tuple [Arg.Set_string output_path; Arg.Clear display_help], "Specify where to place generated diagnostic files.");
@@ -47,4 +49,4 @@ let () =
     with
     | _ -> print_endline (Arg.usage_string speclist usage_msg) in
   if !display_help then print_endline (Arg.usage_string speclist usage_msg);
-  if !to_lex then lex_files ()
+  if !to_lex then List.iter lex_file_to_path !input_files
