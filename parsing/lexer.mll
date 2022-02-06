@@ -98,7 +98,7 @@ let white = [' ' '\t']+
 let newline = '\n'
 let digit = ['0'-'9']
 let letter = ['a'-'z' 'A'-'Z']
-let int = '-'? digit+
+let int = digit+
 let id = letter (letter | digit | '_' | '\'')*
 let hex = ['0'-'9' 'a'-'f' 'A'-'F']
 let escaped = '\\' (('x' hex hex) | ['n' 'r' 't' 'b' '\\' '\'' '"'])
@@ -188,9 +188,11 @@ rule read =
   | "false"
     { BOOL false }
   | int as i
-    { INT (int_of_string i) }
+    { INT i }
   | id as ident
     { ID ident }
+  | "_"
+    { WILDCARD }
   | "'"
     { lex_char_literal read_char lexbuf }
   | '"'
@@ -283,7 +285,7 @@ let string_of_string_token s =
   s |> escape_string_xi |> Printf.sprintf "string %s"
 
 (** [string_of_int_token i] is the string representing int token [i] *)
-let string_of_int_token = Printf.sprintf "integer %d"
+let string_of_int_token = Printf.sprintf "integer %s"
 
 (** [string_of_bool_token b] is the string representing bool token [b] *)
 let string_of_bool_token = Bool.to_string
@@ -329,6 +331,7 @@ let string_of_token = function
   | SEMICOLON -> ";"
   | COMMA -> ","
   | ID x -> string_of_id_token x
+  | WILDCARD -> "_"
   | EOF -> "EOF"
   | TYPE Type.Int -> "int"
   | TYPE Type.Bool -> "bool"

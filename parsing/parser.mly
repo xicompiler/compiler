@@ -9,7 +9,7 @@
 (* Literals *)
 %token <Uchar.t> CHAR
 %token <string> STRING
-%token <int> INT
+%token <string> INT
 %token <bool> BOOL
 
 (* Open/close delimeters *)
@@ -49,6 +49,7 @@
 
 (* Identifier *)
 %token <string> ID
+%token WILDCARD
 
 (* End of file *)
 %token EOF

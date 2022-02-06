@@ -1,0 +1,6 @@
+_build/*
+.git/*
+.DS_Store
+*.zip
+.gitignore
+xic
