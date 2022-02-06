@@ -6,3 +6,5 @@ lex:
 
 clean:
 	dune clean
+	rm -rf xic *.lexed
+	cd temp && dune clean
