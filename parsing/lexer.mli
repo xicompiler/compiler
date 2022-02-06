@@ -9,7 +9,6 @@ type position = {
 type error_cause =
   | InvalidChar
   | InvalidString
-  | InvalidInt
   | InvalidSource
 
 type error = {

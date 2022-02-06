@@ -9,7 +9,6 @@ type position = {
 type error_cause =
   | InvalidChar
   | InvalidString
-  | InvalidInt
   | InvalidSource
 
 type error = {
@@ -72,13 +71,6 @@ let make_error cause lexbuf =
     [lexbuf] has consumed a valid lexeme. *)
 let parse_ascii_char lexbuf =
   Uchar.of_char (Lexing.lexeme_char lexbuf 0)
-
-(** [lex_int_literal s lexbuf] is [INT i] if decimal integer [i] is
-    parsed from [s], or raises [Error] indicating the illegal int
-    literal and its location in [lexbuf] if not possible. *)
-let lex_int_literal s lexbuf =
-  let err = make_error InvalidInt lexbuf in
-  INT (s |> Int64.of_string_opt |> get_or_raise err)
 
 (** [lex_char_literal read_char lexbuf] is [CHAR c] if
     [read_char lexbuf] is [Some c], and raises [Error] indicating the
@@ -196,7 +188,7 @@ rule read =
   | "false"
     { BOOL false }
   | int as i
-    { lex_int_literal i lexbuf }
+    { INT i }
   | id as ident
     { ID ident }
   | "_"
@@ -293,7 +285,7 @@ let string_of_string_token s =
   s |> escape_string_xi |> Printf.sprintf "string %s"
 
 (** [string_of_int_token i] is the string representing int token [i] *)
-let string_of_int_token = Printf.sprintf "integer %Ld"
+let string_of_int_token = Printf.sprintf "integer %s"
 
 (** [string_of_bool_token b] is the string representing bool token [b] *)
 let string_of_bool_token = Bool.to_string
@@ -388,7 +380,6 @@ let lex_string s = s |> Lexing.from_string |> lex
 let error_msg = function
   | InvalidChar -> "error:Invalid character constant"
   | InvalidString -> "error:Invalid string constant"
-  | InvalidInt -> "error:Invalid integer constant"
   | InvalidSource -> "error:Illegal character in source file"
 
 (** [string_of_result r] is the string representation of [r] *)

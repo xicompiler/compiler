@@ -9,7 +9,7 @@
 (* Literals *)
 %token <Uchar.t> CHAR
 %token <string> STRING
-%token <int64> INT
+%token <string> INT
 %token <bool> BOOL
 
 (* Open/close delimeters *)
