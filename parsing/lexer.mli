@@ -4,8 +4,8 @@ type position = {
 }
 (** [position] is the position, consisting of the line and column *)
 
-(** An [error_caise] is either the presence of an invalid character, int
-    or string literal, or an illegal character in the source file *)
+(** An [error_caise] is either the presence of an invalid character or
+    string literal, or an illegal character in the source file *)
 type error_cause =
   | InvalidChar
   | InvalidString
