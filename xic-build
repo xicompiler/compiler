@@ -1,4 +1,4 @@
 make clean
-echo 'dune exec ./bin/main.exe' > xic
+echo 'make lex' > xic
 chmod a+x xic
 ln -sf xic ~/bin

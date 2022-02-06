@@ -1,1 +1,1 @@
-dune exec ./bin/main.exe
+make lex
