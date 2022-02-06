@@ -9,5 +9,5 @@ clean:
 	rm -rf xic *.lexed *.zip
 
 zip:
-	clean
+	make clean
 	zip zak33.zip -r . -x@exclude.lst
