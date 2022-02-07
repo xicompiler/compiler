@@ -23,10 +23,10 @@ type result = (Parser.token, error) Result.t
 let ( >>= ) = Option.bind
 let ( >>| ) o f = Option.map f o
 
-(** [parsed_escaped_unicode] is [Some c] where [c] the unicode character
+(** [parse_escaped_unicode] is [Some c] where [c] the unicode character
     represented by string [s] in the format [\x{n}] for hex number [n],
     or [None] if no such conversion is possible *)
-let parsed_escaped_unicode s =
+let parse_escaped_unicode s =
   let codepoint = Scanf.sscanf s "\\x{%x}" Fun.id in
   if Uchar.is_valid codepoint then Some (Uchar.of_int codepoint)
   else None
@@ -66,14 +66,19 @@ let get_position ({ lex_start_p = p; _ } : Lexing.lexbuf) =
 let make_error cause lexbuf =
   Error { cause; position = get_position lexbuf }
 
+(** [parse_ascii_char s] is the first ascii character of the lexeme last
+    lexed from [lexbuf], wrapped in a [Uchar.t]. Requires: at least one
+    lexeme has been lexed from [lexbuf]. *)
+let parse_ascii_char lexbuf =
+  Uchar.of_char (Lexing.lexeme_char lexbuf 0)
+
 (** [parse_codepoint s] is the first codepoint of the [s], wrapped in 
     [Some Uchar.t] if present and [None] if absent *)
 let parse_codepoint s =
-  match Unicode.uchars_of_string s with
-  | [ u ] -> Some u
-  | _
-  | (exception _) ->
-    None
+  let d = Uutf.decoder ~encoding:`UTF_8 (`String s) in
+  match (Uutf.decode d, Uutf.decode d) with
+  | `Uchar u, `End -> Some u
+  | _ -> None
 
 (** [lex_char_literal read_char lexbuf] is [CHAR c] if
     [read_char lexbuf] is [Some c], and raises [Error] indicating the
@@ -105,7 +110,8 @@ let int = digit+
 let id = letter (letter | digit | '_' | '\'')*
 let hex = ['0'-'9' 'a'-'f' 'A'-'F']
 let escaped = '\\' (('x' hex hex) | ['n' 'r' 't' 'b' '\\' '\'' '"'])
-let non_escape_char = [^ '\\' '\'']
+let non_escape_char = [^ '\\' '\'' '\n']
+let non_escape_char_seq = non_escape_char non_escape_char+
 let codepoint = hex hex? hex? hex? hex? hex?
 let unicode =  "\\x{" codepoint '}'
 let any_char = _ | newline
@@ -209,11 +215,13 @@ rule read =
 and read_char =
   parse
   | (unicode as u) "'"
-    { parsed_escaped_unicode u }
-  | (non_escape_char+ as s) "'"
-    { parse_codepoint s }
+    { parse_escaped_unicode u }
   | (escaped as esc) "'"
     { unescaped_char esc }
+  | non_escape_char "'"
+    { Some (parse_ascii_char lexbuf) }
+  | (non_escape_char_seq as s) "'"
+    { parse_codepoint s }
   | eof | any_char
     { None }
 
@@ -221,7 +229,7 @@ and read_string buf =
   parse
   | (unicode as u)
     { 
-      parsed_escaped_unicode u >>= fun u ->
+      parse_escaped_unicode u >>= fun u ->
       Buffer.add_utf_8_uchar buf u;
       read_string buf lexbuf
     }

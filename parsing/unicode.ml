@@ -9,8 +9,4 @@ let fold f =
   in
   Uutf.String.fold_utf_8 folder
 
-let uchars_of_string s =
-  let folder acc u = u :: acc in
-  s |> fold folder [] |> List.rev
-
 let iter f = fold (fun () -> f) ()
