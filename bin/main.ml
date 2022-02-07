@@ -1,5 +1,6 @@
 open Parsing.Lexer
 
+exception FileNotFoundError
 let usage_msg = "Usage: xic [options] <source files>"
 
 let input_files = ref []
@@ -62,4 +63,6 @@ let () =
     with
     | _ -> print_endline (Arg.usage_string speclist usage_msg) in
   if !display_help then print_endline (Arg.usage_string speclist usage_msg);
-  if !to_lex then List.iter lex_file_to_path !input_files
+  if !to_lex then 
+    try List.iter lex_file_to_path !input_files with 
+    | Sys_error err -> print_endline err
