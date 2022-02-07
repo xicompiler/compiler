@@ -38,6 +38,8 @@ xic ("Test --help") "--help" {
 xic ("Test --lex") "--lex" {
     ex1.xi;
     ex2.xi (Lexical, "empty character literal");
+    err.xi (Lexical, "empty character literal");
+    err2.xi (Lexical, "empty character literal");
     spec1.xi;
     spec2.xi;
     spec3.xi;
