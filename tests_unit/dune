@@ -1,3 +1,5 @@
 (executable
  (name main)
- (libraries ounit2 xi parsing))
+ (libraries ounit2 xi parsing)
+ (instrumentation 
+  (backend bisect_ppx)))

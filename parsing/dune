@@ -1,6 +1,8 @@
 (library
  (name parsing)
- (libraries uutf))
+ (libraries uutf)
+ (instrumentation 
+  (backend bisect_ppx)))
 
 (ocamllex lexer)
 
