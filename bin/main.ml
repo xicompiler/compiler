@@ -32,15 +32,20 @@ let get_file_path filename =
  (or default root directory) path, putting the result in a file with the same
  prefix as [input_file] but with a .lexed extension. *)
 let lex_file_to_path input_file =
-  let file_prefix = get_file_prefix input_file in
-  let output_file_path =
-    if !output_path = "" then file_prefix ^ ".lexed"
-    else !output_path ^ "/" ^ file_prefix ^ ".lexed"
-  in
-  let output_file_dir = get_file_path output_file_path in
-  (try Core.Unix.mkdir_p output_file_dir with
-  | _ -> ());
-  Parsing.Lexer.lex_to_file ~src:input_file ~dst:output_file_path
+  if Filename.extension input_file = ".xi" then
+    let file_prefix = 
+      input_file |> Filename.remove_extension
+    in
+      let output_file_path =
+        if !output_path = "" then file_prefix ^ ".lexed"
+        else !output_path ^ "/" ^ file_prefix ^ ".lexed"
+      in
+      let output_file_dir = get_file_path output_file_path in
+      (try Core.Unix.mkdir_p output_file_dir with
+      | _ -> ());
+      Parsing.Lexer.lex_to_file ~src:input_file ~dst:output_file_path
+  else
+    print_endline "non .xi file passed in - ignored"; ()
 
 let speclist =
   [
