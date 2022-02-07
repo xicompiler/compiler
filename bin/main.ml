@@ -11,9 +11,6 @@ let to_lex = ref false
 
 let display_help = ref true
 
-let get_file_prefix filename =
-  List.hd (String.split_on_char '.' filename)
-
 (** [get_file_path filename] gets the output directory path to lex to given full 
   path [filename]. *)
 let get_file_path filename = 
