@@ -5,4 +5,5 @@
 (ocamllex lexer)
 
 (menhir
- (modules parser))
+ (modules parser)
+ (flags --unused-tokens))
