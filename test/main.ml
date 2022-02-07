@@ -58,11 +58,11 @@ let lexing_test_cases =
     lexing_test_ok "test string hello world" "\"hello world\""
       [ STRING "hello world" ];
     lexing_test_ok "test unicode" "\"\\x{190}\"" [ STRING "Ɛ" ];
-    lexing_test_ok "test newline" "'\n' '\\x{0a}\'"
+    lexing_test_ok "test newline" "'\\n' '\\x{0a}\'"
       [ char_token_of_char '\n'; char_token_of_int 0x0a ];
-    lexing_test_ok "test tab" "'\t' '\\x{9}'"
+    lexing_test_ok "test tab" "'\\t' '\\x{9}'"
       [ char_token_of_char '\t'; char_token_of_int 9 ];
-    lexing_test_ok "test return" "'\r' '\\x{D}'"
+    lexing_test_ok "test return" "'\\r' '\\x{D}'"
       [ char_token_of_char '\r'; char_token_of_int 0xd ];
     lexing_test_ok "test backslash" "'\\\\'" [ char_token_of_char '\\' ];
     lexing_test_ok "test backslash unicode" "'\\x{5C}'"
