@@ -45,7 +45,7 @@ let lex_file_to_path input_file =
       | _ -> ());
       Parsing.Lexer.lex_to_file ~src:input_file ~dst:output_file_path
   else
-    print_endline "non .xi file passed in - ignored"; ()
+    print_endline "non .xi file passed in - ignored"
 
 let speclist =
   [
