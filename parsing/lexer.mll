@@ -76,7 +76,9 @@ let parse_ascii_char lexbuf =
     [Some Uchar.t] if present and [None] if absent *)
 let parse_codepoint s =
   let d = Uutf.decoder ~encoding:`UTF_8 (`String s) in
-  match (Uutf.decode d, Uutf.decode d) with
+  let first = Uutf.decode d in
+  let second = Uutf.decode d in
+  match (first, second) with
   | `Uchar u, `End -> Some u
   | _ -> None
 
