@@ -1,3 +1,3 @@
 x:bool = 4all
-x = ’’
+x = ''
 this = does not matter

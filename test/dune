@@ -1,2 +1,5 @@
-(test
- (name xi))
+(executable
+ (name main)
+ (libraries ounit2 parsing core)
+ (instrumentation 
+  (backend bisect_ppx)))

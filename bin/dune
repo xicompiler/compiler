@@ -1,4 +1,3 @@
 (executable
- (public_name xi)
  (name main)
- (libraries xi parsing core))
+ (libraries parsing core))

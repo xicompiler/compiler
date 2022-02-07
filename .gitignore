@@ -7,6 +7,7 @@
 *.native
 *.byte
 _build
+build*
 
 # bisect
 _coverage

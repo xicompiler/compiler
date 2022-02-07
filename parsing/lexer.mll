@@ -23,10 +23,10 @@ type result = (Parser.token, error) Result.t
 let ( >>= ) = Option.bind
 let ( >>| ) o f = Option.map f o
 
-(** [parse_unicode] is [Some c] where [c] the unicode character
+(** [parsed_escaped_unicode] is [Some c] where [c] the unicode character
     represented by string [s] in the format [\x{n}] for hex number [n],
     or [None] if no such conversion is possible *)
-let parse_unicode s =
+let parsed_escaped_unicode s =
   let codepoint = Scanf.sscanf s "\\x{%x}" Fun.id in
   if Uchar.is_valid codepoint then Some (Uchar.of_int codepoint)
   else None
@@ -66,11 +66,14 @@ let get_position ({ lex_start_p = p; _ } : Lexing.lexbuf) =
 let make_error cause lexbuf =
   Error { cause; position = get_position lexbuf }
 
-(** [parse_ascii_char lexbuf] is the first character of the lexeme most
-    recently consumed by [lexbuf], wrapped in [Uchar.t]. Requires:
-    [lexbuf] has consumed a valid lexeme. *)
-let parse_ascii_char lexbuf =
-  Uchar.of_char (Lexing.lexeme_char lexbuf 0)
+(** [parse_codepoint s] is the first codepoint of the [s], wrapped in 
+    [Some Uchar.t] if present and [None] if absent *)
+let parse_codepoint s =
+  match Unicode.uchars_of_string s with
+  | [ u ] -> Some u
+  | _
+  | (exception _) ->
+    None
 
 (** [lex_char_literal read_char lexbuf] is [CHAR c] if
     [read_char lexbuf] is [Some c], and raises [Error] indicating the
@@ -102,6 +105,7 @@ let int = digit+
 let id = letter (letter | digit | '_' | '\'')*
 let hex = ['0'-'9' 'a'-'f' 'A'-'F']
 let escaped = '\\' (('x' hex hex) | ['n' 'r' 't' 'b' '\\' '\'' '"'])
+let non_escape_char = [^ '\\' '\'']
 let codepoint = hex hex? hex? hex? hex? hex?
 let unicode =  "\\x{" codepoint '}'
 let any_char = _ | newline
@@ -205,9 +209,9 @@ rule read =
 and read_char =
   parse
   | (unicode as u) "'"
-    { parse_unicode u }
-  | [^ '\\' '\''] "'"
-    { Some (parse_ascii_char lexbuf) }
+    { parsed_escaped_unicode u }
+  | (non_escape_char+ as s) "'"
+    { parse_codepoint s }
   | (escaped as esc) "'"
     { unescaped_char esc }
   | eof | any_char
@@ -217,7 +221,7 @@ and read_string buf =
   parse
   | (unicode as u)
     { 
-      parse_unicode u >>= fun u ->
+      parsed_escaped_unicode u >>= fun u ->
       Buffer.add_utf_8_uchar buf u;
       read_string buf lexbuf
     }
@@ -362,17 +366,6 @@ let lex_pos lexbuf =
 
 let lex lexbuf = 
   lexbuf |> lex_pos_rev |> List.rev_map fst
-
-let lex_file path =
-  let ic = open_in path in
-  let lexbuf = Lexing.from_channel ic in
-  try
-    let stream = lex lexbuf in
-    close_in ic;
-    stream
-  with e ->
-    close_in_noerr ic;
-    raise e
 
 let lex_string s = s |> Lexing.from_string |> lex
 

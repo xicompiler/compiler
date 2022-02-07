@@ -1,4 +1,5 @@
 _build/*
+build*
 .git/*
 .DS_Store
 *.zip

@@ -6,4 +6,4 @@
 1:11 id all
 2:1 id x
 2:3 =
-2:5 error:Illegal character in source file
+2:5 error:Invalid character constant
