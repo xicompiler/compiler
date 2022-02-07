@@ -42,10 +42,6 @@ val lex_string : string -> result list
 (** [lex_string s] consumes all tokens in [s] and returns them as a
     list. *)
 
-val lex_file : string -> result list
-(** [lex_file s] consumes all tokens in the file at path [s] and returns
-    them as a list. *)
-
 val lex_pos :
   Lexing.lexbuf ->
   ((Parser.token, error_cause) Result.t * position) list

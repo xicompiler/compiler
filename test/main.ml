@@ -3,8 +3,10 @@ open Parsing
 open Parsing.Lexer
 open Parsing.Parser
 
+(** [char_token_of_int i] is a [CHAR] token carrying a utf8 codepoint with code i. *)
 let char_token_of_int i = CHAR (Uchar.of_int i)
 
+(** [char_token_of_char c] is a [CHAR] token carrying a utf8 codepoint representing character c *)
 let char_token_of_char c = CHAR (Uchar.of_char c)
 
 let lexing_test test_name input expected = 
@@ -60,6 +62,8 @@ let lexing_test_cases = [
   lexing_test_ok "test quote" "'\"' '\\x{22}'" [char_token_of_char '\"'; char_token_of_int 0x22];
   lexing_test_err "test open string" "\"" [{cause = InvalidString; position={line = 1; column = 1}}];
   lexing_test_err "test open char" "'" [{cause = InvalidChar; position={line = 1; column = 1}}];
+  lexing_test_err "test invalid unicode" "'\\k'" [{cause = InvalidChar; position={line = 1; column = 1}}];
+  lexing_test_err "test invalid unicode" "'\\x{FFFFFF}'" [{cause = InvalidChar; position={line = 1; column = 1}}];
   ]
 
 let lexing_file_test_cases = List.flatten [
