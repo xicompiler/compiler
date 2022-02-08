@@ -1,6 +1,7 @@
 open Parsing.Lexer
 
 exception FileNotFoundError
+
 let usage_msg = "Usage: xic [options] <source files>"
 
 let input_files = ref []
@@ -14,9 +15,9 @@ let display_help = ref true
 let get_file_prefix filename =
   List.hd (String.split_on_char '.' filename)
 
-(** [get_file_path filename] gets the output directory path to lex to given full 
-  path [filename]. *)
-let get_file_path filename = 
+(** [get_file_path filename] gets the output directory path to lex to
+    given full path [filename]. *)
+let get_file_path filename =
   let f = String.split_on_char '/' filename in
   let rec get_first_part path acc =
     match path with
@@ -28,9 +29,10 @@ let get_file_path filename =
   in
   get_first_part f ""
 
-(** [lex_file_to_path input_file] lexes a given [input_file] to the previously specified
- (or default root directory) path, putting the result in a file with the same
- prefix as [input_file] but with a .lexed extension. *)
+(** [lex_file_to_path input_file] lexes a given [input_file] to the
+    previously specified (or default root directory) path, putting the
+    result in a file with the same prefix as [input_file] but with a
+    .lexed extension. *)
 let lex_file_to_path input_file =
   let file_prefix = get_file_prefix input_file in
   let output_file_path =
@@ -61,8 +63,10 @@ let () =
         (fun f -> input_files := f :: !input_files)
         usage_msg
     with
-    | _ -> print_endline (Arg.usage_string speclist usage_msg) in
-  if !display_help then print_endline (Arg.usage_string speclist usage_msg);
-  if !to_lex then 
-    try List.iter lex_file_to_path !input_files with 
+    | _ -> print_endline (Arg.usage_string speclist usage_msg)
+  in
+  if !display_help then
+    print_endline (Arg.usage_string speclist usage_msg);
+  if !to_lex then
+    try List.iter lex_file_to_path !input_files with
     | Sys_error err -> print_endline err

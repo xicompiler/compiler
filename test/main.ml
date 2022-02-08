@@ -11,18 +11,18 @@ let char_token_of_int i = CHAR (Uchar.of_int i)
     representing character [c]. *)
 let char_token_of_char c = CHAR (Uchar.of_char c)
 
-(** [lexing_test s i e] binds [n] to a unit test that asserts
-    [i] and [e] are equal. *)
+(** [lexing_test s i e] binds [n] to a unit test that asserts [i] and
+    [e] are equal. *)
 let lexing_test test_name input expected =
   test_name >:: fun _ -> assert_equal (Lexer.lex_string input) expected
 
-(** [lexing_test_ok n i e] calls [lexing_test] with [n], [i], and
-    [e] mapped as valid tokens. *)
+(** [lexing_test_ok n i e] calls [lexing_test] with [n], [i], and [e]
+    mapped as valid tokens. *)
 let lexing_test_ok test_name input expected =
   lexing_test test_name input (List.map Result.ok expected)
 
-(** [lexing_test_error n i e] calls [lexing_test] with [n], [i], and
-    [e] mapped as invalid tokens. *)
+(** [lexing_test_error n i e] calls [lexing_test] with [n], [i], and [e]
+    mapped as invalid tokens. *)
 let lexing_test_err test_name input expected =
   lexing_test test_name input (List.map Result.error expected)
 
