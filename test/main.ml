@@ -4,11 +4,11 @@ open Parsing.Lexer
 open Parsing.Parser
 
 (** [char_token_of_int i] is a [CHAR] token carrying a utf8 codepoint
-    with code i. *)
+    with code [i]. *)
 let char_token_of_int i = CHAR (Uchar.of_int i)
 
 (** [char_token_of_char c] is a [CHAR] token carrying a utf8 codepoint
-    representing character c *)
+    representing character [c] *)
 let char_token_of_char c = CHAR (Uchar.of_char c)
 
 (** [lexing_test s i e] binds [n] to a unit test that asserts
