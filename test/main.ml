@@ -11,14 +11,20 @@ let char_token_of_int i = CHAR (Uchar.of_int i)
     representing character c *)
 let char_token_of_char c = CHAR (Uchar.of_char c)
 
+(** [lexing_test s i e] binds [n] to a unit test that asserts
+    [i] and [e] are equal. *)
 let lexing_test test_name input expected =
   test_name >:: fun _ -> assert_equal (Lexer.lex_string input) expected
 
-let lexing_test_ok test_name input expected_tokens =
-  lexing_test test_name input (List.map Result.ok expected_tokens)
+(** [lexing_test_ok n i e] calls [lexing_test] with [n], [i], and
+    [e] mapped as valid tokens. *)
+let lexing_test_ok test_name input expected =
+  lexing_test test_name input (List.map Result.ok expected)
 
-let lexing_test_err test_name input expected_tokens =
-  lexing_test test_name input (List.map Result.error expected_tokens)
+(** [lexing_test_error n i e] calls [lexing_test] with [n], [i], and
+    [e] mapped as invalid tokens. *)
+let lexing_test_err test_name input expected =
+  lexing_test test_name input (List.map Result.error expected)
 
 (** [file_contents in_file] is a string containing the contents of
     [in_file] *)
@@ -53,6 +59,7 @@ let lexing_file_tests dir =
   in
   Sys.readdir dir |> Array.to_list |> List.filter_map make_test
 
+(** [lexing_test_cases] is a list of unit tests for [lex_string]. *)
 let lexing_test_cases =
   [
     lexing_test_ok "test string hello world" "\"hello world\""
@@ -79,6 +86,7 @@ let lexing_test_cases =
       [ { cause = InvalidChar; position = { line = 1; column = 1 } } ];
   ]
 
+(** [lexing_test_cases] is a list of unit tests for our test files. *)
 let lexing_file_test_cases =
   List.flatten
     [
