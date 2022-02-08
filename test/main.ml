@@ -4,24 +4,30 @@ open Parsing.Lexer
 open Parsing.Parser
 
 (** [char_token_of_int i] is a [CHAR] token carrying a utf8 codepoint
-    with code i. *)
+    with code [i]. *)
 let char_token_of_int i = CHAR (Uchar.of_int i)
 
 (** [char_token_of_char c] is a [CHAR] token carrying a utf8 codepoint
-    representing character c *)
+    representing character [c]. *)
 let char_token_of_char c = CHAR (Uchar.of_char c)
 
+(** [lexing_test s i e] binds [n] to a unit test that asserts [i] and
+    [e] are equal. *)
 let lexing_test test_name input expected =
   test_name >:: fun _ -> assert_equal (Lexer.lex_string input) expected
 
-let lexing_test_ok test_name input expected_tokens =
-  lexing_test test_name input (List.map Result.ok expected_tokens)
+(** [lexing_test_ok n i e] calls [lexing_test] with [n], [i], and [e]
+    mapped as valid tokens. *)
+let lexing_test_ok test_name input expected =
+  lexing_test test_name input (List.map Result.ok expected)
 
-let lexing_test_err test_name input expected_tokens =
-  lexing_test test_name input (List.map Result.error expected_tokens)
+(** [lexing_test_error n i e] calls [lexing_test] with [n], [i], and [e]
+    mapped as invalid tokens. *)
+let lexing_test_err test_name input expected =
+  lexing_test test_name input (List.map Result.error expected)
 
 (** [file_contents in_file] is a string containing the contents of
-    [in_file] *)
+    [in_file]. *)
 let file_contents in_file =
   let ch = open_in in_file in
   let s = really_input_string ch (in_channel_length ch) in
@@ -53,6 +59,7 @@ let lexing_file_tests dir =
   in
   Sys.readdir dir |> Array.to_list |> List.filter_map make_test
 
+(** [lexing_test_cases] is a list of unit tests for [lex_string]. *)
 let lexing_test_cases =
   [
     lexing_test_ok "test string hello world" "\"hello world\""
@@ -79,6 +86,7 @@ let lexing_test_cases =
       [ { cause = InvalidChar; position = { line = 1; column = 1 } } ];
   ]
 
+(** [lexing_test_cases] is a list of unit tests for our test files. *)
 let lexing_file_test_cases =
   List.flatten
     [
