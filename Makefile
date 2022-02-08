@@ -11,7 +11,7 @@ test:
 
 clean:
 	dune clean
-	rm -rf xic *.lexed *.zip
+	rm -rf xic *.lexed *.zip *.log
 
 bisect: bisect-clean
 	dune exec --instrument-with bisect_ppx --force ./test/main.exe
