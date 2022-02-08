@@ -8,7 +8,7 @@ open Parsing.Parser
 let char_token_of_int i = CHAR (Uchar.of_int i)
 
 (** [char_token_of_char c] is a [CHAR] token carrying a utf8 codepoint
-    representing character [c] *)
+    representing character [c]. *)
 let char_token_of_char c = CHAR (Uchar.of_char c)
 
 (** [lexing_test s i e] binds [n] to a unit test that asserts
@@ -27,7 +27,7 @@ let lexing_test_err test_name input expected =
   lexing_test test_name input (List.map Result.error expected)
 
 (** [file_contents in_file] is a string containing the contents of
-    [in_file] *)
+    [in_file]. *)
 let file_contents in_file =
   let ch = open_in in_file in
   let s = really_input_string ch (in_channel_length ch) in
