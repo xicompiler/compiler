@@ -53,5 +53,5 @@ val lex_to_channel : src:in_channel -> dst:out_channel -> unit
     to [dst] *)
 
 val lex_to_file : src:string -> dst:string -> unit
-(** [lex_to_file in_file out_file] lexes the file at path [src] and
-    writes the results to the file at path [dst] *)
+(** [lex_to_file ~src ~dst] lexes the file at path [src] and writes the
+    results to the file at path [dst] *)
