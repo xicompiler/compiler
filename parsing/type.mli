@@ -8,3 +8,5 @@ type nonrec primitive =
 type t =
   | Primitive of primitive
   | Array of t
+
+val to_string : t -> string(** [to_string t] is [t] formatted as a string *)

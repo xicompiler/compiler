@@ -1,10 +1,10 @@
 val printable_ascii_min : char
 (** [printable_ascii_min] is the minimum printable ascii value,
-    inclusive *)
+    inclusive. *)
 
 val printable_ascii_max : char
 (** [printable_ascii_max] is the maximum printable ascii value,
-    inclusive *)
+    inclusive. *)
 
 val iter : (Uchar.t -> unit) -> string -> unit
 (** [iter f s] applies [f] to each unicode codepoint of [s]. Raises:
