@@ -186,7 +186,7 @@ decl:
   ;
 
 fn:
-  | f = pair(signature, fn_body) { f }
+  | f = pair(signature, block) { f }
   ;
 
 signature:
@@ -206,8 +206,8 @@ typ:
   | t = TYPE { Type.Primitive t }
   ;
 
-fn_body:
-  | LBRACE; stmts = list_maybe_followed(stmt, return); RBRACE { stmts }
+block:
+  | stmts = delimited(LBRACE, list_maybe_followed(stmt, return), RBRACE) { stmts }
   ;
 
 return:
@@ -218,7 +218,7 @@ stmt:
   | s = stmt_body; SEMICOLON? { s }
   ;
 stmt_body:
-  | b = delimited(LBRACE, stmt*, RBRACE) { Block b }
+  | b = block { Block b }
   | s = var_stmt { Var s }
   | IF; c = delimited(LPAREN, expr, RPAREN); s1 = stmt; s2 = preceded(ELSE, stmt)? { If (c, s1, s2) }
   | WHILE; c = delimited(LPAREN, expr, RPAREN); s = stmt { While (c, s) }
