@@ -31,6 +31,7 @@ type expr =
   | Int of string
   | Bool of bool
   | Array of expr array
+  | String of string
   | Bop of binop * expr * expr
   | Uop of unop * expr
   | FnCall of call

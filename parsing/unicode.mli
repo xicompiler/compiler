@@ -14,3 +14,6 @@ val fold : ('a -> Uchar.t -> 'a) -> 'a -> string -> 'a
 (** [fold f init s] applies a left fold over [s] with [f], using [init]
     as the initial value of the accumulator. Raises: [Invalid_argument]
     if [s] is malformed. *)
+
+val uchars_of_string : string -> Uchar.t Seq.t
+(** [uchars_of_string s] is a sequence containing every codepoint of [s] *)

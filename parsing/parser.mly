@@ -185,6 +185,8 @@ call_expr:
     { Bool b }
   | LBRACE; array = array
     { Array (Array.of_list array) }
+  | s = STRING;
+    { String s }
   | id = ID
     { Id id }
   ;
