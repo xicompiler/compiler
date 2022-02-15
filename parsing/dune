@@ -7,5 +7,4 @@
 (ocamllex lexer)
 
 (menhir
- (modules parser)
- (flags --unused-tokens))
+ (modules parser))
