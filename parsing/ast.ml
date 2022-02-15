@@ -36,12 +36,18 @@ type expr =
 
 and call = id * expr list
 
-type decl = id * Type.t
+type typ = expr Type.t
+
+type decl = id * typ
 
 type init = decl * expr
 
-type multi_assignee =
-  | Var of decl
+type assign_target =
+  | Var of id
+  | ArrayElt of id * expr
+
+type multi_target =
+  | MultiDecl of decl
   | Wildcard
 
 type stmt =
@@ -49,8 +55,8 @@ type stmt =
   | While of expr * stmt
   | Decl of decl
   | Init of init
-  | Assign of id * expr
-  | MultiInit of multi_assignee list * call
+  | Assign of assign_target * expr
+  | MultiInit of multi_target list * call
   | ProcCall of call
   | Block of block
 
@@ -62,7 +68,7 @@ and block = {
 type signature = {
   id : id;
   params : decl list;
-  types : Type.t list;
+  types : typ list;
 }
 
 type fn = {

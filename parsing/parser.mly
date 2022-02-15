@@ -149,8 +149,8 @@ decl:
 typ:
   | t = TYPE
     { Type.Primitive t }
-  | t = typ; LBRACKET; RBRACKET
-    { Type.Array t }
+  | contents = typ; LBRACKET; length = expr?; RBRACKET
+    { Type.Array { contents; length } }
   ;
 
 init:
@@ -274,17 +274,24 @@ single_stmt:
     { Decl decl }
   | init = init
     { Init init }
-  | id = ID; GETS; e = expr
-    { Assign (id, e) }
-  | lhs = separated_multiple_list(COMMA, multi_assignee); GETS; rhs = call
+  | target = assign_target; GETS; e = expr
+    { Assign (target, e) }
+  | lhs = separated_multiple_list(COMMA, multi_target); GETS; rhs = call
     { MultiInit (lhs, rhs) }
   | call = call
     { ProcCall call }
   ;
 
-multi_assignee:
+assign_target:
+  | id = ID
+    { Var id }
+  | id = ID; LBRACKET; e = expr; RBRACKET
+    { ArrayElt (id, e) }
+  ;
+
+multi_target:
   | decl = decl
-    { Var decl }
+    { MultiDecl decl }
   | WILDCARD
     { Wildcard }
   ;

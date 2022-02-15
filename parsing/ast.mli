@@ -43,7 +43,11 @@ and call = id * expr list
     [(id, args)] where [id] is the name of the function and [args] is
     the list of arguments *)
 
-type decl = id * Type.t
+type typ = expr Type.t
+(** A [typ] is a Xi type whose arrays are optionally initialized with an
+    expression of type [expr] *)
+
+type decl = id * typ
 (** A [decl] is the type of a Xi declaration represented as a pair
     [(id, t)] where [id] is the name of the identifier and [t] is its
     type. *)
@@ -53,11 +57,17 @@ type init = decl * expr
     as a pair [(decl, e)] where [decl] is the declaration of the
     identifier and [e] is the initialization expression. *)
 
-(** A [multi_assignee] is the type of a target of a multiple
+(** An [assign_target] represents the target of an assignment statement
+    in Xi; either a variable or an array element. *)
+type assign_target =
+  | Var of id
+  | ArrayElt of id * expr
+
+(** A [multi_target] is the type of a target of a multiple
     initialization expression in Xi; either a declaration or a wildcard,
     [_]. *)
-type multi_assignee =
-  | Var of decl
+type multi_target =
+  | MultiDecl of decl
   | Wildcard
 
 (** A [stmt] is a legal statement in Xi, also known as a command. *)
@@ -66,8 +76,8 @@ type stmt =
   | While of expr * stmt
   | Decl of decl
   | Init of init
-  | Assign of id * expr
-  | MultiInit of multi_assignee list * call
+  | Assign of assign_target * expr
+  | MultiInit of multi_target list * call
   | ProcCall of call
   | Block of block
 
@@ -83,7 +93,7 @@ and block = {
 type signature = {
   id : id;
   params : decl list;
-  types : Type.t list;
+  types : typ list;
 }
 (** A [signature] is a signature or interface for an individual method
     where [types] is the list of (possibly none) return types. *)
