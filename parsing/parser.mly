@@ -60,8 +60,6 @@
 
 (* A primitive type *)
 %token <Type.primitive> TYPE
-// %nonassoc IF
-// %nonassoc ELSE
 
 %start <Ast.t> start
 
