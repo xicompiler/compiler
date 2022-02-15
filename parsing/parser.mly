@@ -238,8 +238,8 @@ block:
   ;
 
 return:
-  | RETURN; e = expr?; SEMICOLON?
-    { e }
+  | RETURN; es = separated_list(COMMA, expr); SEMICOLON?
+    { es }
   ;
 
 stmt:

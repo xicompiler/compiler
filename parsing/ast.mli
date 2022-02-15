@@ -73,12 +73,12 @@ type stmt =
 
 and block = {
   body : stmt list;
-  return : expr option option;
+  return : expr list option;
 }
 (** A [block] is the type of a possible empty block of statements in Xi,
     represented as a list of statements. The return field is [Some o] if
-    the block has a trailing return statement and [o] is [Some e] if the
-    return statement returns expression [e]. *)
+    the block has a trailing return statement and [o] is [Some es] if
+    the return statement returns expressions [es]. *)
 
 type signature = {
   id : id;

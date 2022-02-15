@@ -56,7 +56,7 @@ type stmt =
 
 and block = {
   body : stmt list;
-  return : expr option option;
+  return : expr list option;
 }
 
 type signature = {
