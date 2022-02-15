@@ -4,13 +4,23 @@ interface ::= signature+
 
 use ::= USE ID SEMICOLON?
 
-definitions ::= (method | (globdecl SEMICOLON?))* method
+definitions ::= globdecl SEMICOLON? definitions | method loption(definitions)
+
+globdecl ::= decl | assign
+
+decl ::= ID COLON TYPE
+
+assign ::= assignee GETS expr
+
+assignee ::= ID | decl
 
 method ::= signature block
 
-signature ::= ID LPAREN separated_list(decl, COMMA) RPAREN (COLON separated_nonempty_list(type, COMMA))?
+signature ::= ID LPAREN args RPAREN loption(types)
 
-decl ::= ID COLON TYPE
+args ::= separated_list(decl, COMMA)
+
+types ::= COLON separated_nonempty_list(type, COMMA)
 
 type ::= TYPE | type LBRACKET RBRACKET
 
@@ -20,15 +30,17 @@ return ::= RETURN expr? SEMICOLON?
 
 stmt ::= if | while | single_stmt SEMICOLON? | block
 
-if ::= IF expr stmt (ELSE stmt)?
+if ::= IF expr stmt else?
+
+else ::= ELSE stmt
 
 while ::= WHILE expr stmt
 
 single_stmt ::= decl | assign | multi_init | app
 
-assign ::= ID GETS expr
+multi_init ::= separated_list(multi_assignee, COMMA) GETS app
 
-multi_init ::= separated_list(decl | WILDCARD, COMMA) GETS app
+multi_assignee ::= decl | WILDCARD
 
 app ::= ID LPAREN separated_list(expr, COMMA) RPAREN
 
@@ -36,14 +48,15 @@ expr ::= expr binop bop_expr | bop_expr
 
 bop_expr ::= unop uop_expr | uop_expr
 
-unop_expr ::= 
-  | unop_expr LBRACKET expr BRACKET
+uop_expr ::= 
+  | uop_expr LBRACKET expr BRACKET
   | app
   | LPAREN expr RPAREN
   | INT
   | BOOL
-  | LBRACE RBRACE
-  | LBRACE separated_nonempty_list(expr, COMMA) COMMA? RBRACE
+  | LBRACE loption(array) RBRACE
+
+array ::= separated_nonempty_list(expr, COMMA) COMMA?
 
 binop ::=
   | OR | AND
