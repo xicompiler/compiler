@@ -63,7 +63,7 @@
 // %nonassoc IF
 // %nonassoc ELSE
 
-%start <Ast.t option> prog
+%start <Ast.t> start
 
 %left OR
 %left AND
@@ -71,86 +71,11 @@
 %left LT LEQ GEQ GT
 %left PLUS MINUS
 %left MULT HIGHMULT DIV MOD
-%nonassoc NOT NEG (* integer negation *)
-%left APP INDEX (* function application, array indexing *)
+
+%nonassoc IF
+%nonassoc ELSE
 
 %%
-
-list_maybe_followed(X, TERM):
-  | e = TERM?
-    { Option.to_list e }
-  | x = X; xs = list_maybe_followed(X, TERM)
-    { x :: xs }
-
-prog:
-  | p = program; EOF { Some (Program p) }
-  | i = interface; EOF { Some (Interface i) }
-  | EOF { None }
-  ;
-
-program:
-  | s = toplevel+ { s } 
-  ;
-
-toplevel:
-  | s = toplevel_body; SEMICOLON? { s }
-  ;
-toplevel_body:
-  | USE; id = ID; { Use id }
-  | stmt = var_stmt; { Global stmt }
-  | fn = fn; { Function fn } 
-  ;
-
-var_stmt:
-  | assign = assign; { Var.Assign assign }
-  | decl = decls; { Var.Decl decl }
-  ;
-
-assign:
-  | a = separated_pair(assignees, GETS, exprs) { a }
-  ;
-
-assignees:
-  | a = separated_nonempty_list(COMMA, assignee) { a }
-  ;
-assignee:
-  | d = separated_pair(ID, COLON, typ) { Var.New d }
-  | id = ID { Var.Existing id }
-  | WILDCARD { Var.Wildcard }
-  ;
-
-exprs:
-  | e = separated_nonempty_list(COMMA, expr) { e }
-  ;
-exprs_nullable:
-  | e = separated_list(COMMA, expr) { e }
-  ;
-expr:
-  | id = ID { Id id }
-  | lit = literal { lit }
-  | e = delimited(LPAREN, expr, RPAREN) { e }
-  | e = delimited(LBRACE, exprs_nullable, RBRACE) { Array (Array.of_list e) }
-  | e1 = expr; bop = binop; e2 = expr { Bop (bop, e1, e2) }
-  | uop = unop; e = expr %prec NEG { Uop (uop, e) }
-  | id = ID; e = app { App (id, e) }
-  | builtin = builtin; e = app { App (builtin, e) }
-  | e1 = expr; e2 = index { Index (e1, e2) } // TODO change ID back to expr
-  ;
-
-app:
-  | e = delimited(LPAREN, exprs_nullable, RPAREN) %prec APP { e }
-  ;
-
-index:
-  | e = delimited(LBRACKET, expr, RBRACKET) %prec INDEX { e }
-  ;
-
-literal:
-  | c = CHAR { Int (c |> Uchar.to_int |> Int64.of_int) }
-  | s = STRING { Array (array_of_string s) }
-  | i = INT { Int 0L (* TODO process int *) }
-  | b = BOOL { Bool b }
-  ;
 
 %inline binop:
   | MULT { Mult }
@@ -174,57 +99,181 @@ literal:
   | NOT { LogicalNeg }
   ;
 
-builtin:
-  | LENGTH { "length" }
+start:
+  | p = program; EOF { p }
   ;
 
-decls:
-  | d = separated_nonempty_list(COMMA, decl) { d }
-  ;
-decl:
-  | d = separated_pair(ID, COLON, typ) { d } 
-  ;
-
-fn:
-  | f = pair(signature, block) { f }
+program:
+  | s = source
+    { s }
+  | i = interface
+    { i }
   ;
 
-signature:
-  | id = ID; args = delimited(LPAREN, args, RPAREN); COLON; types = types { { id; args; types } }
-  ;
-
-args: 
-  | a = separated_list(COMMA, decl) { a } 
-  ;
-
-types:
-  | t = separated_nonempty_list(COMMA, typ) { t }
-  ;
-
-typ:
-  | t = typ; LBRACKET; RBRACKET { Type.Array t }
-  | t = TYPE { Type.Primitive t }
-  ;
-
-block:
-  | stmts = delimited(LBRACE, list_maybe_followed(stmt, return), RBRACE) { stmts }
-  ;
-
-return:
-  | RETURN; e = separated_list(COMMA, expr); SEMICOLON? { Return e }
-  ;
-
-stmt:
-  | s = stmt_body; SEMICOLON? { s }
-  ;
-stmt_body:
-  | b = block { Block b }
-  | s = var_stmt { Var s }
-  | IF; c = delimited(LPAREN, expr, RPAREN); s1 = stmt; s2 = preceded(ELSE, stmt)? { If (c, s1, s2) }
-  | WHILE; c = delimited(LPAREN, expr, RPAREN); s = stmt { While (c, s) }
-  | id = ID; e = delimited(LPAREN, exprs_nullable, RPAREN) { Proc (id, e) }
+source:
+  | definitions = definitions
+    { Source { uses = []; definitions } }
+  | uses = use+; definitions = definitions
+    { Source { uses; definitions } }
   ;
 
 interface:
-  | s = signature+ { s }
+  | signatures = signature+
+    { Interface signatures }
+  ;
+
+use:
+  | USE; id = ID; SEMICOLON?
+    { id }
+  ;
+
+definitions:
+  | global = global; SEMICOLON?; definitions = definitions
+    { global :: definitions }
+  | fn = fn; definitions = loption(definitions)
+    { FnDefn fn :: definitions }
+  ;
+
+global:
+  | decl = decl
+    { GlobalDecl decl }
+  | init = init
+    { GlobalInit init }
+  ;
+
+decl:
+  | id = ID; COLON; t = typ
+    { (id, t) }
+  ;
+
+typ:
+  | t = TYPE
+    { Type.Primitive t }
+  | t = typ; LBRACKET; RBRACKET
+    { Type.Array t }
+  ;
+
+init:
+  | init = separated_pair(decl, GETS, expr)
+    { init }
+  ;
+
+expr:
+  | e1 = expr; bop = binop; e2 = expr
+    { Bop (bop, e1, e2) }
+  | e = uop_expr
+    { e }
+  ;
+
+uop_expr:
+  | uop = unop; e = uop_expr
+    { Uop (uop, e) }
+  | e = call_expr
+    { e }
+  ;
+
+call_expr:
+  | e1 = call_expr; LBRACKET; e2 = expr; RBRACKET
+    { Index (e1, e2) }
+  | call = call
+    { FnCall call }
+  | LPAREN; e = expr; RPAREN
+    { e }
+  | i = INT
+    { Int i }
+  | b = BOOL
+    { Bool b }
+  | LBRACE; array = array
+    { Array (Array.of_list array) }
+  | id = ID
+    { Id id }
+  ;
+
+array:
+  | e = expr?; RBRACE
+    { Option.to_list e }
+  | e = expr; COMMA; rest = array
+    { e :: rest }
+  ;
+
+call:
+  | id = ID; LPAREN; args = separated_list(COMMA, expr); RPAREN
+    { (id, args) }
+  ;
+
+fn:
+  | signature = signature; body = block
+    { { signature; body } }
+  ;
+
+signature:
+  | id = ID; LPAREN; params = params; RPAREN; types = loption(types)
+    { { id; params; types } }
+  ;
+
+params:
+  | params = separated_list(COMMA, decl)
+    { params }
+  ;
+
+types:
+  | COLON; types = separated_nonempty_list(COMMA, typ)
+    { types }
+  ;
+
+block:
+  | LBRACE; body = stmt*; return = return?; RBRACE
+    { { body; return } }
+  ;
+
+return:
+  | RETURN; e = expr?; SEMICOLON?
+    { e }
+  ;
+
+stmt:
+  | stmt = if_stmt
+  | stmt = while_stmt
+  | stmt = single_stmt; SEMICOLON?
+    { stmt }
+  | block = block
+    { Block block }
+
+if_stmt:
+  | IF; e = expr; stmt1 = stmt; stmt2 = ioption(else_stmt)
+    { If (e, stmt1, stmt2) }
+  ;
+
+%inline else_stmt:
+  | ELSE; stmt = stmt
+    { stmt }
+  ;
+
+while_stmt:
+  | WHILE; e = expr; stmt = stmt
+    { While (e, stmt) }
+  ;
+
+separated_multiple_list(sep, X):
+  | x = X; sep; xs = separated_nonempty_list(sep, X)
+    { x :: xs }
+
+single_stmt:
+  | decl = decl
+    { Decl decl }
+  | init = init
+    { Init init }
+  | id = ID; GETS; e = expr
+    { Assign (id, e) }
+  | lhs = separated_multiple_list(COMMA, multi_assignee); GETS; rhs = call
+    { MultiInit (lhs, rhs) }
+  | call = call
+    { ProcCall call }
+  ;
+
+multi_assignee:
+  | decl = decl
+    { Var decl }
+  | WILDCARD
+    { Wildcard }
   ;

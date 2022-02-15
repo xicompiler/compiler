@@ -27,80 +27,95 @@ type binop =
 
 (** An [expr] is the type of a Xi expression *)
 type expr =
-  | Id of string
-  | Int of int64
+  | Id of id
+  | Int of string
   | Bool of bool
   | Array of expr array
   | Bop of binop * expr * expr
   | Uop of unop * expr
-  | App of id * expr list
+  | FnCall of call
   | Index of expr * expr
 
-(** A [Var] is a variable in the AST *)
-module Var : sig
-  type decl = id * Type.t
-  (** A [decl] is the declaration of a typed, named identifier
-      represented as a pair [(id, type)] where [id] is the name of the
-      identifier and [type] is its type. *)
+and call = id * expr list
+(** A [call] is the type of a function call represented as a pair
+    [(id, args)] where [id] is the name of the function and [args] is
+    the list of arguments *)
 
-  (** An [assignee] is an expression that can be assigned to *)
-  type assignee =
-    | Existing of id
-    | New of decl
-    | Wildcard
+type decl = id * Type.t
+(** A [decl] is the type of a Xi declaration represented as a pair
+    [(id, t)] where [id] is the name of the identifier and [t] is its
+    type. *)
 
-  type assign = assignee list * expr list
-  (** A [assign] is the type of a variable assignment statement,
-      represented by a pair [(lhs, rhs)] where [lhs] is the list of
-      assignees. [rhs] comprises the right hand side of the statement. *)
+type init = decl * expr
+(** An [init] is the type of a Xi initialization statement represented
+    as a pair [(decl, e)] where [decl] is the declaration of the
+    identifier and [e] is the initialization expression. *)
 
-  (** A [stmt] involving a variable is either an assignment or
-      declaration. *)
-  type stmt =
-    | Assign of assign
-    | Decl of decl list
-end
+(** A [multi_assignee] is the type of a target of a multiple
+    initialization expression in Xi; either a declaration or a wildcard,
+    [_]. *)
+type multi_assignee =
+  | Var of decl
+  | Wildcard
 
 (** A [stmt] is a legal statement in Xi, also known as a command. *)
 type stmt =
-  | Block of stmt list
-  | Var of Var.stmt
   | If of expr * stmt * stmt option
   | While of expr * stmt
-  | Return of expr list
-  | Proc of id * expr list
+  | Decl of decl
+  | Init of init
+  | Assign of id * expr
+  | MultiInit of multi_assignee list * call
+  | ProcCall of call
+  | Block of block
+
+and block = {
+  body : stmt list;
+  return : expr option option;
+}
+(** A [block] is the type of a possible empty block of statements in Xi,
+    represented as a list of statements. The return field is [Some o] if
+    the block has a trailing return statement and [o] is [Some e] if the
+    return statement returns expression [e]. *)
 
 type signature = {
   id : id;
-  args : Var.decl list;
+  params : decl list;
   types : Type.t list;
 }
-(** A [signature] is a signature or interface for an individual method. *)
+(** A [signature] is a signature or interface for an individual method
+    where [types] is the list of (possibly none) return types. *)
 
-type fn = signature * stmt list
-(** A [fn] is a Xi function definition. *)
+type fn = {
+  signature : signature;
+  body : block;
+}
+(** A [fn] is a Xi function definition whose body is a block of
+    statements *)
 
-(** A [toplevel] is a toplevel statement. *)
-type toplevel =
-  | Use of id
-  | Global of Var.stmt
-  | Function of fn
+(** A [definition] is the type of a top-level declaration in Xi: either
+    a function definition, or declaration or initialization of a global
+    variable. *)
+type definition =
+  | FnDefn of fn
+  | GlobalDecl of decl
+  | GlobalInit of init
 
-type program = toplevel list
-(** A [program] is a sequence of toplevel statements. *)
+type source = {
+  uses : id list;
+  definitions : definition list;
+}
+(** A [source] describes the structure of a source file in Xi; 0 or more
+    use statements followed by 1 or more top-level definitions, at least
+    one of which must be a function definition. *)
 
 type interface = signature list
-(** An [interface] is a Xi interface *)
+(** An [interface] is a Xi interface, represented as a non-empty list of
+    function signatures. *)
 
 (** An expression of type [t] is an expression representing a node of
-    the Abstract Syntax Tree of a Xi program. *)
+    the Abstract Syntax Tree of a Xi program, described either by a
+    source or interface file. *)
 type t =
-  | Program of program
+  | Source of source
   | Interface of interface
-
-val array_of_string : string -> expr array
-(** [array_of_string s] is the array of Xi expressions representing the
-    string literal [s]. *)
-
-val sexp_of_t : t -> Sexp.t
-(** [sexp_of_t ast] is the s-expression serialization of [ast]. *)
