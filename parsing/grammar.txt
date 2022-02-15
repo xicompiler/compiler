@@ -10,8 +10,6 @@ method ::= signature block
 
 signature ::= ID LPAREN separated_list(decl, COMMA) RPAREN (COLON separated_nonempty_list(type, COMMA))?
 
-signature ::= 
-
 decl ::= ID COLON TYPE
 
 type ::= TYPE | type LBRACKET RBRACKET
