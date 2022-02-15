@@ -285,8 +285,8 @@ single_stmt:
 assign_target:
   | id = ID
     { Var id }
-  | id = ID; LBRACKET; e = expr; RBRACKET
-    { ArrayElt (id, e) }
+  | target = assign_target; LBRACKET; e = expr; RBRACKET
+    { ArrayElt (target, e) }
   ;
 
 multi_target:

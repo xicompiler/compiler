@@ -61,7 +61,7 @@ type init = decl * expr
     in Xi; either a variable or an array element. *)
 type assign_target =
   | Var of id
-  | ArrayElt of id * expr
+  | ArrayElt of assign_target * expr
 
 (** A [multi_target] is the type of a target of a multiple
     initialization expression in Xi; either a declaration or a wildcard,

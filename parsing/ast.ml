@@ -44,7 +44,7 @@ type init = decl * expr
 
 type assign_target =
   | Var of id
-  | ArrayElt of id * expr
+  | ArrayElt of assign_target * expr
 
 type multi_target =
   | MultiDecl of decl
