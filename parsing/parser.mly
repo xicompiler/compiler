@@ -185,6 +185,8 @@ call_expr:
     { Bool b }
   | LBRACE; array = array
     { Array (Array.of_list array) }
+  | c = CHAR
+    { Char c }
   | s = STRING;
     { String s }
   | id = ID
@@ -199,8 +201,15 @@ array:
   ;
 
 call:
-  | id = ID; LPAREN; args = separated_list(COMMA, expr); RPAREN
+  | id = callee; LPAREN; args = separated_list(COMMA, expr); RPAREN
     { (id, args) }
+  ;
+
+callee:
+  | id = ID
+    { id }
+  | LENGTH
+    { "length" }
   ;
 
 fn:
