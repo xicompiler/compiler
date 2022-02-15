@@ -4,7 +4,7 @@ interface ::= signature+
 
 use ::= USE ID SEMICOLON?
 
-definitions ::= globdecl SEMICOLON? definitions | method loption(definitions)
+definitions ::= globdecl SEMICOLON? definitions | fn loption(definitions)
 
 globdecl ::= decl | assign
 
@@ -14,7 +14,7 @@ assign ::= assignee GETS expr
 
 assignee ::= ID | decl
 
-method ::= signature block
+fn ::= signature block
 
 signature ::= ID LPAREN args RPAREN loption(types)
 
