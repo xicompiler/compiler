@@ -254,10 +254,8 @@ return:
 stmt:
   | stmt = if_stmt
   | stmt = while_stmt
-  | stmt = single_stmt; SEMICOLON?
+  | stmt = semicolon_terminated; SEMICOLON?
     { stmt }
-  | block = block
-    { Block block }
 
 if_stmt:
   | IF; e = expr; stmt1 = stmt; stmt2 = ioption(else_stmt)
@@ -278,7 +276,7 @@ separated_multiple_list(sep, X):
   | x = X; sep; xs = separated_nonempty_list(sep, X)
     { x :: xs }
 
-single_stmt:
+semicolon_terminated:
   | decl = decl
     { Decl decl }
   | init = init
@@ -289,6 +287,8 @@ single_stmt:
     { MultiInit (lhs, rhs) }
   | call = call
     { ProcCall call }
+  | block = block
+    { Block block }
   ;
 
 assign_target:

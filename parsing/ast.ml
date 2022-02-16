@@ -239,7 +239,7 @@ and sexp_of_uop uop e =
 
 (** [sexp_of_call id \[e1; ...; en\]] is the s-expression serialization
     of the application of function [id] to [e1, ..., en], i.e. the call
-    [id(e1, ..., en)] *)
+    [id(e1, ..., en)]. *)
 and sexp_of_call id args =
   Sexp.List
     (args |> List.map ~f:sexp_of_expr |> List.cons (Sexp.Atom id))
