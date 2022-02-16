@@ -38,7 +38,7 @@ let parsing_file_tests dir =
       let src = name ^ ext in
       let dst = name ^ ".output" in
       let reference = name ^ ".parsedsol" in
-      Some (parsing_file_test name ~src ~dst ~reference:dst)
+      Some (parsing_file_test name ~src ~dst ~reference)
     else None
   in
   Sys.readdir dir |> Array.to_list |> List.filter_map make_test

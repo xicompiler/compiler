@@ -1,0 +1,1 @@
+(() ((binary_search ((a ([] int)) (x int)) (int) ((= (n int) (length a)) (= (l int) 0) (= (r int) (- n 1)) (while (< l r) ((= (m int) (/ (+ l r) 2)) (if (< ([] a m) x) (= l (+ m 1)) (= r m)))) (return l)))))
