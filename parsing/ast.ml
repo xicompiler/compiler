@@ -237,8 +237,9 @@ and sexp_of_uop uop e =
   let uop_sexp = Sexp.Atom (string_of_unop uop) in
   Sexp.List [ uop_sexp; sexp_of_expr e ]
 
-(** [sexp_off_call id args] is the s-expression serialization of the
-    application of function [id] to [args]. *)
+(** [sexp_of_call id \[e1; ...; en\]] is the s-expression serialization
+    of the application of function [id] to [e1, ..., en], i.e. the call
+    [id(e1, ..., en)] *)
 and sexp_of_call id args =
   Sexp.List
     (args |> List.map ~f:sexp_of_expr |> List.cons (Sexp.Atom id))
