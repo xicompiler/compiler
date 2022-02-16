@@ -90,6 +90,9 @@ let lex_pos lexbuf =
 
 let lex lexbuf = lexbuf |> lex_pos_rev |> List.rev_map fst
 
+let print_error out ({ line; column } : Lexer.position) s =
+  Printf.fprintf out "%d:%d %s\n" line column s
+
 let lex_string s = s |> Lexing.from_string |> lex
 
 (** [string_of_result r] is the string representation of [r] *)
@@ -98,9 +101,8 @@ let string_of_result = function
   | Result.Error e -> error_msg e
 
 let lex_to_channel ~src ~dst =
-  let print_result (res, { line; column }) =
-    res |> string_of_result
-    |> Printf.fprintf dst "%d:%d %s\n" line column
+  let print_result (res, pos) =
+    res |> string_of_result |> print_error dst pos
   in
   src |> Lexing.from_channel |> lex_pos |> List.iter print_result
 

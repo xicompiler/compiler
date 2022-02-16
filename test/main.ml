@@ -1,9 +1,7 @@
 open OUnit2
-open LexingTests
 
 let suite =
   "unit test suite for compiler"
-  >::: List.flatten
-         [ ParsingTests.parsing_suite; LexingTests.lexing_suite ]
+  >::: [ LexingTests.lexing_suite; ParsingTests.parsing_suite ]
 
 let _ = run_test_tt_main suite

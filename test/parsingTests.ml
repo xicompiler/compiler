@@ -45,8 +45,8 @@ let parsing_file_test_cases =
   List.flatten
     [
       parsing_file_tests "./test/parsing/autograder";
-      parsing_file_tests "./test/parsing/givenExamples";
-      parsing_file_tests "./test/parsing";
+      (*parsing_file_tests "./test/parsing/givenExamples";
+        parsing_file_tests "./test/parsing";*)
     ]
 
 let parsing_suite =

@@ -4,14 +4,12 @@ build:
 	dune build
 
 test:
+	make build
 	dune exec ./test/main.exe
-
-parsing-test:
-	dune exec ./test/ParsingTests.exe
 
 clean:
 	dune clean
-	rm -rf xic *.lexed *.zip *.log
+	rm -rf xic *.lexed *.parsed *.output *.zip *.log
 
 bisect: bisect-clean
 	dune exec --instrument-with bisect_ppx --force ./test/main.exe

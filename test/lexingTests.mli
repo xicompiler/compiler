@@ -1,3 +1,3 @@
 open OUnit2
 
-val lexing_suite : test list
+val lexing_suite : test

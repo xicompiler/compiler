@@ -13,7 +13,7 @@ let iter f = fold (fun () -> f) ()
 
 let uchars_of_string s =
   let uchar_folder us u = List.cons u us in
-  let seq_builder us u = Seq.cons u us in
+  let seq_builder us u () = Seq.Cons (u, us) in
   s |> fold uchar_folder [] |> List.fold_left seq_builder Seq.empty
 
 (** [escape_unicode u] is [u] escaped in the form [\x{n}], where [n] is

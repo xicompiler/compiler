@@ -1,5 +1,4 @@
-open Parsing.Lexer
-open Parsing.ParserDebug
+open Parsing
 
 exception FileNotFoundError
 
@@ -19,31 +18,29 @@ let display_help = ref false
 
 let flag_count = ref 0
 
-(** [op_on_file f [extension] input_file] performs function f on a given [input_file] to the
-    previously specified (or default root directory) path, putting the
-    result in a file with the same prefix as [input_file] but with a
-    [ext] extension. *)
+(** [op_on_file f \[extension\] input_file] performs function f on a
+    given [input_file] to the previously specified (or default root
+    directory) path, putting the result in a file with the same prefix
+    as [input_file] but with a [ext] extension. *)
 let op_on_file f ext input_file =
-  let file_ext = Filename.extension input_file in 
-  if file_ext = ".xi" || file_ext = ".ixi"  then
-    let file_prefix = 
-      input_file |> Filename.remove_extension
+  let file_ext = Filename.extension input_file in
+  if file_ext = ".xi" || file_ext = ".ixi" then (
+    let file_prefix = input_file |> Filename.remove_extension in
+    let output_file_path =
+      if !output_path = "" then file_prefix ^ ext
+      else !output_path ^ "/" ^ file_prefix ^ ext
     in
-      let output_file_path =
-        if !output_path = "" then file_prefix ^ ext
-        else !output_path ^ "/" ^ file_prefix ^ ext
-      in
-      let output_file_dir = Filename.dirname output_file_path in
-      (try Core.Unix.mkdir_p output_file_dir with
-      | _ -> ());
-      f ~src:(if !src_path = "" then input_file 
+    let output_file_dir = Filename.dirname output_file_path in
+    (try Core.Unix.mkdir_p output_file_dir with
+    | _ -> ());
+    f
+      ~src:
+        (if !src_path = "" then input_file
         else !src_path ^ "/" ^ input_file)
-        ~dst:output_file_path
-  else
-    print_endline "non .xi or .ixi file passed in - ignored"
+      ~dst:output_file_path)
+  else print_endline "non .xi or .ixi file passed in - ignored"
 
-let inc_flag_count () = 
-  flag_count := !flag_count + 1
+let inc_flag_count () = flag_count := !flag_count + 1
 
 let speclist =
   [
@@ -74,9 +71,15 @@ let () =
   in
   if !display_help || !flag_count = 0 then
     print_endline (Arg.usage_string speclist usage_msg);
-  if !to_lex then
-    try List.iter (op_on_file lex_to_file ".lexed") !input_files with
-    | Sys_error err -> print_endline err;
+  (if !to_lex then
+   try
+     List.iter (op_on_file LexerDebug.lex_to_file ".lexed") !input_files
+   with
+   | Sys_error err -> print_endline err);
   if !to_parse then
-    try List.iter (op_on_file parse_to_file ".parsed") !input_files with
+    try
+      List.iter
+        (op_on_file ParserDebug.parse_to_file ".parsed")
+        !input_files
+    with
     | Sys_error err -> print_endline err

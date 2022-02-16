@@ -183,8 +183,8 @@ and sexp_of_fn ?body { id; params; types } =
   let id = Sexp.Atom id in
   let params = List.sexp_of_t sexp_of_decl params in
   let types = List.sexp_of_t Type.sexp_of_t types in
-  let body = Option.map body ~f:(List.map ~f:sexp_of_stmt) in
-  Sexp.List (id :: params :: types :: Option.value body ~default:[])
+  let body = Option.map body ~f:(List.sexp_of_t sexp_of_stmt) in
+  Sexp.List (id :: params :: types :: Option.to_list body)
 
 (** [sexp_of_stmt stmt] is the s-expression serialization of [stmt] *)
 and sexp_of_stmt = function

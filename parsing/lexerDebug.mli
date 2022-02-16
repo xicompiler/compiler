@@ -16,6 +16,11 @@ val lex_string : string -> result list
 (** [lex_string s] consumes all tokens in [s] and returns them as a
     list. *)
 
+val print_error : out_channel -> Lexer.position -> string -> unit
+(** [print_error out pos s] prints the error message [line:col s] to
+    [out] followed by a newline where [line] and [col] are described by
+    [pos] *)
+
 val lex_pos :
   Lexing.lexbuf ->
   ((Parser.token, error_cause) Result.t * position) list
