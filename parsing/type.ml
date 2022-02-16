@@ -13,8 +13,4 @@ and 'a array = {
   length : 'a option;
 }
 
-let rec sexp_of_t = function
-  | Primitive Int -> Sexp.Atom "int"
-  | Primitive Bool -> Sexp.Atom "bool"
-  | Array { contents; _ } ->
-      Sexp.List [ Sexp.Atom "[]"; sexp_of_t contents ]
+let make_array contents length = Array { contents; length }

@@ -18,5 +18,6 @@ and 'a array = {
 (** An ['a array] is the type of a Xi array whose contentes have type
     ['a t] and that can optionally be initialized by sizes of type ['a] *)
 
-val sexp_of_t : 'a t -> Sexp.t
-(** [sexp_of_t t] is the s-expression serialization of [t] *)
+val make_array : 'a t -> 'a option -> 'a t
+(** [make_array t length] creates an array whose contents have type [t]
+    with optional length [length] *)

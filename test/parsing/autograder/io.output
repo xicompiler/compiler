@@ -1,2 +1,1 @@
-((print ((str ([] int))) ()) (println ((str ([] int))) ())
- (readln () (([] int))) (getchar () (int))
+3:16 error:Syntax Error

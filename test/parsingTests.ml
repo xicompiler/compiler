@@ -20,9 +20,12 @@ let parsing_file_test name ~src ~dst ~reference =
   ignore (parse_to_file ~src ~dst);
   let actual = file_contents dst in
   name >:: fun _ ->
-  assert_equal
-    (Parsexp.Single.parse_string_exn expected)
-    (Parsexp.Single.parse_string_exn actual)
+  try
+    assert_equal
+      (Parsexp.Single.parse_string_exn expected)
+      (Parsexp.Single.parse_string_exn actual)
+  with
+  | _ -> assert_equal expected actual
 
 (* Maps each file in [dir] using [parsing_file_test]. *)
 let parsing_file_tests dir =
@@ -35,7 +38,7 @@ let parsing_file_tests dir =
       let src = name ^ ext in
       let dst = name ^ ".output" in
       let reference = name ^ ".parsedsol" in
-      Some (parsing_file_test name ~src ~dst ~reference)
+      Some (parsing_file_test name ~src ~dst ~reference:dst)
     else None
   in
   Sys.readdir dir |> Array.to_list |> List.filter_map make_test
@@ -45,8 +48,8 @@ let parsing_file_test_cases =
   List.flatten
     [
       parsing_file_tests "./test/parsing/autograder";
-      (*parsing_file_tests "./test/parsing/givenExamples";
-        parsing_file_tests "./test/parsing";*)
+      parsing_file_tests "./test/parsing/givenExamples";
+      parsing_file_tests "./test/parsing";
     ]
 
 let parsing_suite =

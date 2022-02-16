@@ -2,9 +2,7 @@ open Core
 
 (** [print_ast ast dst] prints the S-expression of [ast] into the [dst]
     out channel. *)
-let print_ast ast dst =
-  let ppf = Format.formatter_of_out_channel dst in
-  ast |> Ast.sexp_of_t |> Sexp.pp_hum ppf
+let print_ast ast dst = ast |> Ast.sexp_of_t |> SexpPrinter.print dst
 
 (** [print_lexical_error err dst] prints the lexical error [err] into
     the [dst] out channel. *)

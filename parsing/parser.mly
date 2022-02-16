@@ -151,10 +151,13 @@ decl:
   ;
 
 typ:
-  | t = TYPE
-    { Type.Primitive t }
-  | contents = typ; LBRACKET; length = expr?; RBRACKET
-    { Type.Array { contents; length } }
+  | t = TYPE; array_type = loption(array_type)
+    { List.fold_left Type.make_array (Type.Primitive t) array_type }
+  ;
+
+array_type:
+  | t = loption(array_type); LBRACKET; length = expr?; RBRACKET
+    { length :: t }
   ;
 
 init:
