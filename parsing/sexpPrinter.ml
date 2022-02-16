@@ -1,7 +1,5 @@
 open Core
 
-(** [print_lvl out exp] prints the s-expression [exp] to out channel
-    [out] *)
 let rec print out = function
   | Sexp.Atom e -> Printf.fprintf out "%s" e
   | Sexp.List es ->
