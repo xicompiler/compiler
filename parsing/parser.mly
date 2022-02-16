@@ -75,6 +75,12 @@
 
 %%
 
+list_maybe_followed(X, TERM):
+  | e = TERM?
+    { Option.to_list e }
+  | x = X; xs = list_maybe_followed(X, TERM)
+    { x :: xs }
+
 %inline binop:
   | MULT { Mult }
   | HIGHMULT { HighMult }
@@ -135,8 +141,8 @@ definitions:
 global:
   | decl = decl
     { GlobalDecl decl }
-  | init = init
-    { GlobalInit init }
+  | decl = decl; GETS; v = literal
+    { GlobalInit (decl, v) }
   ;
 
 decl:
@@ -177,19 +183,24 @@ call_expr:
     { FnCall call }
   | LPAREN; e = expr; RPAREN
     { e }
+  | v = literal
+    { Literal v }
+  | LBRACE; array = array
+    { Array (Array.of_list array) }
+  | id = ID
+    { Id id }
+  ;
+
+literal:
   | i = INT
     { Int i }
   | b = BOOL
     { Bool b }
-  | LBRACE; array = array
-    { Array (Array.of_list array) }
   | c = CHAR
     { Char c }
-  | s = STRING;
+  | s = STRING
     { String s }
-  | id = ID
-    { Id id }
-  ;
+  ; 
 
 array:
   | e = expr?; RBRACE
@@ -212,7 +223,7 @@ callee:
 
 fn:
   | signature = signature; body = block
-    { { signature; body } }
+    { (signature, body) }
   ;
 
 signature:
@@ -231,13 +242,13 @@ types:
   ;
 
 block:
-  | LBRACE; body = stmt*; return = return?; RBRACE
-    { { body; return } }
+  | LBRACE; body = list_maybe_followed(stmt, return); RBRACE
+    { body }
   ;
 
 return:
   | RETURN; es = separated_list(COMMA, expr); SEMICOLON?
-    { es }
+    { Return es }
   ;
 
 stmt:

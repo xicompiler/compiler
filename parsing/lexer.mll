@@ -264,39 +264,15 @@ and read_comment =
     { read_comment lexbuf }
 
 {
-  
-(** [escape_unicode u] is [u] escaped in the form [\x{n}], where [n] is
-    the hexidecimal code of [u] *)
-let escape_unicode u = u |> Uchar.to_int |> Printf.sprintf "\\x{%x}"
-
-(** [string_of_uchar u] is the escaped string representing unicode
-    character [u] *)
-let string_of_uchar u =
-  let open Unicode in
-  match Uchar.to_char u with
-  | ('\n' | '\t' | '\r' | '\b') as c -> Char.escaped c
-  | c when c >= printable_ascii_min && c <= printable_ascii_max ->
-      Char.escaped c
-  | _
-  | (exception _) ->
-     escape_unicode u
-
-(** [escape_string_xi s] is [s] escaped and properly formatted to be
-    printed according to Xi conventions. *)
-let escape_string_xi s =
-  let buf = s |> String.length |> Buffer.create in
-  let iter u = u |> string_of_uchar |> Buffer.add_string buf in
-  Unicode.iter iter s;
-  Buffer.contents buf
 
 (** [string_of_char_token c] is the string representing char token [c] *)
 let string_of_char_token u =
-  u |> string_of_uchar |> Printf.sprintf "character %s"
+  u |> Unicode.string_of_uchar |> Printf.sprintf "character %s"
 
 (** [string_of_string_token s] is the string representing string token
     [s] *)
 let string_of_string_token s =
-  s |> escape_string_xi |> Printf.sprintf "string %s"
+  s |> Unicode.escape_string |> Printf.sprintf "string %s"
 
 (** [string_of_int_token i] is the string representing int token [i] *)
 let string_of_int_token = Printf.sprintf "integer %s"

@@ -25,14 +25,19 @@ type binop =
   | And
   | Or
 
-(** An [expr] is the type of a Xi expression *)
-type expr =
-  | Id of id
+(** A [literal] represents a literal char, int, bool, or string value in
+    Xi *)
+type literal =
   | Int of string
   | Bool of bool
-  | Array of expr array
   | Char of Uchar.t
   | String of string
+
+(** An [expr] is the type of a Xi expression *)
+type expr =
+  | Literal of literal
+  | Id of id
+  | Array of expr array
   | Bop of binop * expr * expr
   | Uop of unop * expr
   | FnCall of call
@@ -79,16 +84,13 @@ type stmt =
   | Assign of assign_target * expr
   | MultiInit of multi_target list * call
   | ProcCall of call
+  | Return of expr list
   | Block of block
 
-and block = {
-  body : stmt list;
-  return : expr list option;
-}
+and block = stmt list
 (** A [block] is the type of a possible empty block of statements in Xi,
-    represented as a list of statements. The return field is [Some o] if
-    the block has a trailing return statement and [o] is [Some es] if
-    the return statement returns expressions [es]. *)
+    represented as a list of statements possibly followed by a return
+    statement *)
 
 type signature = {
   id : id;
@@ -98,12 +100,10 @@ type signature = {
 (** A [signature] is a signature or interface for an individual method
     where [types] is the list of (possibly none) return types. *)
 
-type fn = {
-  signature : signature;
-  body : block;
-}
+type fn = signature * block
 (** A [fn] is a Xi function definition whose body is a block of
-    statements *)
+    statements represented as a pair [(signature, body)] where
+    [signature] is the function's signature and [body] is its body. *)
 
 (** A [definition] is the type of a top-level declaration in Xi: either
     a function definition, or declaration or initialization of a global
@@ -111,7 +111,7 @@ type fn = {
 type definition =
   | FnDefn of fn
   | GlobalDecl of decl
-  | GlobalInit of init
+  | GlobalInit of decl * literal
 
 type source = {
   uses : id list;
@@ -131,3 +131,6 @@ type interface = signature list
 type t =
   | Source of source
   | Interface of interface
+
+val sexp_of_t : t -> Sexp.t
+(** [sexp_of_t ast] is the s-expression serialization of [ast]. *)
