@@ -14,7 +14,8 @@ let char_token_of_char c = CHAR (Uchar.of_char c)
 (** [lexing_test s i e] binds [n] to a unit test that asserts [i] and
     [e] are equal. *)
 let lexing_test test_name input expected =
-  test_name >:: fun _ -> assert_equal (Lexer.lex_string input) expected
+  test_name >:: fun _ ->
+  assert_equal (LexerDebug.lex_string input) expected
 
 (** [lexing_test_ok n i e] calls [lexing_test] with [n], [i], and [e]
     mapped as valid tokens. *)
@@ -40,7 +41,7 @@ let file_contents in_file =
     equal. *)
 let lexing_file_test name ~src ~dst ~reference =
   let expected = file_contents reference in
-  Lexer.lex_to_file ~src ~dst;
+  LexerDebug.lex_to_file ~src ~dst;
   let actual = file_contents dst in
   name >:: fun _ -> assert_equal expected actual
 
@@ -96,3 +97,5 @@ let lexing_file_test_cases =
 
 let lexing_suite =
   List.flatten [ lexing_test_cases; lexing_file_test_cases ]
+
+let _ = run_test_tt_main lexing_suite

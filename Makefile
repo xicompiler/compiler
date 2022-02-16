@@ -3,11 +3,11 @@
 build:
 	dune build
 
-lex:
-	dune exec ./bin/main.exe
-
 test:
 	dune exec ./test/main.exe
+
+parsing-test:
+	dune exec ./test/ParsingTests.exe
 
 clean:
 	dune clean
