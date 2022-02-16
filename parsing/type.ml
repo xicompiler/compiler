@@ -1,3 +1,5 @@
+open Core
+
 type nonrec primitive =
   | Int
   | Bool
@@ -11,12 +13,8 @@ and 'a array = {
   length : 'a option;
 }
 
-let rec to_string = function
-  | Primitive Int -> "int"
-  | Primitive Bool -> "bool"
-  | Array { contents; _ } -> "[]" ^ to_string contents
-
-let rec equal t1 t2 =
-  match (t1, t2) with
-  | Array t1', Array t2' -> equal t1'.contents t2'.contents
-  | _ -> t1 = t2
+let rec sexp_of_t = function
+  | Primitive Int -> Sexp.Atom "int"
+  | Primitive Bool -> Sexp.Atom "bool"
+  | Array { contents; _ } ->
+      Sexp.List [ Sexp.Atom "[]"; sexp_of_t contents ]

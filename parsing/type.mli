@@ -1,3 +1,5 @@
+open Core
+
 (** A [primitive] is the type of a primitive value in Xi: either an
     integer or a boolean *)
 type nonrec primitive =
@@ -16,8 +18,5 @@ and 'a array = {
 (** An ['a array] is the type of a Xi array whose contentes have type
     ['a t] and that can optionally be initialized by sizes of type ['a] *)
 
-val to_string : 'a t -> string
-(** [to_string t] is [t] formatted as a string *)
-
-val equal : 'a t -> 'a t -> bool
-(** [equal t1 t2] is [true] iff [t1] and [t2] represent equal Xi types *)
+val sexp_of_t : 'a t -> Sexp.t
+(** [sexp_of_t t] is the s-expression serialization of [t] *)
