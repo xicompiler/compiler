@@ -13,6 +13,9 @@ build*
 _coverage
 bisect*.coverage
 
+# menhir
+*.automaton
+
 # temporary files
 *.swp
 *~

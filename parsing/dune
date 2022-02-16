@@ -1,11 +1,10 @@
 (library
  (name parsing)
- (libraries uutf)
- (instrumentation 
+ (libraries uutf core)
+ (instrumentation
   (backend bisect_ppx)))
 
 (ocamllex lexer)
 
 (menhir
- (modules parser)
- (flags --unused-tokens))
+ (modules parser))

@@ -2,6 +2,8 @@ _build/*
 build*
 .git/*
 .DS_Store
-*.zip
 .gitignore
+_coverage
+bisect*.coverage
+*.automaton
 xic

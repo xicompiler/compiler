@@ -1,3 +1,7 @@
+%{
+  open Ast
+%}
+
 (* Keywords *)
 %token USE
 %token IF
@@ -57,9 +61,246 @@
 (* A primitive type *)
 %token <Type.primitive> TYPE
 
-%start <Ast.expr> prog
+%start <Ast.t> start
+
+%left OR
+%left AND
+%left EQ NEQ
+%left LT LEQ GEQ GT
+%left PLUS MINUS
+%left MULT HIGHMULT DIV MOD
+
+%nonassoc IF
+%nonassoc ELSE
 
 %%
 
-prog:
-  | EOF { () }
+list_maybe_followed(X, TERM):
+  | e = TERM?
+    { Option.to_list e }
+  | x = X; xs = list_maybe_followed(X, TERM)
+    { x :: xs }
+
+%inline binop:
+  | MULT { Mult }
+  | HIGHMULT { HighMult }
+  | DIV { Div }
+  | MOD { Mod }
+  | PLUS { Plus }
+  | MINUS { Minus }
+  | LT { Lt }
+  | LEQ { Leq}
+  | GEQ { Geq }
+  | GT { Gt }
+  | EQ { Eq }
+  | NEQ { Neq }
+  | AND { And }
+  | OR { Or }
+  ;
+
+%inline unop:
+  | MINUS { IntNeg }
+  | NOT { LogicalNeg }
+  ;
+
+start:
+  | p = program; EOF { p }
+  ;
+
+program:
+  | s = source
+    { s }
+  | i = interface
+    { i }
+  ;
+
+source:
+  | definitions = definitions
+    { Source { uses = []; definitions } }
+  | uses = use+; definitions = definitions
+    { Source { uses; definitions } }
+  ;
+
+interface:
+  | signatures = signature+
+    { Interface signatures }
+  ;
+
+use:
+  | USE; id = ID; SEMICOLON?
+    { id }
+  ;
+
+definitions:
+  | global = global; SEMICOLON?; definitions = definitions
+    { global :: definitions }
+  | fn = fn; definitions = loption(definitions)
+    { FnDefn fn :: definitions }
+  ;
+
+global:
+  | decl = decl
+    { GlobalDecl decl }
+  | decl = decl; GETS; v = literal
+    { GlobalInit (decl, v) }
+  ;
+
+decl:
+  | id = ID; COLON; t = typ
+    { (id, t) }
+  ;
+
+typ:
+  | t = TYPE
+    { Type.Primitive t }
+  | contents = typ; LBRACKET; length = expr?; RBRACKET
+    { Type.Array { contents; length } }
+  ;
+
+init:
+  | init = separated_pair(decl, GETS, expr)
+    { init }
+  ;
+
+expr:
+  | e1 = expr; bop = binop; e2 = expr
+    { Bop (bop, e1, e2) }
+  | e = uop_expr
+    { e }
+  ;
+
+uop_expr:
+  | uop = unop; e = uop_expr
+    { Uop (uop, e) }
+  | e = call_expr
+    { e }
+  ;
+
+call_expr:
+  | e1 = call_expr; LBRACKET; e2 = expr; RBRACKET
+    { Index (e1, e2) }
+  | call = call
+    { FnCall call }
+  | LPAREN; e = expr; RPAREN
+    { e }
+  | v = literal
+    { Literal v }
+  | LBRACE; array = array
+    { Array (Array.of_list array) }
+  | id = ID
+    { Id id }
+  ;
+
+literal:
+  | i = INT
+    { Int i }
+  | b = BOOL
+    { Bool b }
+  | c = CHAR
+    { Char c }
+  | s = STRING
+    { String s }
+  ; 
+
+array:
+  | e = expr?; RBRACE
+    { Option.to_list e }
+  | e = expr; COMMA; rest = array
+    { e :: rest }
+  ;
+
+call:
+  | id = callee; LPAREN; args = separated_list(COMMA, expr); RPAREN
+    { (id, args) }
+  ;
+
+callee:
+  | id = ID
+    { id }
+  | LENGTH
+    { "length" }
+  ;
+
+fn:
+  | signature = signature; body = block
+    { (signature, body) }
+  ;
+
+signature:
+  | id = ID; LPAREN; params = params; RPAREN; types = loption(types)
+    { { id; params; types } }
+  ;
+
+params:
+  | params = separated_list(COMMA, decl)
+    { params }
+  ;
+
+types:
+  | COLON; types = separated_nonempty_list(COMMA, typ)
+    { types }
+  ;
+
+block:
+  | LBRACE; body = list_maybe_followed(stmt, return); RBRACE
+    { body }
+  ;
+
+return:
+  | RETURN; es = separated_list(COMMA, expr); SEMICOLON?
+    { Return es }
+  ;
+
+stmt:
+  | stmt = if_stmt
+  | stmt = while_stmt
+  | stmt = semicolon_terminated; SEMICOLON?
+    { stmt }
+
+if_stmt:
+  | IF; e = expr; stmt1 = stmt; stmt2 = ioption(else_stmt)
+    { If (e, stmt1, stmt2) }
+  ;
+
+%inline else_stmt:
+  | ELSE; stmt = stmt
+    { stmt }
+  ;
+
+while_stmt:
+  | WHILE; e = expr; stmt = stmt
+    { While (e, stmt) }
+  ;
+
+separated_multiple_list(sep, X):
+  | x = X; sep; xs = separated_nonempty_list(sep, X)
+    { x :: xs }
+
+semicolon_terminated:
+  | decl = decl
+    { Decl decl }
+  | init = init
+    { Init init }
+  | target = assign_target; GETS; e = expr
+    { Assign (target, e) }
+  | lhs = separated_multiple_list(COMMA, multi_target); GETS; rhs = call
+    { MultiInit (lhs, rhs) }
+  | call = call
+    { ProcCall call }
+  | block = block
+    { Block block }
+  ;
+
+assign_target:
+  | id = ID
+    { Var id }
+  | target = assign_target; LBRACKET; e = expr; RBRACKET
+    { ArrayElt (target, e) }
+  ;
+
+multi_target:
+  | decl = decl
+    { MultiDecl decl }
+  | WILDCARD
+    { Wildcard }
+  ;

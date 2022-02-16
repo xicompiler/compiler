@@ -1,0 +1,69 @@
+source ::= use* definitions
+
+interface ::= signature+
+
+use ::= USE ID SEMICOLON?
+
+definitions ::= global SEMICOLON? definitions | fn loption(definitions)
+
+global ::= decl | init
+
+decl ::= ID COLON type
+
+type ::= TYPE | type LBRACKET RBRACKET
+
+init ::= decl GETS expr
+
+expr ::= expr binop bop_expr | bop_expr
+
+bop_expr ::= unop uop_expr | uop_expr
+
+uop_expr ::= 
+  | uop_expr LBRACKET expr BRACKET
+  | call
+  | LPAREN expr RPAREN
+  | INT
+  | BOOL
+  | ID
+  | LBRACE loption(array) RBRACE
+
+call ::= ID LPAREN separated_list(COMMA, expr) RPAREN
+
+array ::= separated_nonempty_list(COMMA, expr) COMMA?
+
+binop ::=
+  | OR | AND
+  | EQ | NEQ
+  | LT | LEQ | GEQ | GT
+  | PLUS | MINUS
+  | MULT | HIGHMULT | DIV | MOD
+
+unop ::= MINUS | NOT
+
+fn ::= signature block
+
+signature ::= ID LPAREN params RPAREN loption(types)
+
+params ::= separated_list(COMMA, decl)
+
+types ::= COLON separated_nonempty_list(COMMA, type)
+
+block ::= LBRACE list(stmt) return? RBRACE
+
+return ::= RETURN expr? SEMICOLON?
+
+stmt ::= if | while | single_stmt SEMICOLON? | block
+
+if ::= IF expr stmt else?
+
+else ::= ELSE stmt
+
+while ::= WHILE expr stmt
+
+single_stmt ::= decl | init | assign | multi_init | call
+
+assign ::= ID GETS expr
+
+multi_init ::= separated_list(COMMA, multi_assignee) GETS call
+
+multi_assignee ::= decl | WILDCARD
