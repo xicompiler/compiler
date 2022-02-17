@@ -9,6 +9,8 @@ type start = (Lexing.lexbuf -> Parser.token) -> Lexing.lexbuf -> Ast.t
     returns a token. *)
 
 type parse_result = (Ast.t, error) result
+(** [parse_result] is [Ok ast] or [Error error] and represents the
+    result of a parse. *)
 
 val parse : start:start -> Lexing.lexbuf -> parse_result
 (** [parse ~start lexbuf] is [Ok ast] if [start lexbuf] [ast],
