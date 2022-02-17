@@ -98,26 +98,20 @@ let parse_diagnostic () =
     ~f:(iter_file ParserDebug.parse_to_file ".parsed")
     !input_files
 
-(** [filter_ext f] returns the files in [f] that have a valid Xi
-    extension. *)
-let filter_ext files =
-  List.filter files (fun f ->
-      let ext = Caml.Filename.extension f in
-      let b = String.equal ext ".xi" || String.equal ext ".ixi" in
-      if not b then
-        print_endline "non .xi or .ixi file passed in - ignored";
-      b)
-
 let compile () = Frontend.parse_files !input_files
 
 let () =
   parse_command ();
-  input_files := filter_ext !input_files;
-  if !to_lex then lex_diagnostic ();
-  if !to_parse then parse_diagnostic ();
-  let output = compile () in
-  match output with
+  if !to_lex then begin
+    lex_diagnostic ();
+    exit 0
+  end;
+  if !to_parse then begin
+    parse_diagnostic ();
+    exit 0
+  end;
+  match compile () with
   | Ok () -> exit 0
   | Error errors ->
-      Frontend.print_errors errors;
+      List.iter ~f:print_endline errors;
       exit 1

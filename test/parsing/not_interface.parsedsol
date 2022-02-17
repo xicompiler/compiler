@@ -1,1 +1,1 @@
-(() ((main ((args ([] ([] int)))) () ((println "hello world")))))
+1:21 error:Syntax Error

@@ -18,10 +18,16 @@ type lexical_error = {
 
 exception LexicalError of lexical_error
 
-let error_msg = function
+let string_of_error_cause = function
 | InvalidChar -> "error:Invalid character constant"
 | InvalidString -> "error:Invalid string constant"
 | InvalidSource -> "error:Illegal character in source file"
+
+let format_error { line; column } =
+  Printf.sprintf "%d:%d %s\n" line column
+
+let string_of_error { position; cause } =
+  cause |> string_of_error_cause |> format_error position
 
 let ( >>= ) = Option.bind
 let ( >>| ) o f = Option.map f o
