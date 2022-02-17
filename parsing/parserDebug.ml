@@ -9,18 +9,21 @@ let print_ast ast dst = ast |> Ast.sexp_of_t |> SexpPrinter.print dst
     message into the [dst] out channel. *)
 let print_result dst = function
   | Ok ast -> print_ast ast dst
-  | Error (LexicalError err) -> print_lexical_error err dst
-  | Error (SyntaxError err) -> print_syntax_error err dst
+  | Error (LexicalError err) -> print_lexical_error dst err
+  | Error (SyntaxError err) -> print_syntax_error dst err
 
-let parse_to_file ~src ~dst =
-  let ic = In_channel.create src in
+(** [print_result_file dst] try to print the valid ast S-expression or
+    an error message into the file at [dst]. Raises: [Sys_error] if an
+    output channel to [dst] cannot be opened. *)
+let print_result_file dst res =
   let oc = Out_channel.create dst in
   try
-    print_result oc (parse_file src);
-    In_channel.close ic;
+    print_result oc res;
     Out_channel.close oc
   with
   | e ->
-      In_channel.close ic;
       Out_channel.close_no_err oc;
       raise e
+
+let parse_to_file ~src ~dst =
+  src |> parse_file |> Option.iter ~f:(print_result_file dst)

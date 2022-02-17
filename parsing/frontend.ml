@@ -17,39 +17,45 @@ let parse ~start lexbuf =
       Error (SyntaxError pos)
 
 let parse_file src =
-  let _, ext = Filename.split_extension src in
+  let ext = Caml.Filename.extension src in
   let src = In_channel.create src in
   let lb = Lexing.from_channel src in
   match ext with
-  | Some ".xi" -> parse ~start:Parser.source lb
-  | Some ".ixi" -> parse ~start:Parser.interface lb
-  | _ -> parse ~start:Parser.program lb
+  | ".xi" -> Some (parse ~start:Parser.source lb)
+  | ".ixi" -> Some (parse ~start:Parser.interface lb)
+  | _ -> None
 
-(** [acc_error e acc] is [\[e\]] if [acc] is [Ok ()] and is
-    [e :: errors] if [acc] is [Error errors]. *)
-let acc_error e = function
-  | Ok () -> [ e ]
-  | Error errors -> e :: errors
+let syntax_error_msg = "error:Syntax Error"
+
+let ext_error_msg = "error:Invalid Extension"
+
+(** [string_of_error e] is the string representing error [e] *)
+let string_of_error = function
+  | LexicalError e -> Lexer.string_of_error e
+  | SyntaxError pos -> Lexer.format_error pos syntax_error_msg
+
+(** [fold_error msg acc] is [acc] with error message [msg] folded in*)
+let fold_error msg = function
+  | Ok () -> Error [ msg ]
+  | Error es -> Error (msg :: es)
+
+(** [fold_file acc file] is [acc] with the result of parsing [file]
+    folded in *)
+let fold_file acc file =
+  match parse_file file with
+  | Some (Ok _) -> acc
+  | Some (Error e) -> fold_error (string_of_error e) acc
+  | None -> fold_error ext_error_msg acc
 
 let parse_files files =
-  let f acc src =
-    match parse_file src with
-    | Ok _ -> acc
-    | Error e -> Error (acc_error e acc)
-  in
-  List.fold_left files ~init:(Ok ()) ~f
+  let init = Ok () in
+  files
+  |> List.fold_left ~f:fold_file ~init
+  |> Result.map_error ~f:List.rev
 
-let print_lexical_error (err : Lexer.lexical_error) dst =
-  let cause_msg = Lexer.error_msg err.cause in
-  LexerDebug.print_error dst err.position cause_msg
+let print_lexical_error dst (err : Lexer.lexical_error) =
+  err.cause |> Lexer.string_of_error_cause
+  |> LexerDebug.print_error dst err.position
 
-let print_syntax_error (pos : Lexer.position) dst =
-  LexerDebug.print_error dst pos "error:Syntax Error"
-
-let print_errors errors =
-  let open Out_channel in
-  let f = function
-    | LexicalError e -> print_lexical_error e stdout
-    | SyntaxError e -> print_syntax_error e stdout
-  in
-  List.iter errors ~f
+let print_syntax_error dst pos =
+  LexerDebug.print_error dst pos syntax_error_msg

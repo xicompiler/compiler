@@ -22,8 +22,16 @@ exception LexicalError of lexical_error
 (** An [LexicalError] is a lexical error with an associated position
     where the error ocurred in the buffer *)
 
-val error_msg : error_cause -> string
-(** [error_msg e] is the error message corresponding to [e] *)
+val string_of_error_cause : error_cause -> string
+(** [string_of_error_cause e] is the error message corresponding to [e] *)
+
+val string_of_error : lexical_error -> string
+(** [string_of_error_cause e] is the error message corresponding to [e]
+    containing both its cause and poisiton *)
+
+val format_error : position -> string -> string
+(** [string_of_error pos s] is the error message [line:col s] to [out]
+    followed by a newline where [line] and [col] are described by [pos] *)
 
 val read : Lexing.lexbuf -> Parser.token
 (** [read lexbuf] consumes the next lexeme in [lexbuf] and returns the

@@ -17,21 +17,19 @@ val parse : start:start -> Lexing.lexbuf -> parse_result
     [Error SyntaxError] if [start lexbuf] raises a syntax error, and
     [Error LexicalError] if [start lexbuf] raises a lexical error. *)
 
-val parse_file : string -> parse_result
-(** [parse_file file] is [Ok ast] if [file] contains a valid AST
-    matching the extension of [file], or [Error err] on failure. *)
+val parse_file : string -> parse_result option
+(** [parse_file file] is [Some res] where [res] is the parsed result of
+    [file] if [file] is a [.xi] or [.ixi] file, or [None] if [file] is
+    not a Xi file. *)
 
-val parse_files : string list -> (unit, error list) result
+val parse_files : string list -> (unit, string list) result
 (** [parse_files files] calls [parse_file] for each file in [files], and
     is [Ok ()] if there are no errors, or [Error errs] on failure. *)
 
-val print_lexical_error : Lexer.lexical_error -> out_channel -> unit
-(** [print_lexical_error err dst] prints the lexical error [err] into
+val print_lexical_error : out_channel -> Lexer.lexical_error -> unit
+(** [print_lexical_error dst err] prints the lexical error [err] into
     the [dst] out channel. *)
 
-val print_syntax_error : Lexer.position -> out_channel -> unit
-(** [print_syntax_error err dst] prints the syntax error [err] into the
+val print_syntax_error : out_channel -> Lexer.position -> unit
+(** [print_syntax_error dst err] prints the syntax error [err] into the
     [dst] out channel. *)
-
-val print_errors : error list -> unit
-(** [print_errors errs] prints [errs] to stdout. *)
