@@ -1,5 +1,6 @@
 _build/*
 build*
+output/*
 .git/*
 .DS_Store
 .gitignore

@@ -61,7 +61,9 @@
 (* A primitive type *)
 %token <Type.primitive> TYPE
 
-%start <Ast.t> start
+%start <Ast.t> program
+%start <Ast.t> source
+%start <Ast.t> interface
 
 %left OR
 %left AND
@@ -103,27 +105,31 @@ list_maybe_followed(X, TERM):
   | NOT { LogicalNeg }
   ;
 
-start:
-  | p = program; EOF { p }
-  ;
-
 program:
-  | s = source
-    { s }
-  | i = interface
-    { i }
+  | s = source { s }
+  | i = interface { i }
   ;
 
 source:
-  | definitions = definitions
-    { Source { uses = []; definitions } }
-  | uses = use+; definitions = definitions
-    { Source { uses; definitions } }
+  | s = source_entry; EOF
+    { Source s }
   ;
 
 interface:
+  | i = interface_entry; EOF
+    { Interface i }
+  ;
+
+source_entry:
+  | definitions = definitions
+    { { uses = []; definitions } }
+  | uses = use+; definitions = definitions
+    { { uses; definitions } }
+  ;
+
+interface_entry:
   | signatures = signature+
-    { Interface signatures }
+    { signatures }
   ;
 
 use:

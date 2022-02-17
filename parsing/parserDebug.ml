@@ -1,37 +1,26 @@
 open Core
+open Frontend
 
 (** [print_ast ast dst] prints the S-expression of [ast] into the [dst]
     out channel. *)
 let print_ast ast dst = ast |> Ast.sexp_of_t |> SexpPrinter.print dst
 
-(** [print_lexical_error err dst] prints the lexical error [err] into
-    the [dst] out channel. *)
-let print_lexical_error (err : Lexer.lexical_error) dst =
-  let cause_msg = Lexer.error_msg err.cause in
-  LexerDebug.print_error dst err.position cause_msg
-
-(** [print_syntax_error err dst] prints the syntax error [err] into the
-    [dst] out channel. *)
-let print_syntax_error (pos : Lexer.position) dst =
-  LexerDebug.print_error dst pos "error:Syntax Error"
-
 (** [print_result dst] prints the valid ast S-expression or an error
     message into the [dst] out channel. *)
 let print_result dst = function
   | Ok ast -> print_ast ast dst
-  | Error (Frontend.LexicalError err) -> print_lexical_error err dst
-  | Error (Frontend.SyntaxError err) -> print_syntax_error err dst
+  | Error (LexicalError err) -> print_lexical_error err dst
+  | Error (SyntaxError err) -> print_syntax_error err dst
 
 let parse_to_file ~src ~dst =
-  let src = In_channel.create src in
-  let dst = Out_channel.create dst in
+  let ic = In_channel.create src in
+  let oc = Out_channel.create dst in
   try
-    let lb = Lexing.from_channel src in
-    print_result dst (Frontend.parse lb);
-    In_channel.close src;
-    Out_channel.close dst
+    print_result oc (parse_file src);
+    In_channel.close ic;
+    Out_channel.close oc
   with
   | e ->
-      In_channel.close src;
-      Out_channel.close_no_err dst;
+      In_channel.close ic;
+      Out_channel.close_no_err oc;
       raise e

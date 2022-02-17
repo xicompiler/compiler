@@ -22,6 +22,12 @@ bisect*.coverage
 \#*\#
 .DS_Store
 
+# compiler output
+output
+*.output
+*.lexed
+*.parsed
+
 # executable
 xic
 

@@ -1,7 +1,4 @@
 main(args: int[][]) {
-  a:int
-  a, b: bool = 1, true
-
   // multiple uops
   c: int = ----1
   b = !!!!b;
