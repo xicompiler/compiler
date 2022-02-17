@@ -102,14 +102,9 @@ let compile () = Frontend.parse_files !input_files
 
 let () =
   parse_command ();
-  if !to_lex then begin
-    lex_diagnostic ();
-    exit 0
-  end;
-  if !to_parse then begin
-    parse_diagnostic ();
-    exit 0
-  end;
+  if !to_lex then lex_diagnostic ();
+  if !to_parse then parse_diagnostic ();
+  if !to_lex || !to_parse then exit 0;
   match compile () with
   | Ok () -> exit 0
   | Error errors ->
