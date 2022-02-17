@@ -1,7 +1,7 @@
 open OUnit2
-open Parsing
-open Parsing.Lexer
-open Parsing.Parser
+open Frontend
+open Frontend.Lexer
+open Frontend.Parser
 
 (** [char_token_of_int i] is a [CHAR] token carrying a utf8 codepoint
     with code [i]. *)
@@ -15,7 +15,7 @@ let char_token_of_char c = CHAR (Uchar.of_char c)
     [e] are equal. *)
 let lexing_test test_name input expected =
   test_name >:: fun _ ->
-  assert_equal (LexerDebug.lex_string input) expected
+  assert_equal (Lexer.Diagnostic.lex_string input) expected
 
 (** [lexing_test_ok n i e] calls [lexing_test] with [n], [i], and [e]
     mapped as valid tokens. *)
@@ -41,7 +41,7 @@ let file_contents in_file =
     equal. *)
 let lexing_file_test name ~src ~dst ~reference =
   let expected = file_contents reference in
-  LexerDebug.lex_to_file ~src ~dst;
+  Lexer.Diagnostic.lex_to_file ~src ~dst;
   let actual = file_contents dst in
   name >:: fun _ -> assert_equal expected actual
 

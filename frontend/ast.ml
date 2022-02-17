@@ -138,51 +138,8 @@ let sexp_of_literal = function
   | Int i -> Sexp.Atom i
   | Bool b -> Bool.sexp_of_t b
 
-(** [sexp_of_fn ?body signature] is the s-expression serialization of
-    function signature [signature] with an optional function body. *)
-let rec sexp_of_fn ?body { id; params; types } =
-  let id = Sexp.Atom id in
-  let params = List.sexp_of_t sexp_of_decl params in
-  let types = List.sexp_of_t sexp_of_type types in
-  let body = Option.map body ~f:(List.sexp_of_t sexp_of_stmt) in
-  Sexp.List (id :: params :: types :: Option.to_list body)
-
-(** [sexp_of_stmt stmt] is the s-expression serialization of [stmt] *)
-and sexp_of_stmt = function
-  | If (e1, s1, s2) -> sexp_of_if e1 s1 s2
-  | While (e, s) -> sexp_of_while e s
-  | Decl decl -> sexp_of_decl decl
-  | Init (decl, e) -> sexp_of_init decl e
-  | Assign (target, e) -> sexp_of_assign target e
-  | MultiInit (targets, call) -> sexp_of_multi_init targets call
-  | ProcCall (id, args) -> sexp_of_call id args
-  | Return es -> sexp_of_return es
-  | Block stmts -> List.sexp_of_t sexp_of_stmt stmts
-
-(** [sexp_of_decl (id, typ)] is the s-expression serialization of the Xi
-    declaration [id: typ] *)
-and sexp_of_decl (id, typ) =
-  Sexp.List [ Sexp.Atom id; sexp_of_type typ ]
-
-(** [sexp_of_global ?init (id, typ)] is the s-expression serialization
-    of the the global Xi declaration with name [id], type [typ] and
-    optional initialization expression [init] *)
-and sexp_of_global ?init (id, typ) =
-  let global = Sexp.Atom ":global" in
-  let id_sexp = Sexp.Atom id in
-  let type_sexp = sexp_of_type typ in
-  let lst = Option.to_list (Option.map init ~f:sexp_of_literal) in
-  Sexp.List (global :: id_sexp :: type_sexp :: lst)
-
-(** [sexp_of_if e s1 s2] is the s-expression serialization of if
-    statement [if e s1 else s2] where the else clause may or may not be
-    present. *)
-and sexp_of_if e s1 s2 =
-  let lst = Option.to_list (Option.map s2 ~f:sexp_of_stmt) in
-  Sexp.List (Sexp.Atom "if" :: sexp_of_expr e :: sexp_of_stmt s1 :: lst)
-
 (** [sexp_of_expr e] is the s-expression serialization of expression [e] *)
-and sexp_of_expr = function
+let rec sexp_of_expr = function
   | Id id -> Sexp.Atom id
   | Literal v -> sexp_of_literal v
   | Array arr -> sexp_of_array arr
@@ -190,13 +147,6 @@ and sexp_of_expr = function
   | Uop (uop, e) -> sexp_of_uop uop e
   | FnCall (id, args) -> sexp_of_call id args
   | Index (e1, e2) -> sexp_of_index e1 e2
-
-and sexp_of_type = function
-  | Type.Primitive Int -> Sexp.Atom "int"
-  | Type.Primitive Bool -> Sexp.Atom "bool"
-  | Type.Array { contents; length } ->
-      let lst = Option.to_list (Option.map length ~f:sexp_of_expr) in
-      Sexp.List (Sexp.Atom "[]" :: sexp_of_type contents :: lst)
 
 (** [sexp_of_array arr] is the s-expression serialization of the Xi
     array [arr] *)
@@ -231,49 +181,100 @@ and sexp_of_call id args =
     indexing of array [e1] at index [e2]. *)
 and sexp_of_index e1 e2 = sexp_of_bop "[]" e1 e2
 
-(** [sexp_of_while e s] is the s-expression serialzation of the
-    statement [while e s] *)
-and sexp_of_while e s =
-  Sexp.List [ Sexp.Atom "while"; sexp_of_expr e; sexp_of_stmt s ]
+(** [sexp_of_type t] is the s-expression serialization of type [t] *)
+let rec sexp_of_type = function
+  | Type.Primitive Int -> Sexp.Atom "int"
+  | Type.Primitive Bool -> Sexp.Atom "bool"
+  | Type.Array { contents; length } ->
+      let lst = Option.to_list (Option.map length ~f:sexp_of_expr) in
+      Sexp.List (Sexp.Atom "[]" :: sexp_of_type contents :: lst)
+
+(** [sexp_of_decl (id, typ)] is the s-expression serialization of the Xi
+    declaration [id: typ] *)
+let sexp_of_decl (id, typ) =
+  Sexp.List [ Sexp.Atom id; sexp_of_type typ ]
 
 (** [sexp_of_init (id, typ) e] is the s-expression serialization of the
     initialization statement [id: typ = e] *)
-and sexp_of_init decl e =
+let sexp_of_init decl e =
   sexp_of_gets (sexp_of_decl decl) (sexp_of_expr e)
-
-(** [sexp_of_assign target e] is the s-expression serialization of the
-    statement [target = e] *)
-and sexp_of_assign target e =
-  sexp_of_gets (sexp_of_target target) (sexp_of_expr e)
 
 (** [sexp_of_target target] is the s-expression serialization of
     assignment target [target], either an identifier or an array
     element. *)
-and sexp_of_target = function
+let rec sexp_of_target = function
   | Var id -> Sexp.Atom id
   | ArrayElt (target, e) ->
       Sexp.List
         [ Sexp.Atom "[]"; sexp_of_target target; sexp_of_expr e ]
 
-(** [sexp_of_multi_init \[e1; ...; en\] (id, args)] is the s-expression
-    serialization of the multiple initialization statement
-    [e1, ..., en = id(args)]. *)
-and sexp_of_multi_init targets (id, args) =
-  sexp_of_gets
-    (List.sexp_of_t sexp_of_multi_target targets)
-    (sexp_of_call id args)
+(** [sexp_of_assign target e] is the s-expression serialization of the
+    statement [target = e] *)
+let sexp_of_assign target e =
+  sexp_of_gets (sexp_of_target target) (sexp_of_expr e)
 
 (** [sexp_of_multi_target target] is the s-expression serialization of
     multiple initialization target [target], either a wildcard or a
     variable. *)
-and sexp_of_multi_target = function
+let sexp_of_multi_target = function
   | MultiDecl d -> sexp_of_decl d
   | Wildcard -> Sexp.Atom "_"
+
+(** [sexp_of_multi_init \[e1; ...; en\] (id, args)] is the s-expression
+    serialization of the multiple initialization statement
+    [e1, ..., en = id(args)]. *)
+let sexp_of_multi_init targets (id, args) =
+  sexp_of_gets
+    (List.sexp_of_t sexp_of_multi_target targets)
+    (sexp_of_call id args)
+
+(** [sexp_of_stmt stmt] is the s-expression serialization of [stmt] *)
+let rec sexp_of_stmt = function
+  | If (e1, s1, s2) -> sexp_of_if e1 s1 s2
+  | While (e, s) -> sexp_of_while e s
+  | Decl decl -> sexp_of_decl decl
+  | Init (decl, e) -> sexp_of_init decl e
+  | Assign (target, e) -> sexp_of_assign target e
+  | MultiInit (targets, call) -> sexp_of_multi_init targets call
+  | ProcCall (id, args) -> sexp_of_call id args
+  | Return es -> sexp_of_return es
+  | Block stmts -> List.sexp_of_t sexp_of_stmt stmts
+
+(** [sexp_of_if e s1 s2] is the s-expression serialization of if
+    statement [if e s1 else s2] where the else clause may or may not be
+    present. *)
+and sexp_of_if e s1 s2 =
+  let lst = Option.to_list (Option.map s2 ~f:sexp_of_stmt) in
+  Sexp.List (Sexp.Atom "if" :: sexp_of_expr e :: sexp_of_stmt s1 :: lst)
+
+(** [sexp_of_while e s] is the s-expression serialzation of the
+    statement [while e s] *)
+and sexp_of_while e s =
+  Sexp.List [ Sexp.Atom "while"; sexp_of_expr e; sexp_of_stmt s ]
 
 (** [sexp_of_return \[e1; ...; en\]] is the s-expression serialization
     of the statement [return e1, ..., en]. *)
 and sexp_of_return es =
   Sexp.List (Sexp.Atom "return" :: List.map ~f:sexp_of_expr es)
+
+(** [sexp_of_fn ?body signature] is the s-expression serialization of
+    function signature [signature] with an optional function body. *)
+let sexp_of_fn ?body { id; params; types } =
+  let id = Sexp.Atom id in
+  let params = List.sexp_of_t sexp_of_decl params in
+  let types = List.sexp_of_t sexp_of_type types in
+  let body = Option.map body ~f:(List.sexp_of_t sexp_of_stmt) in
+  Sexp.List (id :: params :: types :: Option.to_list body)
+
+(** [sexp_of_global ?init (id, typ)] is the s-expression serialization
+    of the the global Xi declaration with name [id], type [typ] and
+    optional initialization expression [init] *)
+let sexp_of_global ?init (id, typ) =
+  let global = Sexp.Atom ":global" in
+  let id_sexp = Sexp.Atom id in
+  let type_sexp = sexp_of_type typ in
+  let lst = Option.to_list (Option.map init ~f:sexp_of_literal) in
+  Sexp.List (global :: id_sexp :: type_sexp :: lst)
 
 (** [sexp_of_definition def] is the s-expression serialization of global
     definition [def] *)

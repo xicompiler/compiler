@@ -1,3 +1,5 @@
+include module type of Parser
+
 (** An [error] is either a lexical error or a syntax error. Both
     variants carry the position at which they occur. *)
 type error =
@@ -33,3 +35,12 @@ val print_lexical_error : out_channel -> Lexer.lexical_error -> unit
 val print_syntax_error : out_channel -> Lexer.position -> unit
 (** [print_syntax_error dst err] prints the syntax error [err] into the
     [dst] out channel. *)
+
+(** The [Diagnostic] module cotains functions for generating diagnostic
+    parsing output. *)
+module Diagnostic : sig
+  val parse_to_file : src:string -> dst:string -> unit
+  (** [parse_to_file ~src ~dst] parses the file at path [src] and writes
+      the results to the file at path [dst], serialized in an
+      S-expression. *)
+end

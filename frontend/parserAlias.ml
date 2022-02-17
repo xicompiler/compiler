@@ -1,4 +1,3 @@
-open Parser
 open Core
 
 type error =
@@ -31,8 +30,8 @@ let ext_error_msg = "error:Invalid Extension"
 
 (** [string_of_error e] is the string representing error [e] *)
 let string_of_error = function
-  | LexicalError e -> Lexer.string_of_error e
-  | SyntaxError pos -> Lexer.format_error pos syntax_error_msg
+  | LexicalError e -> LexerAlias.string_of_error e
+  | SyntaxError pos -> LexerAlias.format_error pos syntax_error_msg
 
 (** [fold_error msg acc] is [acc] with error message [msg] folded in*)
 let fold_error msg = function
@@ -54,8 +53,39 @@ let parse_files files =
   |> Result.map_error ~f:List.rev
 
 let print_lexical_error dst (err : Lexer.lexical_error) =
-  err.cause |> Lexer.string_of_error_cause
-  |> LexerDebug.print_error dst err.position
+  err.cause |> LexerAlias.string_of_error_cause
+  |> LexerAlias.Diagnostic.print_error dst err.position
 
 let print_syntax_error dst pos =
-  LexerDebug.print_error dst pos syntax_error_msg
+  LexerAlias.Diagnostic.print_error dst pos syntax_error_msg
+
+module Diagnostic = struct
+  (** [print_ast ast dst] prints the S-expression of [ast] into the
+      [dst] out channel. *)
+  let print_ast ast dst = ast |> Ast.sexp_of_t |> SexpPrinter.print dst
+
+  (** [print_result dst] prints the valid ast S-expression or an error
+      message into the [dst] out channel. *)
+  let print_result dst = function
+    | Ok ast -> print_ast ast dst
+    | Error (LexicalError err) -> print_lexical_error dst err
+    | Error (SyntaxError err) -> print_syntax_error dst err
+
+  (** [print_result_file dst] try to print the valid ast S-expression or
+      an error message into the file at [dst]. Raises: [Sys_error] if an
+      output channel to [dst] cannot be opened. *)
+  let print_result_file dst res =
+    let oc = Out_channel.create dst in
+    try
+      print_result oc res;
+      Out_channel.close oc
+    with
+    | e ->
+        Out_channel.close_no_err oc;
+        raise e
+
+  let parse_to_file ~src ~dst =
+    src |> parse_file |> Option.iter ~f:(print_result_file dst)
+end
+
+include Parser
