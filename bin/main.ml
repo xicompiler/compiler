@@ -112,10 +112,10 @@ let () =
   if List.is_empty !input_files then print_help ();
   if !to_lex then lex_diagnostic ();
   if !to_parse then parse_diagnostic ();
-  if not (!to_lex || !to_parse) then
-    if (not (String.is_empty !output_path)) then print_endline "Warning: no diagnostic flags were used";
-    match compile () with
-    | Ok () -> exit 0
-    | Error errors ->
-        Frontend.print_errors errors;
-        exit 1
+  if !to_lex || !to_parse then exit 0;
+  if (not (String.is_empty !output_path)) then print_endline "Warning: no diagnostic flags were used";
+  match compile () with
+  | Ok () -> exit 0
+  | Error errors ->
+      List.iter ~f:print_endline errors;
+      exit 1
