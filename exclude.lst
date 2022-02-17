@@ -1,9 +1,10 @@
 _build/*
 build*
+output/*
 .git/*
 .DS_Store
 .gitignore
-_coverage
+_coverage/*
 bisect*.coverage
 *.automaton
 xic

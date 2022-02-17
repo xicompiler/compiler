@@ -3,15 +3,15 @@
 build:
 	dune build
 
-test:
+test: build
 	dune exec ./test/main.exe
 
-parsing-test:
-	dune exec ./test/ParsingTests.exe
-
-clean:
+clean: bisect-clean
 	dune clean
-	rm -rf xic *.lexed *.zip *.log
+	find . -name '*.lexed'  -delete
+	find . -name '*.parsed' -delete
+	find . -name '*.output' -delete
+	rm -f xic *.zip *.log
 
 bisect: bisect-clean
 	dune exec --instrument-with bisect_ppx --force ./test/main.exe
@@ -20,6 +20,5 @@ bisect: bisect-clean
 bisect-clean:
 	rm -rf _coverage bisect*.coverage
 
-zip:
-	make clean
+zip: clean
 	zip zak33.zip -r . -x@exclude.lst

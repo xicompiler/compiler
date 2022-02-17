@@ -1,0 +1,19 @@
+(() (
+    (:global x int 2) 
+    (:global z int) 
+    (:global len int 100) 
+    (:global debug bool false) 
+    (:global points ([] int)) 
+    (nestedstuff ((a int) (b int) (c int)) (int) (
+      (= (asdf bool) true) 
+      (while (!= a 0) (
+          (while (!= b 0) (
+              (if (== c 1) 
+                (= asdf false) 
+                (= asdf (! asdf))) 
+              (if (< a b) (
+                  (if (== a (- b 1)) (
+                    (return 1))))) 
+          (= b (- b 1)))) 
+        (= a (- a 1)))) 
+      (return 2)))))

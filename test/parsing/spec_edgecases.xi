@@ -1,7 +1,4 @@
 main(args: int[][]) {
-  a:int
-  a, b: bool = 1, true
-
   // multiple uops
   c: int = ----1
   b = !!!!b;
@@ -17,4 +14,3 @@ main(args: int[][]) {
   g:int[][][] = {{{1}}}
   h:int[][][] = {{{1, 3}, {1, 2}}}
 }
-

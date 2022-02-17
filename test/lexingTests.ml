@@ -96,6 +96,7 @@ let lexing_file_test_cases =
     ]
 
 let lexing_suite =
-  List.flatten [ lexing_test_cases; lexing_file_test_cases ]
+  "unit test suite for lexing"
+  >::: List.flatten [ lexing_test_cases; lexing_file_test_cases ]
 
 let _ = run_test_tt_main lexing_suite

@@ -10,6 +10,6 @@ lotta_binops(): int, bool {
 }
 
 main(args: int[][]) {
-  x, y = lotta_binops()
+  x:int, y:bool = lotta_binops()
   println("hello world");
 }
