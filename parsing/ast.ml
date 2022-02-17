@@ -138,34 +138,9 @@ let sexp_of_literal = function
   | Int i -> Sexp.Atom i
   | Bool b -> Bool.sexp_of_t b
 
-let rec sexp_of_t = function
-  | Source s -> sexp_of_source s
-  | Interface sigs -> sexp_of_interface sigs
-
-(** [sexp_of_source source] is the s-expression serialization of the AST
-    [source] *)
-and sexp_of_source { uses; definitions } =
-  Sexp.List
-    [
-      List.sexp_of_t sexp_of_use uses;
-      List.sexp_of_t sexp_of_definition definitions;
-    ]
-
-(** [sexp_of_interface interface] is the s-expression serialization of
-    the AST [interface]. *)
-and sexp_of_interface sigs =
-  Sexp.List [ List.sexp_of_t sexp_of_fn sigs ]
-
-(** [sexp_of_definition def] is the s-expression serialization of global
-    definition [def] *)
-and sexp_of_definition = function
-  | FnDefn (signature, body) -> sexp_of_fn signature ~body
-  | GlobalDecl decl -> sexp_of_global decl
-  | GlobalInit (decl, init) -> sexp_of_global decl ~init
-
 (** [sexp_of_fn ?body signature] is the s-expression serialization of
     function signature [signature] with an optional function body. *)
-and sexp_of_fn ?body { id; params; types } =
+let rec sexp_of_fn ?body { id; params; types } =
   let id = Sexp.Atom id in
   let params = List.sexp_of_t sexp_of_decl params in
   let types = List.sexp_of_t sexp_of_type types in
@@ -299,3 +274,28 @@ and sexp_of_multi_target = function
     of the statement [return e1, ..., en]. *)
 and sexp_of_return es =
   Sexp.List (Sexp.Atom "return" :: List.map ~f:sexp_of_expr es)
+
+(** [sexp_of_definition def] is the s-expression serialization of global
+    definition [def] *)
+let sexp_of_definition = function
+  | FnDefn (signature, body) -> sexp_of_fn signature ~body
+  | GlobalDecl decl -> sexp_of_global decl
+  | GlobalInit (decl, init) -> sexp_of_global decl ~init
+
+(** [sexp_of_source source] is the s-expression serialization of the AST
+    [source] *)
+let sexp_of_source { uses; definitions } =
+  Sexp.List
+    [
+      List.sexp_of_t sexp_of_use uses;
+      List.sexp_of_t sexp_of_definition definitions;
+    ]
+
+(** [sexp_of_interface interface] is the s-expression serialization of
+    the AST [interface]. *)
+let sexp_of_interface sigs =
+  Sexp.List [ List.sexp_of_t sexp_of_fn sigs ]
+
+let sexp_of_t = function
+  | Source s -> sexp_of_source s
+  | Interface sigs -> sexp_of_interface sigs

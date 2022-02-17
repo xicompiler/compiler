@@ -46,13 +46,15 @@ let iter_file f ext input_file =
 
 let speclist =
   [
-    ( "-D", Arg.Set_string output_path,
+    ( "-D",
+      Arg.Set_string output_path,
       "Specify where to place generated diagnostic files." );
-    ( "-sourcepath", Arg.Set_string src_path,
+    ( "-sourcepath",
+      Arg.Set_string src_path,
       "Specify where to find input source files." );
-    ( "--lex", Arg.Set to_lex,
-      "Generate output from lexical analysis." );
-    ( "--parse", Arg.Set to_parse,
+    ("--lex", Arg.Set to_lex, "Generate output from lexical analysis.");
+    ( "--parse",
+      Arg.Set to_parse,
       "Generate output from syntactic analysis." );
     ("--help", Arg.Set display_help, "Print a synopsis of options.");
     ("-help", Arg.Set display_help, "Print a synopsis of options.");
@@ -93,27 +95,17 @@ let parse_diagnostic () =
     ~f:(iter_file ParserDebug.parse_to_file ".parsed")
     !input_files
 
-(** [filter_ext f] returns the files in [f] that have a valid Xi
-    extension. *)
-let filter_ext files =
-  List.filter files (fun f ->
-      let ext = Caml.Filename.extension f in
-      match ext with
-      | ".xi"
-      | ".ixi" -> true
-      | _ -> printf "Warning: %s is not a .xi or .ixi file - ignored\n" f; false)
-
 (** [compile ()] compiles the input files. *)
 let compile () = Frontend.parse_files !input_files
 
 let () =
   parse_command ();
-  input_files := filter_ext !input_files;
   if List.is_empty !input_files then print_help ();
   if !to_lex then lex_diagnostic ();
   if !to_parse then parse_diagnostic ();
   if !to_lex || !to_parse then exit 0;
-  if (not (String.is_empty !output_path)) then print_endline "Warning: no diagnostic flags were used";
+  if not (String.is_empty !output_path) then
+    print_endline "Warning: no diagnostic flags were used";
   match compile () with
   | Ok () -> exit 0
   | Error errors ->
