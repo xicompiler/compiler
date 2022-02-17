@@ -103,6 +103,7 @@ let filter_ext files =
       | ".ixi" -> true
       | _ -> printf "Warning: %s is not a .xi or .ixi file - ignored\n" f; false)
 
+(** [compile ()] compiles the input files. *)
 let compile () = Frontend.parse_files !input_files
 
 let () =
