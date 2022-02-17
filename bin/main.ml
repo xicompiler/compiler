@@ -73,6 +73,7 @@ let try_get_files () =
   try Arg.parse speclist file_acc usage_msg with
   | _ -> print_endline (Arg.usage_string speclist usage_msg)
 
+(** [parse_command ()] parses the command and command line arguments. *)
 let parse_command () =
   try_get_files ();
   if !display_help || !flag_count = 0 then
@@ -103,10 +104,10 @@ let parse_diagnostic () =
 let filter_ext files =
   List.filter files (fun f ->
       let ext = Caml.Filename.extension f in
-      let b = String.equal ext ".xi" || String.equal ext ".ixi" in
-      if not b then
-        print_endline "non .xi or .ixi file passed in - ignored";
-      b)
+      match ext with
+      | ".xi"
+      | ".ixi" -> true
+      | _ -> printf "Warning: %s is not a .xi or .ixi file - ignored\n" f; false)
 
 let compile () = Frontend.parse_files !input_files
 
@@ -116,8 +117,7 @@ let () =
   if !to_lex then lex_diagnostic ();
   if !to_parse then parse_diagnostic ();
   if not (!to_lex || !to_parse) then
-    let output = compile () in
-    match output with
+    match compile () with
     | Ok () -> exit 0
     | Error errors ->
         Frontend.print_errors errors;
