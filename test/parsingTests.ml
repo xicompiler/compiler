@@ -1,7 +1,5 @@
 open OUnit2
-open Parsing
-open Parsing.Ast
-open Parsing.ParserDebug
+open Frontend
 
 (** [file_contents in_file] is a string containing the contents of
     [in_file]. *)
@@ -17,7 +15,7 @@ let file_contents in_file =
     equal. *)
 let parsing_file_test name ~src ~dst ~reference =
   let expected = file_contents reference in
-  ignore (parse_to_file ~src ~dst);
+  ignore (Parser.Diagnostic.parse_to_file ~src ~dst);
   let actual = file_contents dst in
   name >:: fun _ ->
   try

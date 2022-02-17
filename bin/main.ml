@@ -1,5 +1,5 @@
 open Core
-open Parsing
+open Frontend
 
 exception FileNotFoundError
 
@@ -92,7 +92,7 @@ let filter_valid_files files =
   List.filter files ~f
 
 (** [compile ()] compiles the input files. *)
-let compile () = Frontend.parse_files !input_files
+let compile () = Parser.parse_files !input_files
 
 let () =
   parse_command ();

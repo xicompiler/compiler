@@ -1,5 +1,5 @@
 (executable
  (name main)
- (libraries ounit2 parsing core)
- (instrumentation 
+ (libraries ounit2 frontend core)
+ (instrumentation
   (backend bisect_ppx)))

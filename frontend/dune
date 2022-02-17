@@ -1,6 +1,7 @@
 (library
- (name parsing)
+ (name frontend)
  (libraries uutf core)
+ (private_modules parser parserAlias lexerAlias)
  (instrumentation
   (backend bisect_ppx)))
 
