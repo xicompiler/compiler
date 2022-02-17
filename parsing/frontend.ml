@@ -30,15 +30,19 @@ let syntax_error_msg = "error:Syntax Error"
 
 let ext_error_msg = "error:Invalid Extension"
 
+(** [string_of_error e] is the string representing error [e] *)
 let string_of_error = function
   | LexicalError e -> Lexer.string_of_error e
   | SyntaxError pos -> Lexer.format_error pos syntax_error_msg
 
+(** [fold_error msg acc] is [acc] with error message [msg] folded in*)
 let fold_error msg = function
   | Ok () -> Error [ msg ]
   | Error es -> Error (msg :: es)
 
-let fold_result acc file =
+(** [fold_file acc file] is [acc] with the result of parsing [file]
+    folded in *)
+let fold_file acc file =
   match parse_file file with
   | Some (Ok _) -> acc
   | Some (Error e) -> fold_error (string_of_error e) acc
@@ -47,7 +51,7 @@ let fold_result acc file =
 let parse_files files =
   let init = Ok () in
   files
-  |> List.fold_left ~f:fold_result ~init
+  |> List.fold_left ~f:fold_file ~init
   |> Result.map_error ~f:List.rev
 
 let print_lexical_error dst (err : Lexer.lexical_error) =
