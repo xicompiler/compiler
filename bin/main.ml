@@ -115,9 +115,10 @@ let () =
   input_files := filter_ext !input_files;
   if !to_lex then lex_diagnostic ();
   if !to_parse then parse_diagnostic ();
-  let output = compile () in
-  match output with
-  | Ok () -> exit 0
-  | Error errors ->
-      Frontend.print_errors errors;
-      exit 1
+  if not (!to_lex || !to_parse) then
+    let output = compile () in
+    match output with
+    | Ok () -> exit 0
+    | Error errors ->
+        Frontend.print_errors errors;
+        exit 1

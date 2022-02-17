@@ -6,7 +6,7 @@ build:
 test: build
 	dune exec ./test/main.exe
 
-clean:
+clean: bisect-clean
 	dune clean
 	find . -name '*.lexed'  -delete
 	find . -name '*.parsed' -delete
