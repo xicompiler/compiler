@@ -17,8 +17,6 @@ let to_parse = ref false
 
 let display_help = ref false
 
-let flag_count = ref 0
-
 (** [try_iter e] evaluates [e] and is [()] regardless of whether the
     evaluation of [e] raises an exception. *)
 let try_iter e =
@@ -46,38 +44,34 @@ let iter_file f ext input_file =
     ~src:(file_path ~path:!src_path ~file:input_file)
     ~dst:output_file_path
 
-let incr_flag_count () = incr flag_count
-
 let speclist =
   [
-    ( "-D",
-      Arg.Tuple [ Arg.Set_string output_path; Arg.Unit incr_flag_count ],
+    ( "-D", Arg.Set_string output_path,
       "Specify where to place generated diagnostic files." );
-    ( "-sourcepath",
-      Arg.Tuple [ Arg.Set_string src_path; Arg.Unit incr_flag_count ],
+    ( "-sourcepath", Arg.Set_string src_path,
       "Specify where to find input source files." );
-    ( "--lex",
-      Arg.Tuple [ Arg.Set to_lex; Arg.Unit incr_flag_count ],
+    ( "--lex", Arg.Set to_lex,
       "Generate output from lexical analysis." );
-    ( "--parse",
-      Arg.Tuple [ Arg.Set to_parse; Arg.Unit incr_flag_count ],
+    ( "--parse", Arg.Set to_parse,
       "Generate output from syntactic analysis." );
     ("--help", Arg.Set display_help, "Print a synopsis of options.");
     ("-help", Arg.Set display_help, "Print a synopsis of options.");
   ]
+
+(** [print_help ()] prints the help message. *)
+let print_help () = print_string (Arg.usage_string speclist usage_msg)
 
 (** [try_get_files ()] attempts to parse a list of files from command
     line arguments, mutating [input_files] to reflect the parsed files. *)
 let try_get_files () =
   let file_acc f = input_files := f :: !input_files in
   try Arg.parse speclist file_acc usage_msg with
-  | _ -> print_endline (Arg.usage_string speclist usage_msg)
+  | _ -> print_help ()
 
 (** [parse_command ()] parses the command and command line arguments. *)
 let parse_command () =
   try_get_files ();
-  if !display_help || !flag_count = 0 then
-    print_endline (Arg.usage_string speclist usage_msg)
+  if !display_help then print_help ()
 
 (** [try_sys_iter f \[e1; ...; en\]] is [f e1; ...; f en]. If
     [Sys_error] is raised during evaluation, the error message is
@@ -114,6 +108,7 @@ let compile () = Frontend.parse_files !input_files
 let () =
   parse_command ();
   input_files := filter_ext !input_files;
+  if List.is_empty !input_files then print_help ();
   if !to_lex then lex_diagnostic ();
   if !to_parse then parse_diagnostic ();
   if not (!to_lex || !to_parse) then
