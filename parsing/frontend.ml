@@ -17,7 +17,6 @@ let parse ~start lexbuf =
       Error (SyntaxError pos)
 
 let parse_file src =
-  print_endline src;
   let ext = Caml.Filename.extension src in
   let src = In_channel.create src in
   let lb = Lexing.from_channel src in
