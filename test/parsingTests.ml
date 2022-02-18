@@ -15,7 +15,7 @@ let file_contents in_file =
     equal. *)
 let parsing_file_test name ~src ~dst ~reference =
   let expected = file_contents reference in
-  ignore (Parser.Diagnostic.parse_to_file ~src ~dst);
+  ignore (Parse.Diagnostic.parse_to_file ~src ~dst);
   let actual = file_contents dst in
   name >:: fun _ ->
   try

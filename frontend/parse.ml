@@ -1,18 +1,18 @@
 open Core
 
 type error =
-  | LexicalError of Lexer.lexical_error
-  | SyntaxError of Lexer.position
+  | LexicalError of Lex.lexical_error
+  | SyntaxError of Lex.position
 
 type start = (Lexing.lexbuf -> Parser.token) -> Lexing.lexbuf -> Ast.t
 
 type parse_result = (Ast.t, error) result
 
 let parse ~start lexbuf =
-  try Ok (start Lexer.read lexbuf) with
-  | Lexer.LexicalError err -> Error (LexicalError err)
+  try Ok (start Lex.read lexbuf) with
+  | Lex.LexicalError err -> Error (LexicalError err)
   | _ ->
-      let pos = Lexer.get_position lexbuf in
+      let pos = Lex.get_position lexbuf in
       Error (SyntaxError pos)
 
 let parse_file src =
@@ -30,8 +30,8 @@ let ext_error_msg = "error:Invalid Extension"
 
 (** [string_of_error e] is the string representing error [e] *)
 let string_of_error = function
-  | LexicalError e -> LexerAlias.string_of_error e
-  | SyntaxError pos -> LexerAlias.format_error pos syntax_error_msg
+  | LexicalError e -> Lex.string_of_error e
+  | SyntaxError pos -> Lex.format_error pos syntax_error_msg
 
 (** [fold_error msg acc] is [acc] with error message [msg] folded in*)
 let fold_error msg = function
@@ -52,12 +52,12 @@ let parse_files files =
   |> List.fold_left ~f:fold_file ~init
   |> Result.map_error ~f:List.rev
 
-let print_lexical_error dst (err : Lexer.lexical_error) =
-  err.cause |> LexerAlias.string_of_error_cause
-  |> LexerAlias.Diagnostic.print_error dst err.position
+let print_lexical_error dst (err : Lex.lexical_error) =
+  err.cause |> Lex.string_of_error_cause
+  |> Lex.Diagnostic.print_error dst err.position
 
 let print_syntax_error dst pos =
-  LexerAlias.Diagnostic.print_error dst pos syntax_error_msg
+  Lex.Diagnostic.print_error dst pos syntax_error_msg
 
 module Diagnostic = struct
   (** [print_ast ast dst] prints the S-expression of [ast] into the

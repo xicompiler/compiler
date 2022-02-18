@@ -85,14 +85,14 @@ let try_sys_iter ~f lst =
 (** [lex_diagonistic ()] writes the lexer output to a diagnostic file. *)
 let lex_diagnostic () =
   try_sys_iter
-    ~f:(iter_file Lexer.Diagnostic.lex_to_file ".lexed")
+    ~f:(iter_file Lex.Diagnostic.lex_to_file ".lexed")
     !input_files
 
 (** [parse_diagonistic ()] writes the parser output to a diagnostic
     file. *)
 let parse_diagnostic () =
   try_sys_iter
-    ~f:(iter_file Parser.Diagnostic.parse_to_file ".parsed")
+    ~f:(iter_file Parse.Diagnostic.parse_to_file ".parsed")
     !input_files
 
 (** [filter_valid_files f] returns the files in [f] that have a valid Xi
@@ -116,7 +116,7 @@ let filter_valid_files files =
   List.filter files ~f
 
 (** [compile ()] compiles the input files. *)
-let compile () = Parser.parse_files !input_files
+let compile () = Parse.parse_files !input_files
 
 let () =
   parse_command ();

@@ -3,8 +3,8 @@ include module type of Parser
 (** An [error] is either a lexical error or a syntax error. Both
     variants carry the position at which they occur. *)
 type error =
-  | LexicalError of Lexer.lexical_error
-  | SyntaxError of Lexer.position
+  | LexicalError of Lex.lexical_error
+  | SyntaxError of Lex.position
 
 type start = (Lexing.lexbuf -> Parser.token) -> Lexing.lexbuf -> Ast.t
 (** [start] is the type of a parsing function that consumes a lexeme and
@@ -28,11 +28,11 @@ val parse_files : string list -> (unit, string list) result
 (** [parse_files files] calls [parse_file] for each file in [files], and
     is [Ok ()] if there are no errors, or [Error errs] on failure. *)
 
-val print_lexical_error : out_channel -> Lexer.lexical_error -> unit
+val print_lexical_error : out_channel -> Lex.lexical_error -> unit
 (** [print_lexical_error dst err] prints the lexical error [err] into
     the [dst] out channel. *)
 
-val print_syntax_error : out_channel -> Lexer.position -> unit
+val print_syntax_error : out_channel -> Lex.position -> unit
 (** [print_syntax_error dst err] prints the syntax error [err] into the
     [dst] out channel. *)
 
