@@ -1,8 +1,6 @@
 open Core
 open Frontend
 
-exception FileNotFoundError
-
 let usage_msg = "Usage: xic [options] <source files>"
 
 let input_files = ref []
