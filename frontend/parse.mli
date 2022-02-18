@@ -28,14 +28,6 @@ val parse_files : string list -> (unit, string list) result
 (** [parse_files files] calls [parse_file] for each file in [files], and
     is [Ok ()] if there are no errors, or [Error errs] on failure. *)
 
-val print_lexical_error : out_channel -> Lex.lexical_error -> unit
-(** [print_lexical_error dst err] prints the lexical error [err] into
-    the [dst] out channel. *)
-
-val print_syntax_error : out_channel -> Lex.position -> unit
-(** [print_syntax_error dst err] prints the syntax error [err] into the
-    [dst] out channel. *)
-
 (** The [Diagnostic] module cotains functions for generating diagnostic
     parsing output. *)
 module Diagnostic : sig

@@ -52,12 +52,10 @@ let parse_files files =
   |> List.fold_left ~f:fold_file ~init
   |> Result.map_error ~f:List.rev
 
-let print_lexical_error dst (err : Lex.lexical_error) =
-  err.cause |> Lex.string_of_error_cause
-  |> Lex.Diagnostic.print_error dst err.position
-
+(** [print_syntax_error dst err] prints the syntax error [err] into the
+    [dst] out channel. *)
 let print_syntax_error dst pos =
-  Lex.Diagnostic.print_error dst pos syntax_error_msg
+  Lex.Diagnostic.print_pos dst pos syntax_error_msg
 
 module Diagnostic = struct
   (** [print_ast ast dst] prints the S-expression of [ast] into the
@@ -68,7 +66,7 @@ module Diagnostic = struct
       message into the [dst] out channel. *)
   let print_result dst = function
     | Ok ast -> print_ast ast dst
-    | Error (LexicalError err) -> print_lexical_error dst err
+    | Error (LexicalError err) -> Lex.Diagnostic.print_error dst err
     | Error (SyntaxError err) -> print_syntax_error dst err
 
   (** [print_result_file dst] try to print the valid ast S-expression or

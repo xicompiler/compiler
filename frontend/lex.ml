@@ -2,6 +2,7 @@ open Core
 open Parser
 include Lexer
 
+(** [string_of_error_cause e] is the error message corresponding to [e] *)
 let string_of_error_cause = function
   | InvalidChar -> "error:Invalid character constant"
   | InvalidString -> "error:Invalid string constant"
@@ -94,6 +95,8 @@ module Diagnostic = struct
     in
     help []
 
+  (** [lex_tok_pos buf] consumes all tokens in [buf] and returns them as
+      a list with their positions. *)
   let lex_pos lexbuf =
     let flatten (res, pos) =
       let res' = Result.map_error ~f:(fun e -> e.cause) res in
@@ -103,8 +106,11 @@ module Diagnostic = struct
 
   let lex lexbuf = lexbuf |> lex_pos_rev |> List.rev_map ~f:fst
 
-  let print_error out ({ line; column } : Lexer.position) =
+  let print_pos out ({ line; column } : Lexer.position) =
     Printf.fprintf out "%d:%d %s\n" line column
+
+  let print_error out { cause; position } =
+    cause |> string_of_error_cause |> print_pos out position
 
   let lex_string s = s |> Lexing.from_string |> lex
 
@@ -115,7 +121,7 @@ module Diagnostic = struct
 
   let lex_to_channel ~src ~dst =
     let print_result (res, pos) =
-      res |> string_of_result |> print_error dst pos
+      res |> string_of_result |> print_pos dst pos
     in
     src |> Lexing.from_channel |> lex_pos |> List.iter ~f:print_result
 
