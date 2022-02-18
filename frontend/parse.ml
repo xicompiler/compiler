@@ -52,8 +52,6 @@ let parse_files files =
   |> List.fold_left ~f:fold_file ~init
   |> Result.map_error ~f:List.rev
 
-(** [print_syntax_error dst err] prints the syntax error [err] into the
-    [dst] out channel. *)
 let print_syntax_error dst pos =
   Lex.Diagnostic.print_pos dst pos syntax_error_msg
 

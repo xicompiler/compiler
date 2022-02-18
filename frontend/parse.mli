@@ -19,11 +19,6 @@ val parse : start:start -> Lexing.lexbuf -> parse_result
     [Error SyntaxError] if [start lexbuf] raises a syntax error, and
     [Error LexicalError] if [start lexbuf] raises a lexical error. *)
 
-val parse_file : string -> parse_result option
-(** [parse_file file] is [Some res] where [res] is the parsed result of
-    [file] if [file] is a [.xi] or [.ixi] file, or [None] if [file] is
-    not a Xi file. *)
-
 val parse_files : string list -> (unit, string list) result
 (** [parse_files files] calls [parse_file] for each file in [files], and
     is [Ok ()] if there are no errors, or [Error errs] on failure. *)
