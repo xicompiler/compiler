@@ -26,8 +26,8 @@ val parse_files : string list -> (unit, string list) result
 (** The [Diagnostic] module cotains functions for generating diagnostic
     parsing output. *)
 module Diagnostic : sig
-  val parse_to_file : src:string -> dst:string -> unit
-  (** [parse_to_file ~src ~dst] parses the file at path [src] and writes
-      the results to the file at path [dst], serialized in an
+  val parse_to_file : src:string -> out:string -> unit
+  (** [parse_to_file ~src ~out] parses the file at path [src] and writes
+      the results to the file at path [out], serialized in an
       S-expression. *)
 end

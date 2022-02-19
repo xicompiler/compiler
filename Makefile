@@ -13,6 +13,9 @@ clean: bisect-clean
 	find . -name '*.output' -delete
 	rm -f xic *.zip *.log
 
+cloc: clean
+	cloc --by-file --include-lang=OCaml . --exclude-dir=uutf-library
+
 bisect: bisect-clean
 	dune exec --instrument-with bisect_ppx --force ./test/main.exe
 	bisect-ppx-report html

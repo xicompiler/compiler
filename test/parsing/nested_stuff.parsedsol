@@ -4,7 +4,7 @@
     (:global len int 100) 
     (:global debug bool false) 
     (:global points ([] int)) 
-    (nestedstuff ((a int) (b int) (c int)) (int) (
+    (nesteoutuff ((a int) (b int) (c int)) (int) (
       (= (asdf bool) true) 
       (while (!= a 0) (
           (while (!= b 0) (

@@ -1100,7 +1100,7 @@ let set_decoder_encoding d e =
 
 (* Encode *)
 
-type dst =
+type out =
   [ `Channel of out_channel
   | `Buffer of Buffer.t
   | `Manual
@@ -1113,7 +1113,7 @@ type encode =
   ]
 
 type encoder = {
-  dst : dst;
+  out : out;
   (* output destination. *)
   encoding : encoding;
   (* encoded encoding. *)
@@ -1143,7 +1143,7 @@ type encoder = {
 let o_rem e = e.o_max - e.o_pos + 1
 (* remaining bytes to write in [e.o]. *)
 
-let dst e s j l =
+let out e s j l =
   (* set [e.o] with [s]. *)
   if j < 0 || l < 0 || j + l > Bytes.length s then invalid_bounds j l;
   e.o <- s;
@@ -1157,7 +1157,7 @@ let partial k e = function
       invalid_encode ()
 
 let flush k e =
-  match e.dst with
+  match e.out with
   (* get free storage in [d.o] and [k]ontinue. *)
   | `Manual ->
       e.k <- partial k;
@@ -1351,16 +1351,16 @@ let encode_fun = function
   | `UTF_16BE -> encode_utf_16be
   | `UTF_16LE -> encode_utf_16le
 
-let encoder encoding dst =
+let encoder encoding out =
   let o, o_pos, o_max =
-    match dst with
+    match out with
     | `Manual -> (Bytes.empty, 1, 0) (* implies o_rem e = 0. *)
     | `Buffer _
     | `Channel _ ->
         (Bytes.create io_buffer_size, 0, io_buffer_size - 1)
   in
   {
-    dst = (dst :> dst);
+    out = (out :> out);
     encoding = (encoding :> encoding);
     o;
     o_pos;
@@ -1375,16 +1375,16 @@ let encode e v = e.k e (v :> encode)
 
 let encoder_encoding e = e.encoding
 
-let encoder_dst e = e.dst
+let encoder_out e = e.out
 
 (* Manual sources and destinations. *)
 
 module Manual = struct
   let src = src
 
-  let dst = dst
+  let out = out
 
-  let dst_rem = o_rem
+  let out_rem = o_rem
 end
 
 (* Strings folders and Buffer encoders *)

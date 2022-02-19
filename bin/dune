@@ -1,3 +1,3 @@
 (executable
  (name main)
- (libraries frontend core))
+ (libraries compile core))

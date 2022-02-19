@@ -16,10 +16,9 @@ let parse ~start lexbuf =
       Error (SyntaxError pos)
 
 let parse_file src =
-  let ext = Caml.Filename.extension src in
-  let src = In_channel.create src in
-  let lb = Lexing.from_channel src in
-  match ext with
+  let ic = In_channel.create src in
+  let lb = Lexing.from_channel ic in
+  match Caml.Filename.extension src with
   | ".xi" -> Some (parse ~start:Parser.source lb)
   | ".ixi" -> Some (parse ~start:Parser.interface lb)
   | _ -> None
@@ -52,29 +51,29 @@ let parse_files files =
   |> List.fold_left ~f:fold_file ~init
   |> Result.map_error ~f:List.rev
 
-let print_syntax_error dst pos =
-  Lex.Diagnostic.print_position dst pos syntax_error_msg
+let print_syntax_error out pos =
+  Lex.Diagnostic.print_position out pos syntax_error_msg
 
 module Diagnostic = struct
-  (** [print_ast ast dst] prints the S-expression of [ast] into the
-      [dst] out channel. *)
-  let print_ast ast dst = ast |> Ast.sexp_of_t |> SexpPrinter.print dst
+  (** [print_ast ast out] prints the S-expression of [ast] into the
+      [out] out channel. *)
+  let print_ast ast out = ast |> Ast.sexp_of_t |> SexpPrinter.print out
 
-  (** [print_result dst] prints the valid ast S-expression or an error
-      message into the [dst] out channel. *)
-  let print_result dst = function
-    | Ok ast -> print_ast ast dst
-    | Error (LexicalError err) -> Lex.Diagnostic.print_error dst err
-    | Error (SyntaxError err) -> print_syntax_error dst err
+  (** [print_result out] prints the valid ast S-expression or an error
+      message into the [out] out channel. *)
+  let print_result out = function
+    | Ok ast -> print_ast ast out
+    | Error (LexicalError err) -> Lex.Diagnostic.print_error out err
+    | Error (SyntaxError err) -> print_syntax_error out err
 
-  (** [print_result_file dst] try to print the valid ast S-expression or
-      an error message into the file at [dst]. Raises: [Sys_error] if an
-      output channel to [dst] cannot be opened. *)
-  let print_result_file dst res =
-    Out_channel.with_file ~f:(fun oc -> print_result oc res) dst
+  (** [print_result_file out] try to print the valid ast S-expression or
+      an error message into the file at [out]. Raises: [Sys_error] if an
+      output channel to [out] cannot be opened. *)
+  let print_result_file out res =
+    Out_channel.with_file ~f:(fun oc -> print_result oc res) out
 
-  let parse_to_file ~src ~dst =
-    src |> parse_file |> Option.iter ~f:(print_result_file dst)
+  let parse_to_file ~src ~out =
+    src |> parse_file |> Option.iter ~f:(print_result_file out)
 end
 
 include Parser

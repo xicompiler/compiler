@@ -35,14 +35,14 @@ module Diagnostic : sig
       by [pos] *)
 
   val print_error : Out_channel.t -> lexical_error -> unit
-  (** [print_error dst err] prints an error message detailing the
+  (** [print_error out err] prints an error message detailing the
       position and cause of [err] to out channel [out]*)
 
   val lex_to_channel : In_channel.t -> Out_channel.t -> unit
   (** [lex_to_channel in_file out_file] lexes [src] and writes the
-      results to [dst] *)
+      results to [out] *)
 
-  val lex_to_file : src:string -> dst:string -> unit
-  (** [lex_to_file ~src ~dst] lexes the file at path [src] and writes
-      the results to the file at path [dst] *)
+  val lex_to_file : src:string -> out:string -> unit
+  (** [lex_to_file ~src ~out] lexes the file at path [src] and writes
+      the results to the file at path [out] *)
 end

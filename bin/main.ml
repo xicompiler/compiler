@@ -1,132 +1,79 @@
 open Core
-open Frontend
+
+type args = {
+  files : string list;
+  out_dir : string option;
+  src_dir : string option;
+  lex : bool;
+  parse : bool;
+  help : bool;
+}
+(** [args] is the type of command line arguments to the Xi compiler *)
 
 let usage_msg = "Usage: xic [options] <source files>"
 
-let input_files = ref []
+let files = ref []
 
-let output_path = ref ""
+let out_dir = ref ""
 
-let src_path = ref ""
+let src_dir = ref ""
 
-let to_lex = ref false
+let lex = ref false
 
-let to_parse = ref false
+let parse = ref false
 
-let display_help = ref false
-
-(** [try_iter e] evaluates [e] and is [()] regardless of whether the
-    evaluation of [e] raises an exception. *)
-let try_iter e =
-  try e with
-  | _ -> ()
-
-(** [file_path ~path ~file] is [path/file] if path is non-empty and is
-    [file] otherwise *)
-let file_path ~path ~file =
-  if String.is_empty path then file
-  else Printf.sprintf "%s/%s" path file
-
-(** [iter_file f \[extension\] input_file] performs function f on a
-    given [input_file] to the previously specified (or default root
-    directory) path, putting the result in a file with the same prefix
-    as [input_file] but with a [ext] extension. *)
-let iter_file f ext input_file =
-  let output_file = Filename.chop_extension input_file ^ ext in
-  let output_file_path =
-    file_path ~path:!output_path ~file:output_file
-  in
-  let output_file_dir = Filename.dirname output_file_path in
-  try_iter (Core.Unix.mkdir_p output_file_dir);
-  f
-    ~src:(file_path ~path:!src_path ~file:input_file)
-    ~dst:output_file_path
+let help = ref false
 
 let speclist =
   [
     ( "-D",
-      Arg.Set_string output_path,
+      Arg.Set_string out_dir,
       "Specify where to place generated diagnostic files." );
     ( "-sourcepath",
-      Arg.Set_string src_path,
+      Arg.Set_string src_dir,
       "Specify where to find input source files." );
-    ("--lex", Arg.Set to_lex, "Generate output from lexical analysis.");
+    ("--lex", Arg.Set lex, "Generate output from lexical analysis.");
     ( "--parse",
-      Arg.Set to_parse,
+      Arg.Set parse,
       "Generate output from syntactic analysis." );
-    ("--help", Arg.Set display_help, "Print a synopsis of options.");
-    ("-help", Arg.Set display_help, "Print a synopsis of options.");
+    ("--help", Arg.Set help, "Print a synopsis of options.");
+    ("-help", Arg.Set help, "Print a synopsis of options.");
   ]
 
 (** [print_help ()] prints the help message. *)
 let print_help () = print_string (Arg.usage_string speclist usage_msg)
 
-(** [try_get_files ()] attempts to parse a list of files from command
-    line arguments, mutating [input_files] to reflect the parsed files. *)
-let try_get_files () =
-  let file_acc f = input_files := f :: !input_files in
-  try Arg.parse speclist file_acc usage_msg with
-  | _ -> print_help ()
+(** [none_if_empty s] is [None] if [s] is [""] and [Some s] otherwise. *)
+let none_if_empty s = if String.is_empty s then None else Some s
 
-(** [parse_command ()] parses the command and command line arguments. *)
-let parse_command () =
-  try_get_files ();
-  if !display_help then print_help ()
+(** [parse_args ()] is [Some args] if [args] were succesfully parsed
+    from the command line and [None] otherwise. *)
+let parse_args () =
+  let file_acc f = files := f :: !files in
+  Option.try_with (fun () ->
+      Arg.parse speclist file_acc usage_msg;
+      {
+        files = !files;
+        out_dir = none_if_empty !out_dir;
+        src_dir = none_if_empty !src_dir;
+        lex = !lex;
+        parse = !parse;
+        help = !help;
+      })
 
-(** [try_sys_iter f \[e1; ...; en\]] is [f e1; ...; f en]. If
-    [Sys_error] is raised during evaluation, the error message is
-    printed to stdout. *)
-let try_sys_iter ~f lst =
-  try List.iter ~f lst with
-  | Sys_error err -> print_endline err
-
-(** [lex_diagonistic ()] writes the lexer output to a diagnostic file. *)
-let lex_diagnostic () =
-  try_sys_iter
-    ~f:(iter_file Lex.Diagnostic.lex_to_file ".lexed")
-    !input_files
-
-(** [parse_diagonistic ()] writes the parser output to a diagnostic
-    file. *)
-let parse_diagnostic () =
-  try_sys_iter
-    ~f:(iter_file Parse.Diagnostic.parse_to_file ".parsed")
-    !input_files
-
-(** [filter_valid_files f] returns the files in [f] that have a valid Xi
-    extension and exist in the file system. *)
-let filter_valid_files files =
-  let f file =
-    if not (Caml.Sys.file_exists file) then (
-      printf "Warning: %s does not exist - ignored\n" file;
-      false)
-    else
-      let ext = Caml.Filename.extension file in
-      match ext with
-      | ".xi"
-      | ".ixi" ->
-          true
-      | _ ->
-          printf "Warning: %s is not a .xi or .ixi file - ignored\n"
-            file;
-          false
+(** [try_compile args] attempts to compile a program described by
+    arguments [args], exiting with code 1 on error. *)
+let try_compile { files; out_dir; src_dir; lex; parse; help } =
+  if List.is_empty files || help then print_help ();
+  let iter_errors es =
+    List.iter ~f:print_endline es;
+    if not (lex || parse) then exit 1
   in
-  List.filter files ~f
-
-(** [compile ()] compiles the input files. *)
-let compile () = Parse.parse_files !input_files
+  files
+  |> Compile.compile ?src_dir ?out_dir ~lex ~parse
+  |> Result.iter_error ~f:iter_errors
 
 let () =
-  parse_command ();
-  if List.is_empty !input_files then print_help ();
-  input_files := filter_valid_files !input_files;
-  if !to_lex then lex_diagnostic ();
-  if !to_parse then parse_diagnostic ();
-  if !to_lex || !to_parse then exit 0;
-  if not (String.is_empty !output_path) then
-    print_endline "Warning: no diagnostic flags were used";
-  match compile () with
-  | Ok () -> exit 0
-  | Error errors ->
-      List.iter ~f:print_endline errors;
-      exit 1
+  match parse_args () with
+  | Some args -> try_compile args
+  | None -> print_help ()

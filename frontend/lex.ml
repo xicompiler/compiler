@@ -119,14 +119,14 @@ module Diagnostic = struct
     | Ok tok -> string_of_token tok
     | Result.Error e -> string_of_error_cause e
 
-  let lex_to_channel src dst =
+  let lex_to_channel src out =
     let print_result (res, pos) =
-      res |> string_of_result |> print_position dst pos
+      res |> string_of_result |> print_position out pos
     in
     src |> Lexing.from_channel |> lex_pos |> List.iter ~f:print_result
 
-  let lex_to_file ~src ~dst =
+  let lex_to_file ~src ~out =
     In_channel.with_file
-      ~f:(fun src -> Out_channel.with_file ~f:(lex_to_channel src) dst)
+      ~f:(fun src -> Out_channel.with_file ~f:(lex_to_channel src) out)
       src
 end

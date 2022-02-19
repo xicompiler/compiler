@@ -19,7 +19,7 @@ val iter_all :
   interface:unit apply ->
   string list ->
   (unit, string list) result
-(** [iter_all ~source ~dst \[f1;...; fn\]] is [Ok ()] if each of [bind
+(** [iter_all ~source ~out \[f1;...; fn\]] is [Ok ()] if each of [bind
     ~source ~inteface f1, ..., bind ~source ~interface fn] are [Ok ()],
     or is [Error errs]] where [errs] is a list of all error messages
     generated during each application of [bind] *)

@@ -1,7 +1,7 @@
 open Core
 
-(** [file_not_found s] is "s: No such file" *)
-let file_not_found = Printf.sprintf "%s: No such file"
+(** [no_such_file s] is "s: No such file" *)
+let no_such_file = Printf.sprintf "%s: No such file"
 
 (** [not_xi_file s] is "s: Not a Xi file" *)
 let not_xi_file = Printf.sprintf "%s: Not a Xi file"
@@ -27,7 +27,7 @@ let try_apply file apply =
     let f ic = ic |> Lexing.from_channel |> apply in
     In_channel.with_file ~f file
   in
-  let map_err _ = Error (file_not_found file) in
+  let map_err _ = Error (no_such_file file) in
   map |> Result.try_with
   |> Result.map_error ~f:map_err
   |> join_error |> Result.join
