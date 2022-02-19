@@ -15,7 +15,7 @@ let string_of_error { position; cause } =
   cause |> string_of_error_cause |> format_error position
 
 module Diagnostic = struct
-  type result = (Parser.token, lexical_error) Result.t
+  type lex_result = (Parser.token, lexical_error) result
 
   (** [string_of_char_token c] is the string representing char token [c] *)
   let string_of_char_token u =
@@ -80,7 +80,7 @@ module Diagnostic = struct
 
   let read_result lexbuf =
     try Ok (read lexbuf) with
-    | LexicalError e -> Result.Error e
+    | LexicalError e -> Error e
 
   (** [lex_pos_rev lexbuf] is a reversed list of [(result, position)]
       pairs of all tokens lexed from lexbuf *)
@@ -91,7 +91,7 @@ module Diagnostic = struct
       match res with
       | Ok EOF -> acc
       | Ok _ -> help ((res, pos) :: acc)
-      | Result.Error _ -> (res, pos) :: acc
+      | Error _ -> (res, pos) :: acc
     in
     help []
 
@@ -106,11 +106,11 @@ module Diagnostic = struct
 
   let lex lexbuf = lexbuf |> lex_pos_rev |> List.rev_map ~f:fst
 
-  let print_pos out ({ line; column } : Lexer.position) =
+  let print_position out { line; column } =
     Printf.fprintf out "%d:%d %s\n" line column
 
   let print_error out { cause; position } =
-    cause |> string_of_error_cause |> print_pos out position
+    cause |> string_of_error_cause |> print_position out position
 
   let lex_string s = s |> Lexing.from_string |> lex
 
@@ -119,22 +119,14 @@ module Diagnostic = struct
     | Ok tok -> string_of_token tok
     | Result.Error e -> string_of_error_cause e
 
-  let lex_to_channel ~src ~dst =
+  let lex_to_channel src dst =
     let print_result (res, pos) =
-      res |> string_of_result |> print_pos dst pos
+      res |> string_of_result |> print_position dst pos
     in
     src |> Lexing.from_channel |> lex_pos |> List.iter ~f:print_result
 
   let lex_to_file ~src ~dst =
-    let src = In_channel.create src in
-    let dst = Out_channel.create dst in
-    try
-      lex_to_channel ~src ~dst;
-      In_channel.close src;
-      Out_channel.close dst
-    with
-    | e ->
-        In_channel.close src;
-        Out_channel.close_no_err dst;
-        raise e
+    In_channel.with_file
+      ~f:(fun src -> Out_channel.with_file ~f:(lex_to_channel src) dst)
+      src
 end

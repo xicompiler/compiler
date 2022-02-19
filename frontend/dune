@@ -1,6 +1,6 @@
 (library
  (name frontend)
- (libraries uutf core)
+ (libraries uutf core sexpPrinter)
  (private_modules parser lexer)
  (instrumentation
   (backend bisect_ppx)))

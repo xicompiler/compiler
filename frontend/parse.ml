@@ -53,7 +53,7 @@ let parse_files files =
   |> Result.map_error ~f:List.rev
 
 let print_syntax_error dst pos =
-  Lex.Diagnostic.print_pos dst pos syntax_error_msg
+  Lex.Diagnostic.print_position dst pos syntax_error_msg
 
 module Diagnostic = struct
   (** [print_ast ast dst] prints the S-expression of [ast] into the
@@ -71,14 +71,7 @@ module Diagnostic = struct
       an error message into the file at [dst]. Raises: [Sys_error] if an
       output channel to [dst] cannot be opened. *)
   let print_result_file dst res =
-    let oc = Out_channel.create dst in
-    try
-      print_result oc res;
-      Out_channel.close oc
-    with
-    | e ->
-        Out_channel.close_no_err oc;
-        raise e
+    Out_channel.with_file ~f:(fun oc -> print_result oc res) dst
 
   let parse_to_file ~src ~dst =
     src |> parse_file |> Option.iter ~f:(print_result_file dst)

@@ -1,6 +1,7 @@
 type nonrec 'a file_result = ('a, string) result
-(** A [result] is either [Ok ()] or [Error msg] where [msg] is a string
-    detailing the error. *)
+(** A [result] is either [Ok x] or [Error msg] where [msg] is a string
+    detailing the error and [x] is the successful result of some
+    calculation. *)
 
 type 'a apply = Lexing.lexbuf -> 'a file_result
 (** [apply] is the type of a function that can be applied to a lexer

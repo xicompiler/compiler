@@ -22,7 +22,7 @@ let join_error = function
 (** [try_apply file apply] is [apply lexbuf] if [lexbuf] is a lexer
     buffer created from [file], or [Error] if an error ocurrs while
     opening the file. *)
-let try_apply file (apply : 'a apply) =
+let try_apply file apply =
   let map () =
     let f ic = ic |> Lexing.from_channel |> apply in
     In_channel.with_file ~f file
