@@ -70,7 +70,7 @@ let try_compile { files; out_dir; src_dir; lex; parse; help } =
     if not (lex || parse) then exit 1
   in
   files
-  |> Compile.compile ?src_dir ?out_dir ~lex ~parse
+  |> Compiler.compile ?src_dir ?out_dir ~lex ~parse
   |> Result.iter_error ~f:iter_errors
 
 let () =
