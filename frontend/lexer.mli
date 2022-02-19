@@ -11,16 +11,16 @@ type error_cause =
   | InvalidString
   | InvalidSource
 
-type lexical_error = {
+type error = {
   cause : error_cause;
   position : position;
 }
 (** An [error] describes the cause and position of an error encountered
     during lexing *)
 
-exception LexicalError of lexical_error
-(** An [LexicalError] is a lexical error with an associated position
-    where the error ocurred in the buffer *)
+exception Error of error
+(** An [Error] is a lexical error with an associated position where the
+    error ocurred in the buffer *)
 
 val read : Lexing.lexbuf -> Parser.token
 (** [read lexbuf] consumes the next lexeme in [lexbuf] and returns the

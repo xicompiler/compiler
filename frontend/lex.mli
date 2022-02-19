@@ -2,7 +2,7 @@ include module type of Lexer
 
 open Core
 
-val string_of_error : lexical_error -> string
+val string_of_error : error -> string
 (** [string_of_error_cause e] is the error message corresponding to [e]
     containing both its cause and poisiton *)
 
@@ -13,19 +13,19 @@ val format_position : position -> string -> string
 (** The [Diagnostic] module cotains functions for generating diagnostic
     lexer output. *)
 module Diagnostic : sig
-  type lex_result = (Parser.token, lexical_error) result
-  (** A [lex_result] is either a token or a lexical error *)
+  type nonrec result = (Parser.token, error) result
+  (** A [result] is either a token or a lexical error *)
 
-  val read_result : Lexing.lexbuf -> lex_result
+  val read_result : Lexing.lexbuf -> result
   (** [read lexbuf] consumes the next lexeme in [lexbuf] and returns the
       corresponding token [Ok tok] on success or [LexicalError e] on
       error. *)
 
-  val lex : Lexing.lexbuf -> lex_result list
+  val lex : Lexing.lexbuf -> result list
   (** [lex_tok buf] consumes all tokens in [buf] and returns them as a
       list. *)
 
-  val lex_string : string -> lex_result list
+  val lex_string : string -> result list
   (** [lex_string s] consumes all tokens in [s] and returns them as a
       list. *)
 
@@ -34,7 +34,7 @@ module Diagnostic : sig
       [out] followed by a newline where [line] and [col] are described
       by [pos] *)
 
-  val print_error : Out_channel.t -> lexical_error -> unit
+  val print_error : Out_channel.t -> error -> unit
   (** [print_error out err] prints an error message detailing the
       position and cause of [err] to out channel [out]*)
 

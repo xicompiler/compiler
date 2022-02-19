@@ -27,10 +27,9 @@ let try_apply file apply =
     let f ic = ic |> Lexing.from_channel |> apply in
     In_channel.with_file ~f file
   in
-  let map_err _ = Error (no_such_file file) in
-  map |> Result.try_with
-  |> Result.map_error ~f:map_err
-  |> join_error |> Result.join
+  let error = Error (no_such_file file) in
+  map |> Option.try_with |> Result.of_option ~error |> join_error
+  |> Result.join
 
 let bind ~source ~interface file =
   match Caml.Filename.extension file with

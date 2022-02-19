@@ -1,16 +1,16 @@
 open Core
 
 type error =
-  | LexicalError of Lex.lexical_error
+  | LexicalError of Lex.error
   | SyntaxError of Lex.position
 
 type start = (Lexing.lexbuf -> Parser.token) -> Lexing.lexbuf -> Ast.t
 
-type parse_result = (Ast.t, error) result
+type nonrec result = (Ast.t, error) result
 
 let parse ~start lexbuf =
   try Ok (start Lex.read lexbuf) with
-  | Lex.LexicalError err -> Error (LexicalError err)
+  | Lex.Error err -> Error (LexicalError err)
   | _ ->
       let pos = Lex.get_position lexbuf in
       Error (SyntaxError pos)

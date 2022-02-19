@@ -15,7 +15,7 @@ let string_of_error { position; cause } =
   cause |> string_of_error_cause |> format_position position
 
 module Diagnostic = struct
-  type lex_result = (Parser.token, lexical_error) result
+  type nonrec result = (Parser.token, error) result
 
   (** [string_of_char_token c] is the string representing char token [c] *)
   let string_of_char_token u =
@@ -80,7 +80,7 @@ module Diagnostic = struct
 
   let read_result lexbuf =
     try Ok (read lexbuf) with
-    | LexicalError e -> Error e
+    | Error e -> Result.Error e
 
   (** [lex_pos_rev lexbuf] is a reversed list of [(result, position)]
       pairs of all tokens lexed from lexbuf *)

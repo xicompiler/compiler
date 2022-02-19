@@ -9,7 +9,7 @@ let replace_ext ~ext ~file = Filename.chop_extension file ^ ext
 
 (** [try_iter thunk] evaluates [thunk ()] and is [()] regardless of
     whether the evaluation raises an exception. *)
-let try_iter thunk = thunk |> Result.try_with |> ignore
+let try_iter thunk = thunk |> Option.try_with |> ignore
 
 (** [diagnostic ~src_dir ~out_dir ~ext ~f] is [f ~src ~out] where [f] is
     a supplied diagnostic function, [src] is the path to the diagnostic
