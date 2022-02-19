@@ -8,11 +8,11 @@ let string_of_error_cause = function
   | InvalidString -> "error:Invalid string constant"
   | InvalidSource -> "error:Illegal character in source file"
 
-let format_error { line; column } =
+let format_position { line; column } =
   Printf.sprintf "%d:%d %s\n" line column
 
 let string_of_error { position; cause } =
-  cause |> string_of_error_cause |> format_error position
+  cause |> string_of_error_cause |> format_position position
 
 module Diagnostic = struct
   type lex_result = (Parser.token, lexical_error) result

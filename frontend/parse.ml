@@ -31,7 +31,7 @@ let ext_error_msg = "error:Invalid Extension"
 (** [string_of_error e] is the string representing error [e] *)
 let string_of_error = function
   | LexicalError e -> Lex.string_of_error e
-  | SyntaxError pos -> Lex.format_error pos syntax_error_msg
+  | SyntaxError pos -> Lex.format_position pos syntax_error_msg
 
 (** [fold_error msg acc] is [acc] with error message [msg] folded in*)
 let fold_error msg = function

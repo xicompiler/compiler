@@ -6,9 +6,9 @@ val string_of_error : lexical_error -> string
 (** [string_of_error_cause e] is the error message corresponding to [e]
     containing both its cause and poisiton *)
 
-val format_error : position -> string -> string
-(** [string_of_error pos s] is the error message [line:col s] to [out]
-    followed by a newline where [line] and [col] are described by [pos] *)
+val format_position : position -> string -> string
+(** [format_position pos s] is the message [line:col s] followed by a
+    newline where [line] and [col] are described by [pos] *)
 
 (** The [Diagnostic] module cotains functions for generating diagnostic
     lexer output. *)
