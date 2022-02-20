@@ -21,14 +21,14 @@ type nonrec result = (unit, string list) result
 (** A [result] is either [Ok ()] or [Error es], where [es] is the list
     of error message detailing the compilation failure. *)
 
-val compile_opt :
+val with_options :
   ?lex:bool ->
   ?parse:bool ->
   ?src_dir:string ->
   ?out_dir:string ->
   string list ->
   result
-(** [compile_opt ~lex ~parse ~src_dir ~out_dir files] compiles each of
+(** [with_options ~lex ~parse ~src_dir ~out_dir files] compiles each of
     file of [files], performing lexing diagnostics iff [lex] is [true]
     and parsing diagnostics iff [parse] is true from output directory
     [src_dir] to output directory [out_dir] both of which are the

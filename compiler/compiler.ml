@@ -88,17 +88,21 @@ let compile_file src_path =
 
 open Args
 
-let compile { lex; parse; src_dir; out_dir; files; _ } =
-  let map file =
-    let src_path = make_path ~dir:src_dir file in
-    if parse then
-      ignore (parse_diagnostic_file ~dir:out_dir ~file src_path);
-    if lex then ignore (lex_diagnostic_file ~dir:out_dir ~file src_path);
-    compile_file src_path
-  in
-  files |> List.rev_map ~f:map |> Result.combine_errors_unit
+(** [compile_file_options args file] compiles file [file] with command
+    line arguments [args] *)
+let compile_file_options { lex; parse; src_dir; out_dir; _ } file =
+  let src_path = make_path ~dir:src_dir file in
+  if parse then
+    ignore (parse_diagnostic_file ~dir:out_dir ~file src_path);
+  if lex then ignore (lex_diagnostic_file ~dir:out_dir ~file src_path);
+  compile_file src_path
 
-let compile_opt
+let compile args =
+  args.files
+  |> List.rev_map ~f:(compile_file_options args)
+  |> Result.combine_errors_unit
+
+let with_options
     ?(lex = default.lex)
     ?(parse = default.parse)
     ?src_dir
