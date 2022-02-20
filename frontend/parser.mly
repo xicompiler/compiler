@@ -265,6 +265,7 @@ stmt:
   | stmt = while_stmt
   | stmt = semicolon_terminated; SEMICOLON?
     { stmt }
+  ;
 
 if_stmt:
   | IF; e = expr; stmt1 = stmt; stmt2 = ioption(else_stmt)
