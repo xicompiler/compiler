@@ -1,0 +1,3 @@
+(library
+ (name compiler)
+ (libraries core frontend))

@@ -1,7 +1,5 @@
 open OUnit2
-open Parsing
-open Parsing.Ast
-open Parsing.ParserDebug
+open Frontend
 
 (** [file_contents in_file] is a string containing the contents of
     [in_file]. *)
@@ -11,14 +9,14 @@ let file_contents in_file =
   close_in ch;
   s
 
-(** [parsing_file_test name ~src ~dst ~reference] constructs an OUnit
+(** [parsing_file_test name ~src ~out ~reference] constructs an OUnit
     test with name [name] asserting that following
-    [parse_to_file ~src ~dst], the contents of [dst] and [reference] are
+    [parse_to_file ~src ~out], the contents of [out] and [reference] are
     equal. *)
-let parsing_file_test name ~src ~dst ~reference =
+let parsing_file_test name ~src ~out ~reference =
   let expected = file_contents reference in
-  ignore (parse_to_file ~src ~dst);
-  let actual = file_contents dst in
+  Result.get_ok (Parse.Diagnostic.file_to_file ~src ~out);
+  let actual = file_contents out in
   name >:: fun _ ->
   try
     assert_equal
@@ -36,9 +34,9 @@ let parsing_file_tests dir =
         file |> Filename.remove_extension |> Printf.sprintf "%s/%s" dir
       in
       let src = name ^ ext in
-      let dst = name ^ ".output" in
+      let out = name ^ ".output" in
       let reference = name ^ ".parsedsol" in
-      Some (parsing_file_test name ~src ~dst ~reference)
+      Some (parsing_file_test name ~src ~out ~reference)
     else None
   in
   Sys.readdir dir |> Array.to_list |> List.filter_map make_test

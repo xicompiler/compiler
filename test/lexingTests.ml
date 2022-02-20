@@ -1,7 +1,7 @@
 open OUnit2
-open Parsing
-open Parsing.Lexer
-open Parsing.Parser
+open Frontend
+open Frontend.Lex
+open Frontend.Parse
 
 (** [char_token_of_int i] is a [CHAR] token carrying a utf8 codepoint
     with code [i]. *)
@@ -15,7 +15,7 @@ let char_token_of_char c = CHAR (Uchar.of_char c)
     [e] are equal. *)
 let lexing_test test_name input expected =
   test_name >:: fun _ ->
-  assert_equal (LexerDebug.lex_string input) expected
+  assert_equal (Lex.Diagnostic.lex_string input) expected
 
 (** [lexing_test_ok n i e] calls [lexing_test] with [n], [i], and [e]
     mapped as valid tokens. *)
@@ -35,14 +35,13 @@ let file_contents in_file =
   close_in ch;
   s
 
-(** [lexing_file_test name ~src ~dst ~reference] constructs an OUnit
-    test with name [name] asserting that following
-    [lex_to_file ~src ~dst], the contents of [dst] and [reference] are
-    equal. *)
-let lexing_file_test name ~src ~dst ~reference =
+(** [lexing_file_test name ~src ~out ~reference] constructs an OUnit
+    test with name [name] asserting that following [to_file ~src ~out],
+    the contents of [out] and [reference] are equal. *)
+let lexing_file_test name ~src ~out ~reference =
   let expected = file_contents reference in
-  LexerDebug.lex_to_file ~src ~dst;
-  let actual = file_contents dst in
+  Result.get_ok (Lex.Diagnostic.file_to_file ~src ~out);
+  let actual = file_contents out in
   name >:: fun _ -> assert_equal expected actual
 
 (* Maps each file in [dir] using [lexing_file_test]. *)
@@ -53,9 +52,9 @@ let lexing_file_tests dir =
         file |> Filename.remove_extension |> Printf.sprintf "%s/%s" dir
       in
       let src = name ^ ".xi" in
-      let dst = name ^ ".output" in
+      let out = name ^ ".output" in
       let reference = name ^ ".lexedsol" in
-      Some (lexing_file_test name ~src ~dst ~reference)
+      Some (lexing_file_test name ~src ~out ~reference)
     else None
   in
   Sys.readdir dir |> Array.to_list |> List.filter_map make_test

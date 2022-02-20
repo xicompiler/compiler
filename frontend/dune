@@ -1,6 +1,7 @@
 (library
- (name parsing)
- (libraries uutf core)
+ (name frontend)
+ (libraries unicode core sexpPrinter xiFile)
+ (private_modules parser lexer)
  (instrumentation
   (backend bisect_ppx)))
 

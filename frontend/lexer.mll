@@ -11,23 +11,12 @@ type error_cause =
   | InvalidString
   | InvalidSource
 
-type lexical_error = {
+type error = {
   cause : error_cause;
   position : position;
 }
 
-exception LexicalError of lexical_error
-
-let string_of_error_cause = function
-| InvalidChar -> "error:Invalid character constant"
-| InvalidString -> "error:Invalid string constant"
-| InvalidSource -> "error:Illegal character in source file"
-
-let format_error { line; column } =
-  Printf.sprintf "%d:%d %s\n" line column
-
-let string_of_error { position; cause } =
-  cause |> string_of_error_cause |> format_error position
+exception Error of error
 
 let ( >>= ) = Option.bind
 let ( >>| ) o f = Option.map f o
@@ -72,7 +61,7 @@ let get_position ({ lex_start_p = p; _ } : Lexing.lexbuf) =
 (** [make_error cause lexbuf] is an [Error] with the specified cause and the
     current position of the lexer buffer. *)
 let make_error cause lexbuf =
-  LexicalError { cause; position = get_position lexbuf }
+  Error { cause; position = get_position lexbuf }
 
 (** [parse_ascii_char s] is the first ascii character of the lexeme last
     lexed from [lexbuf], wrapped in a [Uchar.t]. Requires: at least one
