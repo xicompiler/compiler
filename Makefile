@@ -1,4 +1,4 @@
-.PHONY: test
+.PHONY: test xic
 
 build:
 	dune build

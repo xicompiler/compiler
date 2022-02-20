@@ -1,28 +1,20 @@
 open Core
-
-type args = {
-  files : string list;
-  out_dir : string option;
-  src_dir : string option;
-  lex : bool;
-  parse : bool;
-  help : bool;
-}
-(** [args] is the type of command line arguments to the Xi compiler *)
+open Compiler
+open Args
 
 let usage_msg = "Usage: xic [options] <source files>"
 
-let files = ref []
+let files = ref default.files
 
 let out_dir = ref ""
 
 let src_dir = ref ""
 
-let lex = ref false
+let lex = ref default.lex
 
-let parse = ref false
+let parse = ref default.parse
 
-let help = ref false
+let help = ref default.help
 
 let speclist =
   [
@@ -43,7 +35,7 @@ let speclist =
 (** [print_help ()] prints the help message. *)
 let print_help () = print_string (Arg.usage_string speclist usage_msg)
 
-(** [none_if_empty s] is [None] if [s] is [""] and [Some s] otherwise. *)
+(** [none_if_empty s] is [None] iff [s] is [""] and [Some s] otherwise*)
 let none_if_empty s = if String.is_empty s then None else Some s
 
 (** [parse_args ()] is [Some args] if [args] were succesfully parsed
@@ -63,15 +55,13 @@ let parse_args () =
 
 (** [try_compile args] attempts to compile a program described by
     arguments [args], exiting with code 1 on error. *)
-let try_compile { files; out_dir; src_dir; lex; parse; help } =
+let try_compile ({ files; lex; parse; help; _ } as args) =
   if List.is_empty files || help then print_help ();
   let iter_errors es =
     List.iter ~f:print_endline es;
     if not (lex || parse) then exit 1
   in
-  files
-  |> Compiler.compile ?src_dir ?out_dir ~lex ~parse
-  |> Result.iter_error ~f:iter_errors
+  args |> compile |> Result.iter_error ~f:iter_errors
 
 let () =
   match parse_args () with

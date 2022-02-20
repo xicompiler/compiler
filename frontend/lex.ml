@@ -9,7 +9,7 @@ let string_of_error_cause = function
   | InvalidSource -> "error:Illegal character in source file"
 
 let format_position { line; column } =
-  Printf.sprintf "%d:%d %s\n" line column
+  Printf.sprintf "%d:%d %s" line column
 
 let string_of_error { position; cause } =
   cause |> string_of_error_cause |> format_position position
@@ -109,9 +109,6 @@ module Diagnostic = struct
   let print_position out { line; column } =
     Printf.fprintf out "%d:%d %s\n" line column
 
-  let print_error out { cause; position } =
-    cause |> string_of_error_cause |> print_position out position
-
   let lex_string s = s |> Lexing.from_string |> lex
 
   (** [string_of_result r] is the string representation of [r] *)
@@ -119,14 +116,17 @@ module Diagnostic = struct
     | Ok tok -> string_of_token tok
     | Result.Error e -> string_of_error_cause e
 
-  let lex_to_channel src out =
+  (** [to_channel lexbuf out] lexes [lexbuf] and writes the results to
+      [out] *)
+  let to_channel lexbuf out =
     let print_result (res, pos) =
       res |> string_of_result |> print_position out pos
     in
-    src |> Lexing.from_channel |> lex_pos |> List.iter ~f:print_result
+    lexbuf |> lex_pos |> List.iter ~f:print_result
 
-  let lex_to_file ~src ~out =
-    In_channel.with_file
-      ~f:(fun src -> Out_channel.with_file ~f:(lex_to_channel src) out)
-      src
+  let to_file lexbuf out =
+    Out_channel.with_file ~f:(to_channel lexbuf) out
+
+  let file_to_file ~src ~out =
+    XiFile.bind_same ~f:(fun buf -> Ok (to_file buf out)) src
 end

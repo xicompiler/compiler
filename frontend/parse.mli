@@ -1,3 +1,5 @@
+open Core
+
 include module type of Parser
 
 (** An [error] is either a lexical error or a syntax error. Both
@@ -19,11 +21,29 @@ val parse : start:start -> Lexing.lexbuf -> result
     [Error SyntaxError] if [start lexbuf] raises a syntax error, and
     [Error LexicalError] if [start lexbuf] raises a lexical error. *)
 
+val string_of_error : error -> string
+(** [string_of_error e] is the string representing error [e] *)
+
+val bind :
+  f:(start -> Lexing.lexbuf -> 'a XiFile.result) ->
+  string ->
+  'a XiFile.result
+(** Let [lexbuf] be a lexer buffer created from [file]. Then
+    [bind ~f file] is [f Parse.start lexbuf] if [file] is a xi source
+    file, [f Parse.interface file] if [file] is a xi interface file, and
+    [Error] if [file] does not exist. *)
+
 (** The [Diagnostic] module cotains functions for generating diagnostic
     parsing output. *)
 module Diagnostic : sig
-  val parse_to_file : src:string -> out:string -> unit
-  (** [parse_to_file ~src ~out] parses the file at path [src] and writes
-      the results to the file at path [out], serialized in an
-      S-expression. *)
+  val to_file : start:start -> Lexing.lexbuf -> string -> unit
+  (** [to_file ~start lexbuf out] parses lexer buffer [lexbuf] from
+      start symbol [start] and writes the diagnostic output to file at
+      path [out] *)
+
+  val file_to_file : src:string -> out:string -> unit XiFile.result
+  (** [file_to_file ~src ~out] writes parsing diagnostic information to
+      a file located at path [out], reading from file at path [src]. It
+      yields [Ok ()] on success and [Error e] on failure, where [e] is a
+      string describing the failure. *)
 end

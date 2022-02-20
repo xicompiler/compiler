@@ -36,12 +36,11 @@ let file_contents in_file =
   s
 
 (** [lexing_file_test name ~src ~out ~reference] constructs an OUnit
-    test with name [name] asserting that following
-    [lex_to_file ~src ~out], the contents of [out] and [reference] are
-    equal. *)
+    test with name [name] asserting that following [to_file ~src ~out],
+    the contents of [out] and [reference] are equal. *)
 let lexing_file_test name ~src ~out ~reference =
   let expected = file_contents reference in
-  Lex.Diagnostic.lex_to_file ~src ~out;
+  Result.get_ok (Lex.Diagnostic.file_to_file ~src ~out);
   let actual = file_contents out in
   name >:: fun _ -> assert_equal expected actual
 

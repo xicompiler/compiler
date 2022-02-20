@@ -29,20 +29,12 @@ module Diagnostic : sig
   (** [lex_string s] consumes all tokens in [s] and returns them as a
       list. *)
 
-  val print_position : Out_channel.t -> Lexer.position -> string -> unit
-  (** [print_position out pos s] prints the message [line:col s] to
-      [out] followed by a newline where [line] and [col] are described
-      by [pos] *)
+  val to_file : Lexing.lexbuf -> string -> unit
+  (** [to_file lexbuf out] lexes [lexbuf] and writes the results to file
+      at path [out] *)
 
-  val print_error : Out_channel.t -> error -> unit
-  (** [print_error out err] prints an error message detailing the
-      position and cause of [err] to out channel [out]*)
-
-  val lex_to_channel : In_channel.t -> Out_channel.t -> unit
-  (** [lex_to_channel in_file out_file] lexes [src] and writes the
-      results to [out] *)
-
-  val lex_to_file : src:string -> out:string -> unit
-  (** [lex_to_file ~src ~out] lexes the file at path [src] and writes
-      the results to the file at path [out] *)
+  val file_to_file : src:string -> out:string -> unit XiFile.result
+  (** [file_to_file ~src ~dst] lexes the file at [src] and writes the
+      results to file at path [out]. It yields [Ok ()] on success and
+      [Error msg] on failure. *)
 end

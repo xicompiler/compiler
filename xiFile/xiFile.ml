@@ -6,13 +6,9 @@ let no_such_file = Printf.sprintf "%s: No such file"
 (** [not_xi_file s] is "s: Not a Xi file" *)
 let not_xi_file = Printf.sprintf "%s: Not a Xi file"
 
-type nonrec 'a file_result = ('a, string) result
-(** A [result] is either [Ok ()] or [Error msg] where [msg] is a string
-    detailing the error. *)
+type nonrec 'a result = ('a, string) result
 
-type 'a apply = Lexing.lexbuf -> 'a file_result
-(** [apply] is the type of a function that can be applied to a lexer
-    buffer and yields a [result]. *)
+type 'a bind = Lexing.lexbuf -> 'a result
 
 (** [join_error r] is [e] if [r] is [Error e] and [r] otherwise*)
 let join_error = function
@@ -37,17 +33,6 @@ let bind ~source ~interface file =
   | ".ixi" -> try_apply file interface
   | _ -> Error (not_xi_file file)
 
-(** [fold_error e acc] is [Error (e :: es)] if [acc] is [Error es] and
-    [Error \[e\]] if [acc] is [Ok ()] *)
-let fold_error e = function
-  | Error es -> Error (e :: es)
-  | Ok () -> Error [ e ]
+type 'a map = Lexing.lexbuf -> 'a
 
-let iter_all ~source ~interface files =
-  let f acc file =
-    match bind ~source ~interface file with
-    | Ok () -> acc
-    | Error e -> fold_error e acc
-  in
-  let init = Ok () in
-  files |> List.fold_left ~f ~init |> Result.map_error ~f:List.rev
+let bind_same ~f = bind ~source:f ~interface:f
