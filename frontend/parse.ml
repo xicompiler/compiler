@@ -11,7 +11,7 @@ type nonrec result = (Ast.t, error) result
 let parse ~start lexbuf =
   try Ok (start Lex.read lexbuf) with
   | Lex.Error err -> Error (LexicalError err)
-  | _ ->
+  | Parser.Error ->
       let pos = Lex.get_position lexbuf in
       Error (SyntaxError pos)
 
@@ -26,6 +26,9 @@ let string_of_error = function
 
 let bind ~f =
   XiFile.bind ~source:(f Parser.source) ~interface:(f Parser.interface)
+
+let map ~f =
+  XiFile.map ~source:(f Parser.source) ~interface:(f Parser.interface)
 
 module Diagnostic = struct
   (** [print_ast out ast] prints the S-expression of [ast] into the

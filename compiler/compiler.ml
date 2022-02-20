@@ -37,14 +37,14 @@ let replace_ext ~ext ~file = Filename.chop_extension file ^ ext
 (** [make_out_path ~dir ~file ~ext] is the path of parse diagnostics
     file ending in [ext] in directory [dir] for file [file] *)
 let make_out_path ~dir ~file ext =
-  let file = replace_ext ~file ~ext:".lexed" in
+  let file = replace_ext ~file ~ext in
   make_path ~dir file
 
 (** [create_out_path ~dir ~file ext] creates the directory of
     [make_out_path ~dir ~file ext] if absent and returns the result. *)
 let create_out_path ~dir ~file ext =
   let path = make_out_path ~dir ~file ext in
-  Core.Unix.mkdir_p path;
+  Core.Unix.mkdir_p (Filename.dirname path);
   path
 
 (** [diagnostic ext ~f ~dir ~file lexbuf] applies diagnostic function
@@ -58,24 +58,43 @@ let diagnostic ext ~f ~dir ~file lexbuf =
     in output directory [dir] *)
 let lex_diagnostic = diagnostic ".lexed" ~f:Lex.Diagnostic.to_file
 
-(** [parse_diagnostic start ~dir ~file lexbuf] applies parsing
-    diagnostic function lexbuf [lexbuf] from start symbol [start],
+(** [parse_diagnostic start ~dir ~file lexbuf] applies the parsing
+    diagnostic function tp lexbuf [lexbuf] from start symbol [start],
     writing the results to output file [file] in output directory [dir] *)
 let parse_diagnostic start =
   diagnostic ".parsed" ~f:(Parse.Diagnostic.to_file ~start)
+
+(** [parse_diagnostic_file ~dir ~file src_path] applies the parsing
+    diagnostic function to file at [src_path], writing the results to
+    output file [file] in output directory [dir] *)
+let parse_diagnostic_file ~dir ~file =
+  Parse.map ~f:(parse_diagnostic ~dir ~file)
+
+(** [lex_diagnostic_file ~dir ~file src_path] applies the lexing
+    diagnostic function to file at [src_path], writing the results to
+    output file [file] in output directory [dir] *)
+let lex_diagnostic_file ~dir ~file =
+  XiFile.map_same ~f:(lex_diagnostic ~dir ~file)
+
+(** [compile_file file] compiles file at path [file] and is [Ok ()] on
+    success or [Error e] on failure, where [e] is an error message. *)
+let compile_file src_path =
+  let f start lexbuf =
+    lexbuf |> Parse.parse ~start
+    |> Result.map_error ~f:Parse.string_of_error
+    |> Result.ignore_m
+  in
+  Parse.bind ~f src_path
 
 open Args
 
 let compile { lex; parse; src_dir; out_dir; files; _ } =
   let map file =
     let src_path = make_path ~dir:src_dir file in
-    let apply start lexbuf =
-      if lex then lex_diagnostic ~dir:out_dir ~file lexbuf;
-      if parse then parse_diagnostic start ~dir:out_dir ~file lexbuf;
-      let open Parse in
-      lexbuf |> parse ~start |> Result.map_error ~f:string_of_error
-    in
-    src_path |> Parse.bind ~f:apply |> Result.ignore_m
+    if parse then
+      ignore (parse_diagnostic_file ~dir:out_dir ~file src_path);
+    if lex then ignore (lex_diagnostic_file ~dir:out_dir ~file src_path);
+    compile_file src_path
   in
   files |> List.rev_map ~f:map |> Result.combine_errors_unit
 

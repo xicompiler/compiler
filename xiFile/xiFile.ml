@@ -33,6 +33,12 @@ let bind ~source ~interface file =
   | ".ixi" -> try_apply file interface
   | _ -> Error (not_xi_file file)
 
+let bind_same ~f = bind ~source:f ~interface:f
+
 type 'a map = Lexing.lexbuf -> 'a
 
-let bind_same ~f = bind ~source:f ~interface:f
+let map ~source ~interface =
+  let lift f x = Ok (f x) in
+  bind ~source:(lift source) ~interface:(lift interface)
+
+let map_same ~f = map ~source:f ~interface:f

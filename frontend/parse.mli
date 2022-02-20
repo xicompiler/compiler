@@ -33,6 +33,12 @@ val bind :
     file, [f Parse.interface file] if [file] is a xi interface file, and
     [Error] if [file] does not exist. *)
 
+val map : f:(start -> Lexing.lexbuf -> 'a) -> string -> 'a XiFile.result
+(** Let [lexbuf] be a lexer buffer created from [file]. Then
+    [map ~f file] is [Ok (f Parse.start lexbuf)] if [file] is a xi
+    source file, [f Parse.interface file] if [file] is a xi interface
+    file, and [Error] if [file] does not exist. *)
+
 (** The [Diagnostic] module cotains functions for generating diagnostic
     parsing output. *)
 module Diagnostic : sig
