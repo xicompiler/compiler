@@ -5,7 +5,7 @@ len: int = 100
 debug: bool = false
 points: int[]
 
-nesteoutuff(a:int, b:int, c:int):int {
+nestedstuff(a:int, b:int, c:int):int {
   asdf:bool = true
   while(a != 0) {
     while(b != 0) {
