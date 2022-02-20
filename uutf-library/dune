@@ -1,2 +1,4 @@
 (library
- (name uutf))
+ (name uutf)
+ (modules uutf)
+ (wrapped false))

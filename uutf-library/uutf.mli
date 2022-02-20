@@ -273,20 +273,20 @@ val pp_decode :
 
 (** {1:encode Encode} *)
 
-type out =
+type dst =
   [ `Channel of out_channel
   | `Buffer of Buffer.t
   | `Manual
   ]
 (** The type for output destinations. With a [`Manual] destination the
-    client must provide output storage with {!Manual.out}. *)
+    client must provide output storage with {!Manual.dst}. *)
 
 type encoder
 (** The type for Unicode encoders. *)
 
-val encoder : [< encoding ] -> [< out ] -> encoder
-(** [encoder encoding out] is an encoder for [encoding] that outputs to
-    [out].
+val encoder : [< encoding ] -> [< dst ] -> encoder
+(** [encoder encoding dst] is an encoder for [encoding] that outputs to
+    [dst].
 
     {b Note.} No initial
     {{:http://unicode.org/glossary/#byte_order_mark} BOM} is encoded. If
@@ -299,14 +299,14 @@ val encode :
 (** [encode e v] is :
 
     - [`Partial] iff [e] has a [`Manual] destination and needs more
-      output storage. The client must use {!Manual.out} to provide a new
+      output storage. The client must use {!Manual.dst} to provide a new
       buffer and then call {!val-encode} with [`Await] until [`Ok] is
       returned.
     - [`Ok] when the encoder is ready to encode a new [`Uchar] or [`End]
 
     For [`Manual] destination, encoding [`End] always returns
     [`Partial], the client should continue as usual with [`Await] until
-    [`Ok] is returned at which point {!Manual.out_rem} [e] is guaranteed
+    [`Ok] is returned at which point {!Manual.dst_rem} [e] is guaranteed
     to be the size of the last provided buffer (i.e. nothing was
     written).
 
@@ -316,8 +316,8 @@ val encode :
 val encoder_encoding : encoder -> encoding
 (** [encoder_encoding e] is [e]'s encoding. *)
 
-val encoder_out : encoder -> out
-(** [encoder_out e] is [e]'s output destination. *)
+val encoder_dst : encoder -> dst
+(** [encoder_dst e] is [e]'s output destination. *)
 
 (** {1:manual Manual sources and destinations.} *)
 
@@ -331,15 +331,15 @@ module Manual : sig
       until [`Await] is returned. To signal the end of input call the
       function with [l = 0]. *)
 
-  val out : encoder -> Bytes.t -> int -> int -> unit
-  (** [out e s j l] provides [e] with [l] bytes to write, starting at
+  val dst : encoder -> Bytes.t -> int -> int -> unit
+  (** [dst e s j l] provides [e] with [l] bytes to write, starting at
       [j] in [s]. This byte range is written by calls to {!val-encode}
-      with [e] until [`Partial] is returned. Use {!out_rem} to know the
+      with [e] until [`Partial] is returned. Use {!dst_rem} to know the
       remaining number of non-written free bytes in [s]. *)
 
-  val out_rem : encoder -> int
-  (** [out_rem e] is the remaining number of non-written, free bytes in
-      the last buffer provided with {!Manual.out}. *)
+  val dst_rem : encoder -> int
+  (** [dst_rem e] is the remaining number of non-written, free bytes in
+      the last buffer provided with {!Manual.dst}. *)
 end
 
 (** {1:strbuf String folders and Buffer encoders} *)
@@ -492,12 +492,12 @@ end
 
     {2:recode Recode}
 
-    The result of [recode src out_encoding out] has the characters of
-    [src] written on [out] with encoding [out_encoding]. If a decoding
+    The result of [recode src out_encoding dst] has the characters of
+    [src] written on [dst] with encoding [out_encoding]. If a decoding
     error occurs we silently replace the malformed sequence by the
     replacement character {!u_rep} and continue. Note that we don't add
     an initial {{:http://unicode.org/glossary/#byte_order_mark} BOM} to
-    [out], recoding will thus loose the initial BOM [src] may have.
+    [dst], recoding will thus loose the initial BOM [src] may have.
     Whether this is a problem or not depends on the context.
 
     {[
@@ -506,7 +506,7 @@ end
           ?encoding
           out_encoding
           (src : [ `Channel of in_channel | `String of string ])
-          (out : [ `Channel of out_channel | `Buffer of Buffer.t ]) =
+          (dst : [ `Channel of out_channel | `Buffer of Buffer.t ]) =
         let rec loop d e =
           match Uutf.decode d with
           | `Uchar _ as u ->
@@ -519,7 +519,7 @@ end
           | `Await -> assert false
         in
         let d = Uutf.decoder ?nln ?encoding src in
-        let e = Uutf.encoder out_encoding out in
+        let e = Uutf.encoder out_encoding dst in
         loop d e
     ]}
 
@@ -545,8 +545,8 @@ end
                 let wc = write fd s j l in
                 if wc < l then unix_write fd s (j + wc) (l - wc) else ()
               in
-              unix_write fd s 0 (Bytes.length s - Uutf.Manual.out_rem e);
-              Uutf.Manual.out e s 0 (Bytes.length s);
+              unix_write fd s 0 (Bytes.length s - Uutf.Manual.dst_rem e);
+              Uutf.Manual.dst e s 0 (Bytes.length s);
               encode fd s e `Await
         in
         let rec loop fdi fdo ds es d e =
@@ -572,7 +572,7 @@ end
         let es = Bytes.create 65536 (* UNIX_BUFFER_SIZE in 4.0.0 *) in
         let d = Uutf.decoder ?nln ?encoding `Manual in
         let e = Uutf.encoder out_encoding `Manual in
-        Uutf.Manual.out e es 0 (Bytes.length es);
+        Uutf.Manual.dst e es 0 (Bytes.length es);
         loop fdi fdo ds es d e
     ]} *)
 
