@@ -291,6 +291,8 @@ semicolon_terminated:
     { Decl decl }
   | init = init
     { Init init }
+  | WILDCARD; GETS; e = expr
+    { ExprStmt e }
   | target = assign_target; GETS; e = expr
     { Assign (target, e) }
   | lhs = separated_multiple_list(COMMA, multi_target); GETS; rhs = call

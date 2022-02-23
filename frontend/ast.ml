@@ -62,6 +62,7 @@ type stmt =
   | MultiInit of multi_target list * call
   | ProcCall of call
   | Return of expr list
+  | ExprStmt of expr
   | Block of block
 
 and block = stmt list
@@ -238,6 +239,7 @@ let rec sexp_of_stmt = function
   | MultiInit (targets, call) -> sexp_of_multi_init targets call
   | ProcCall (id, args) -> sexp_of_call id args
   | Return es -> sexp_of_return es
+  | ExprStmt e -> sexp_of_expr_stmt e
   | Block stmts -> List.sexp_of_t sexp_of_stmt stmts
 
 (** [sexp_of_if e s1 s2] is the s-expression serialization of if
@@ -256,6 +258,10 @@ and sexp_of_while e s =
     of the statement [return e1, ..., en]. *)
 and sexp_of_return es =
   Sexp.List (Sexp.Atom "return" :: List.map ~f:sexp_of_expr es)
+
+(** [sexp_of_expr_stmt e] is the s-expression serialization of the
+    statement [_ = e]. *)
+and sexp_of_expr_stmt e = sexp_of_gets (Sexp.Atom "_") (sexp_of_expr e)
 
 (** [sexp_of_fn ?body signature] is the s-expression serialization of
     function signature [signature] with an optional function body. *)

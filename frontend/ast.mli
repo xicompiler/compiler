@@ -85,6 +85,7 @@ type stmt =
   | MultiInit of multi_target list * call
   | ProcCall of call
   | Return of expr list
+  | ExprStmt of expr
   | Block of block
 
 and block = stmt list
