@@ -1,1 +1,1 @@
-include Factory.Make (Types.Typed) (Node.Ident) (Node.Ident)
+include Factory.Make (Node.Ident) (Node.Ident)
