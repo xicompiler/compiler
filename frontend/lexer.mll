@@ -189,9 +189,9 @@ rule read =
   | ","
     { COMMA }
   | "int"
-    { TYPE Type.Int }
+    { TYPE Ast.Type.Int }
   | "bool"
-    { TYPE Type.Bool }
+    { TYPE Ast.Type.Bool }
   | "true"
     { BOOL true }
   | "false"
