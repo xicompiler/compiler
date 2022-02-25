@@ -81,15 +81,16 @@
 
 %%
 
+node(TERM):
+  | e = TERM
+    { (e, get_position $startpos) }
+  ;
+
 list_maybe_followed(X, TERM):
   | e = TERM?
     { Option.to_list e }
   | x = X; xs = list_maybe_followed(X, TERM)
     { x :: xs }
-
-node(EXPR):
-  | e = EXPR
-    { (e, get_position $startpos) }
   ;
 
 %inline binop:
@@ -156,7 +157,7 @@ definitions:
 global:
   | decl = decl
     { GlobalDecl decl }
-  | decl = decl; GETS; v = literal
+  | decl = decl; GETS; v = primitive
     { GlobalInit (decl, v) }
   ;
 
@@ -176,7 +177,7 @@ array_type:
   ;
 
 init:
-  | init = separated_pair(decl, GETS, expr)
+  | init = separated_pair(init_target, GETS, expr)
     { init }
   ;
 
@@ -199,25 +200,25 @@ call_expr:
     { Index (e1, e2) }
   | call = call
     { FnCall call }
-  | LPAREN; e = node(expr); RPAREN
+  | LPAREN; e = expr; RPAREN
     { e }
-  | v = literal
-    { Literal v }
+  | v = primitive
+    { Primitive v }
+  | s = STRING
+    { String s }
   | LBRACE; array = array
     { Array (Array.of_list array) }
   | id = ID
     { Id id }
   ;
 
-literal:
+primitive:
   | i = INT
     { Int i }
   | b = BOOL
     { Bool b }
   | c = CHAR
     { Char c }
-  | s = STRING
-    { String s }
   ; 
 
 array:
@@ -300,14 +301,12 @@ semicolon_terminated:
     { Decl decl }
   | init = init
     { Init init }
-  | WILDCARD; GETS; e = expr
-    { ExprStmt e }
   | target = assign_target; GETS; e = expr
     { Assign (target, e) }
-  | lhs = separated_multiple_list(COMMA, multi_target); GETS; rhs = call
+  | lhs = separated_multiple_list(COMMA, init_target); GETS; rhs = call
     { MultiInit (lhs, rhs) }
   | call = call
-    { ProcCall call }
+    { PrCall call }
   | block = block
     { Block block }
   ;
@@ -319,9 +318,9 @@ assign_target:
     { ArrayElt (target, e) }
   ;
 
-multi_target:
+init_target:
   | decl = decl
-    { MultiDecl decl }
+    { InitDecl decl }
   | WILDCARD
     { Wildcard }
   ;
