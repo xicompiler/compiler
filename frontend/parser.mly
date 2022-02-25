@@ -1,5 +1,8 @@
 %{
+  open Core
   open Ast
+  open Expr
+  open Stmt
 %}
 
 (* Keywords *)
@@ -59,7 +62,7 @@
 %token EOF
 
 (* A primitive type *)
-%token <Type.primitive> TYPE
+%token <Ast.Type.primitive> TYPE
 
 %start <Ast.t> program
 %start <Ast.t> source
@@ -158,7 +161,7 @@ decl:
 
 typ:
   | t = TYPE; array_type = loption(array_type)
-    { List.fold_left Type.make_array (Type.Primitive t) array_type }
+    { List.fold_left ~f:Type.array ~init:(Type.Primitive t) array_type }
   ;
 
 array_type:

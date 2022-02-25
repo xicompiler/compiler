@@ -75,8 +75,8 @@ module Diagnostic = struct
     | ID x -> string_of_id_token x
     | WILDCARD -> "_"
     | EOF -> "EOF"
-    | TYPE Type.Int -> "int"
-    | TYPE Type.Bool -> "bool"
+    | TYPE Ast.Type.Int -> "int"
+    | TYPE Ast.Type.Bool -> "bool"
 
   let read_result lexbuf =
     try Ok (read lexbuf) with
