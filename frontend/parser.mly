@@ -1,5 +1,8 @@
 %{
+  open Core
   open Ast
+  open Expr
+  open Stmt
 %}
 
 (* Keywords *)
@@ -59,7 +62,7 @@
 %token EOF
 
 (* A primitive type *)
-%token <Type.primitive> TYPE
+%token <Ast.Type.primitive> TYPE
 
 %start <Ast.t> program
 %start <Ast.t> source
@@ -147,7 +150,7 @@ definitions:
 global:
   | decl = decl
     { GlobalDecl decl }
-  | decl = decl; GETS; v = literal
+  | decl = decl; GETS; v = primitive
     { GlobalInit (decl, v) }
   ;
 
@@ -158,7 +161,7 @@ decl:
 
 typ:
   | t = TYPE; array_type = loption(array_type)
-    { List.fold_left Type.make_array (Type.Primitive t) array_type }
+    { List.fold_left ~f:Type.array ~init:(Type.Primitive t) array_type }
   ;
 
 array_type:
@@ -167,7 +170,7 @@ array_type:
   ;
 
 init:
-  | init = separated_pair(decl, GETS, expr)
+  | init = separated_pair(init_target, GETS, expr)
     { init }
   ;
 
@@ -192,23 +195,23 @@ call_expr:
     { FnCall call }
   | LPAREN; e = expr; RPAREN
     { e }
-  | v = literal
-    { Literal v }
+  | v = primitive
+    { Primitive v }
+  | s = STRING
+    { String s }
   | LBRACE; array = array
     { Array (Array.of_list array) }
   | id = ID
     { Id id }
   ;
 
-literal:
+primitive:
   | i = INT
     { Int i }
   | b = BOOL
     { Bool b }
   | c = CHAR
     { Char c }
-  | s = STRING
-    { String s }
   ; 
 
 array:
@@ -291,14 +294,12 @@ semicolon_terminated:
     { Decl decl }
   | init = init
     { Init init }
-  | WILDCARD; GETS; e = expr
-    { ExprStmt e }
   | target = assign_target; GETS; e = expr
     { Assign (target, e) }
-  | lhs = separated_multiple_list(COMMA, multi_target); GETS; rhs = call
+  | lhs = separated_multiple_list(COMMA, init_target); GETS; rhs = call
     { MultiInit (lhs, rhs) }
   | call = call
-    { ProcCall call }
+    { PrCall call }
   | block = block
     { Block block }
   ;
@@ -310,9 +311,9 @@ assign_target:
     { ArrayElt (target, e) }
   ;
 
-multi_target:
+init_target:
   | decl = decl
-    { MultiDecl decl }
+    { InitDecl decl }
   | WILDCARD
     { Wildcard }
   ;

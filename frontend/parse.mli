@@ -1,5 +1,4 @@
 open Core
-
 include module type of Parser
 
 (** An [error] is either a lexical error or a syntax error. Both
