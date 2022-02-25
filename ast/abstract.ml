@@ -24,18 +24,18 @@ module type S = sig
       | And
       | Or
 
-    type literal =
+    type primitive =
       | Int of string
       | Bool of bool
       | Char of Uchar.t
-      | String of string
 
     module Node : Node.S
 
     type t =
-      | Literal of literal
+      | Primitive of primitive
       | Id of id
       | Array of node array
+      | String of string
       | Bop of binop * node * node
       | Uop of unop * node
       | FnCall of call
@@ -48,28 +48,24 @@ module type S = sig
   type expr = Expr.t
 
   module Type : sig
-    type nonrec primitive =
-      | Int
-      | Bool
-
-    type t =
-      | Primitive of primitive
-      | Array of t * Expr.node option
+    module N : Node.S with type 'a t = 'a * Expr.node option
+    include Type.S with module Node = N
 
     val array : t -> Expr.node option -> t
   end
 
   module Stmt : sig
     type decl = id * Type.t
-    type init = decl * Expr.node
 
     type assign_target =
       | Var of id
       | ArrayElt of assign_target * Expr.node
 
-    type multi_target =
-      | MultiDecl of decl
+    type init_target =
+      | InitDecl of decl
       | Wildcard
+
+    type init = init_target * Expr.node
 
     module Node : Node.S
 
@@ -79,10 +75,9 @@ module type S = sig
       | Decl of decl
       | Init of init
       | Assign of assign_target * Expr.node
-      | MultiInit of multi_target list * Expr.call
+      | MultiInit of init_target list * Expr.call
       | ProcCall of Expr.call
       | Return of expr list
-      | ExprStmt of Expr.node
       | Block of block
 
     and node = t Node.t
@@ -102,7 +97,7 @@ module type S = sig
   type definition =
     | FnDefn of fn
     | GlobalDecl of Stmt.decl
-    | GlobalInit of Stmt.decl * Expr.literal
+    | GlobalInit of Stmt.decl * Expr.primitive
 
   type source = {
     uses : id list;

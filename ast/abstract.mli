@@ -30,19 +30,20 @@ module type S = sig
 
     (** A [literal] represents a literal char, int, bool, or string
         value in Xi *)
-    type literal =
+    type primitive =
       | Int of string
       | Bool of bool
       | Char of Uchar.t
-      | String of string
 
     module Node : Node.S
     (** [Node] wraps an expression node *)
 
+    (** [t] is the type of an expression in the AST *)
     type t =
-      | Literal of literal
+      | Primitive of primitive
       | Id of id
       | Array of node array
+      | String of string
       | Bop of binop * node * node
       | Uop of unop * node
       | FnCall of call
@@ -60,38 +61,23 @@ module type S = sig
   type expr = Expr.t
   (** An [expr] is a Xi expression *)
 
-  (** [Type] is the type of an expression in the AST *)
+  (** [Type] is a type that includes an optional length expression node*)
   module Type : sig
-    (** A [primitive] is the type of a primitive value in Xi: either an
-        integer or a boolean *)
-    type nonrec primitive =
-      | Int
-      | Bool
-
-    (** A type in Xi is either a primitive type or an array of a type,
-        where an Array is represented by a pair (contents, length) *)
-    type t =
-      | Primitive of primitive
-      | Array of t * Expr.node option
+    module N : Node.S with type 'a t = 'a * Expr.node option
+    include Type.S with module Node = N
 
     val array : t -> Expr.node option -> t
-    (** [array t length] is an [Array] type with contents of type [t]
-        and optional length [length] *)
+    (** [array contents length] is [Array (contents, length)] *)
   end
 
   module Stmt : sig
     (** A [typ] is a Xi type whose arrays are optionally initialized
         with an expression of type [expr] *)
+
     type decl = id * Type.t
     (** A [decl] is the type of a Xi declaration represented as a pair
         [(id, t)] where [id] is the name of the identifier and [t] is
         its type. *)
-
-    type init = decl * Expr.node
-    (** An [init] is the type of a Xi initialization statement
-        represented as a pair [(decl, e)] where [decl] is the
-        declaration of the identifier and [e] is the initialization
-        expression. *)
 
     (** An [assign_target] represents the target of an assignment
         statement in Xi; either a variable or an array element. *)
@@ -99,12 +85,17 @@ module type S = sig
       | Var of id
       | ArrayElt of assign_target * Expr.node
 
-    (** A [multi_target] is the type of a target of a multiple
-        initialization expression in Xi; either a declaration or a
-        wildcard, [_]. *)
-    type multi_target =
-      | MultiDecl of decl
+    (** A [init_target] is the type of a target of an initialization
+        expression in Xi; either a declaration or a wildcard, [_]. *)
+    type init_target =
+      | InitDecl of decl
       | Wildcard
+
+    type init = init_target * Expr.node
+    (** An [init] is the type of a Xi initialization statement
+        represented as a pair [(target, e)] where [target] is the
+        declaration of the identifier or wildcard and [e] is the
+        initialization expression. *)
 
     module Node : Node.S
     (** A [Node] is a statement node in the ast *)
@@ -116,10 +107,9 @@ module type S = sig
       | Decl of decl
       | Init of init
       | Assign of assign_target * Expr.node
-      | MultiInit of multi_target list * Expr.call
+      | MultiInit of init_target list * Expr.call
       | ProcCall of Expr.call
       | Return of expr list
-      | ExprStmt of Expr.node
       | Block of block
 
     and node = t Node.t
@@ -153,7 +143,7 @@ module type S = sig
   type definition =
     | FnDefn of fn
     | GlobalDecl of Stmt.decl
-    | GlobalInit of Stmt.decl * Expr.literal
+    | GlobalInit of Stmt.decl * Expr.primitive
 
   type source = {
     uses : id list;

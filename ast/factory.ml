@@ -25,18 +25,18 @@ module Make (Ex : Node.S) (St : Node.S) = struct
       | And
       | Or
 
-    type literal =
+    type primitive =
       | Int of string
       | Bool of bool
       | Char of Uchar.t
-      | String of string
 
     module Node = Ex
 
     type t =
-      | Literal of literal
+      | Primitive of primitive
       | Id of id
       | Array of node array
+      | String of string
       | Bop of binop * node * node
       | Uop of unop * node
       | FnCall of call
@@ -49,28 +49,29 @@ module Make (Ex : Node.S) (St : Node.S) = struct
   type expr = Expr.t
 
   module Type = struct
-    type nonrec primitive =
-      | Int
-      | Bool
+    module N = struct
+      type 'a t = 'a * Expr.node option
 
-    type t =
-      | Primitive of primitive
-      | Array of t * Expr.node option
+      let get = fst
+    end
+
+    include Type.Make (N)
 
     let array contents length = Array (contents, length)
   end
 
   module Stmt = struct
     type decl = id * Type.t
-    type init = decl * Expr.node
 
     type assign_target =
       | Var of id
       | ArrayElt of assign_target * Expr.node
 
-    type multi_target =
-      | MultiDecl of decl
+    type init_target =
+      | InitDecl of decl
       | Wildcard
+
+    type init = init_target * Expr.node
 
     module Node = St
 
@@ -80,10 +81,9 @@ module Make (Ex : Node.S) (St : Node.S) = struct
       | Decl of decl
       | Init of init
       | Assign of assign_target * Expr.node
-      | MultiInit of multi_target list * Expr.call
+      | MultiInit of init_target list * Expr.call
       | ProcCall of Expr.call
       | Return of expr list
-      | ExprStmt of Expr.node
       | Block of block
 
     and node = t Node.t
@@ -103,7 +103,7 @@ module Make (Ex : Node.S) (St : Node.S) = struct
   type definition =
     | FnDefn of fn
     | GlobalDecl of Stmt.decl
-    | GlobalInit of Stmt.decl * Expr.literal
+    | GlobalInit of Stmt.decl * Expr.primitive
 
   type source = {
     uses : id list;
@@ -158,11 +158,10 @@ module Make (Ex : Node.S) (St : Node.S) = struct
   let sexp_of_string s =
     Sexp.Atom (s |> Unicode.escape_string |> Printf.sprintf "\"%s\"")
 
-  (** [sexp_of_literal v] is the s-expression serialization of literal
+  (** [sexp_of_primitive v] is the s-expression serialization of literal
       value [v] *)
-  let sexp_of_literal = function
+  let sexp_of_primitive = function
     | Char c -> sexp_of_char c
-    | String s -> sexp_of_string s
     | Int i -> Sexp.Atom i
     | Bool b -> Bool.sexp_of_t b
 
@@ -170,8 +169,9 @@ module Make (Ex : Node.S) (St : Node.S) = struct
       [e] *)
   let rec sexp_of_expr = function
     | Id id -> Sexp.Atom id
-    | Literal v -> sexp_of_literal v
+    | Primitive v -> sexp_of_primitive v
     | Array arr -> sexp_of_array arr
+    | String s -> sexp_of_string s
     | Bop (bop, e1, e2) -> sexp_of_infix_bop bop e1 e2
     | Uop (uop, e) -> sexp_of_uop uop e
     | FnCall (id, args) -> sexp_of_call id args
@@ -227,11 +227,6 @@ module Make (Ex : Node.S) (St : Node.S) = struct
   let sexp_of_decl (id, typ) =
     Sexp.List [ Sexp.Atom id; sexp_of_type typ ]
 
-  (** [sexp_of_init (id, typ) e] is the s-expression serialization of
-      the initialization statement [id: typ = e] *)
-  let sexp_of_init decl e =
-    sexp_of_gets (sexp_of_decl decl) (sexp_of_enode e)
-
   (** [sexp_of_target target] is the s-expression serialization of
       assignment target [target], either an identifier or an array
       element. *)
@@ -246,19 +241,23 @@ module Make (Ex : Node.S) (St : Node.S) = struct
   let sexp_of_assign target e =
     sexp_of_gets (sexp_of_target target) (sexp_of_enode e)
 
-  (** [sexp_of_multi_target target] is the s-expression serialization of
-      multiple initialization target [target], either a wildcard or a
-      variable. *)
-  let sexp_of_multi_target = function
-    | MultiDecl d -> sexp_of_decl d
+  (** [sexp_of_init_target] is the s-expression serialization of
+      initialization target [target], either a wildcard or a variable. *)
+  let sexp_of_init_target = function
+    | InitDecl d -> sexp_of_decl d
     | Wildcard -> Sexp.Atom "_"
+
+  (** [sexp_of_init (id, typ) e] is the s-expression serialization of
+      the initialization statement [id: typ = e] *)
+  let sexp_of_init target e =
+    sexp_of_gets (sexp_of_init_target target) (sexp_of_enode e)
 
   (** [sexp_of_multi_init \[e1; ...; en\] (id, args)] is the
       s-expression serialization of the multiple initialization
       statement [e1, ..., en = id(args)]. *)
   let sexp_of_multi_init targets (id, args) =
     sexp_of_gets
-      (List.sexp_of_t sexp_of_multi_target targets)
+      (List.sexp_of_t sexp_of_init_target targets)
       (sexp_of_call id args)
 
   (** [sexp_of_stmt stmt] is the s-expression serialization of [stmt] *)
@@ -271,7 +270,6 @@ module Make (Ex : Node.S) (St : Node.S) = struct
     | MultiInit (targets, call) -> sexp_of_multi_init targets call
     | ProcCall (id, args) -> sexp_of_call id args
     | Return es -> sexp_of_return es
-    | ExprStmt e -> sexp_of_expr_stmt e
     | Block stmts -> sexp_of_stmts stmts
 
   (** [sexp_of_stmts stmts] is the s-expression serialization of
@@ -321,7 +319,7 @@ module Make (Ex : Node.S) (St : Node.S) = struct
     let global = Sexp.Atom ":global" in
     let id_sexp = Sexp.Atom id in
     let type_sexp = sexp_of_type typ in
-    let lst = Option.to_list (Option.map init ~f:sexp_of_literal) in
+    let lst = Option.to_list (Option.map init ~f:sexp_of_primitive) in
     Sexp.List (global :: id_sexp :: type_sexp :: lst)
 
   (** [sexp_of_definition def] is the s-expression serialization of
