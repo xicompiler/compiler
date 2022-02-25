@@ -62,7 +62,7 @@ module Make (Ex : Node.S) (St : Node.S) = struct
 
   module Stmt = struct
     type decl = id * Type.t
-    type 'a init = decl * Expr.node
+    type init = decl * Expr.node
 
     type assign_target =
       | Var of id
@@ -78,12 +78,12 @@ module Make (Ex : Node.S) (St : Node.S) = struct
       | If of Expr.node * node * node option
       | While of Expr.node * node
       | Decl of decl
-      | Init : 'a init -> t
-      | Assign : assign_target * Expr.node -> t
+      | Init of init
+      | Assign of assign_target * Expr.node
       | MultiInit of multi_target list * Expr.call
       | ProcCall of Expr.call
       | Return of expr list
-      | ExprStmt : Expr.node -> t
+      | ExprStmt of Expr.node
       | Block of block
 
     and node = t Node.t
@@ -103,7 +103,7 @@ module Make (Ex : Node.S) (St : Node.S) = struct
   type definition =
     | FnDefn of fn
     | GlobalDecl of Stmt.decl
-    | GlobalInit : Stmt.decl * Expr.literal -> definition
+    | GlobalInit of Stmt.decl * Expr.literal
 
   type source = {
     uses : id list;
