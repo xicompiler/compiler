@@ -82,7 +82,7 @@ module Make (Ex : Node.S) (St : Node.S) = struct
       | Init of init
       | Assign of assign_target * Expr.node
       | MultiInit of init_target list * Expr.call
-      | ProcCall of Expr.call
+      | PrCall of Expr.call
       | Return of expr list
       | Block of block
 
@@ -268,7 +268,7 @@ module Make (Ex : Node.S) (St : Node.S) = struct
     | Init (decl, e) -> sexp_of_init decl e
     | Assign (target, e) -> sexp_of_assign target e
     | MultiInit (targets, call) -> sexp_of_multi_init targets call
-    | ProcCall (id, args) -> sexp_of_call id args
+    | PrCall (id, args) -> sexp_of_call id args
     | Return es -> sexp_of_return es
     | Block stmts -> sexp_of_stmts stmts
 

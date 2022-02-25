@@ -76,7 +76,7 @@ module type S = sig
       | Init of init
       | Assign of assign_target * Expr.node
       | MultiInit of init_target list * Expr.call
-      | ProcCall of Expr.call
+      | PrCall of Expr.call
       | Return of expr list
       | Block of block
 

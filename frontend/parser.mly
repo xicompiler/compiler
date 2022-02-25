@@ -299,7 +299,7 @@ semicolon_terminated:
   | lhs = separated_multiple_list(COMMA, init_target); GETS; rhs = call
     { MultiInit (lhs, rhs) }
   | call = call
-    { ProcCall call }
+    { PrCall call }
   | block = block
     { Block block }
   ;
