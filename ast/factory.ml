@@ -36,14 +36,14 @@ module Make (Ex : Node.S) (St : Node.S) = struct
     type t =
       | Literal of literal
       | Id of id
-      | Array of t array
-      | Bop of binop * t * t
-      | Uop of unop * t
+      | Array of node array
+      | Bop of binop * node * node
+      | Uop of unop * node
       | FnCall of call
-      | Index of t * t
+      | Index of node * node
 
     and node = t Node.t
-    and call = id * t list
+    and call = id * node list
   end
 
   type expr = Expr.t
@@ -183,7 +183,7 @@ module Make (Ex : Node.S) (St : Node.S) = struct
 
   (** [sexp_of_array arr] is the s-expression serialization of the Xi
       array [arr] *)
-  and sexp_of_array arr = Array.sexp_of_t sexp_of_expr arr
+  and sexp_of_array arr = Array.sexp_of_t sexp_of_enode arr
 
   (** [sexp_of_infix_binop bop e1 e2] is the s-expression serialization
       of the infix binary operation represented by operation [bop] and
@@ -195,20 +195,20 @@ module Make (Ex : Node.S) (St : Node.S) = struct
       binary operation represented by operation [s] and expressions [e1]
       and [e2]. *)
   and sexp_of_bop s e1 e2 =
-    Sexp.List [ Sexp.Atom s; sexp_of_expr e1; sexp_of_expr e2 ]
+    Sexp.List [ Sexp.Atom s; sexp_of_enode e1; sexp_of_enode e2 ]
 
   (** [sexp_of_unop uop e] is the s-expression serialization of the
       unary operation with operator [uop] and expression [e]. *)
   and sexp_of_uop uop e =
     let uop_sexp = Sexp.Atom (string_of_unop uop) in
-    Sexp.List [ uop_sexp; sexp_of_expr e ]
+    Sexp.List [ uop_sexp; sexp_of_enode e ]
 
   (** [sexp_of_call id \[e1; ...; en\]] is the s-expression
       serialization of the application of function [id] to
       [e1, ..., en], i.e. the call [id(e1, ..., en)]. *)
   and sexp_of_call id args =
     Sexp.List
-      (args |> List.map ~f:sexp_of_expr |> List.cons (Sexp.Atom id))
+      (args |> List.map ~f:sexp_of_enode |> List.cons (Sexp.Atom id))
 
   (** [sexp_of_index e1 e2] is the s-expression serialization of the
       indexing of array [e1] at index [e2]. *)

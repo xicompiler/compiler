@@ -35,14 +35,14 @@ module type S = sig
     type t =
       | Literal of literal
       | Id of id
-      | Array of t array
-      | Bop of binop * t * t
-      | Uop of unop * t
+      | Array of node array
+      | Bop of binop * node * node
+      | Uop of unop * node
       | FnCall of call
-      | Index of t * t
+      | Index of node * node
 
     and node = t Node.t
-    and call = id * t list
+    and call = id * node list
   end
 
   type expr = Expr.t

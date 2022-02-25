@@ -42,16 +42,16 @@ module type S = sig
     type t =
       | Literal of literal
       | Id of id
-      | Array of t array
-      | Bop of binop * t * t
-      | Uop of unop * t
+      | Array of node array
+      | Bop of binop * node * node
+      | Uop of unop * node
       | FnCall of call
-      | Index of t * t
+      | Index of node * node
 
     and node = t Node.t
     (** [node] is the type of an expression node *)
 
-    and call = id * t list
+    and call = id * node list
     (** A [call] is the type of a function call represented as a pair
         [(id, args)] where [id] is the name of the function and [args]
         is the list of arguments *)
