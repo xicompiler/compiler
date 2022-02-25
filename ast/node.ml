@@ -11,3 +11,10 @@ module Ident = struct
 
   let get = Fn.id
 end
+
+module Pos = struct
+  type 'a t = 'a * Position.t
+
+  let get = fst
+  let get_pos = snd
+end

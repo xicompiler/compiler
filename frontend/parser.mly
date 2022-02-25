@@ -3,6 +3,7 @@
   open Ast
   open Expr
   open Stmt
+  open Position
 %}
 
 (* Keywords *)
@@ -85,6 +86,11 @@ list_maybe_followed(X, TERM):
     { Option.to_list e }
   | x = X; xs = list_maybe_followed(X, TERM)
     { x :: xs }
+
+node(EXPR):
+  | e = EXPR
+    { (e, get_position $startpos) }
+  ;
 
 %inline binop:
   | MULT { Mult }
@@ -175,25 +181,25 @@ init:
   ;
 
 expr:
-  | e1 = expr; bop = binop; e2 = expr
+  | e1 = node(expr); bop = binop; e2 = node(expr)
     { Bop (bop, e1, e2) }
   | e = uop_expr
     { e }
   ;
 
 uop_expr:
-  | uop = unop; e = uop_expr
+  | uop = unop; e = node(uop_expr)
     { Uop (uop, e) }
   | e = call_expr
     { e }
   ;
 
 call_expr:
-  | e1 = call_expr; LBRACKET; e2 = expr; RBRACKET
+  | e1 = node(call_expr); LBRACKET; e2 = node(expr); RBRACKET
     { Index (e1, e2) }
   | call = call
     { FnCall call }
-  | LPAREN; e = expr; RPAREN
+  | LPAREN; e = node(expr); RPAREN
     { e }
   | v = literal
     { Literal v }
@@ -215,14 +221,14 @@ literal:
   ; 
 
 array:
-  | e = expr?; RBRACE
+  | e = node(expr)?; RBRACE
     { Option.to_list e }
-  | e = expr; COMMA; rest = array
+  | e = node(expr); COMMA; rest = array
     { e :: rest }
   ;
 
 call:
-  | id = callee; LPAREN; args = separated_list(COMMA, expr); RPAREN
+  | id = callee; LPAREN; args = separated_list(COMMA, node(expr)); RPAREN
     { (id, args) }
   ;
 
@@ -259,7 +265,7 @@ block:
   ;
 
 return:
-  | RETURN; es = separated_list(COMMA, expr); SEMICOLON?
+  | RETURN; es = separated_list(COMMA, node(expr)); SEMICOLON?
     { Return es }
   ;
 
@@ -271,7 +277,7 @@ stmt:
   ;
 
 if_stmt:
-  | IF; e = expr; stmt1 = stmt; stmt2 = ioption(else_stmt)
+  | IF; e = node(expr); stmt1 = node(stmt); stmt2 = ioption(node(else_stmt))
     { If (e, stmt1, stmt2) }
   ;
 
@@ -281,7 +287,7 @@ if_stmt:
   ;
 
 while_stmt:
-  | WHILE; e = expr; stmt = stmt
+  | WHILE; e = node(expr); stmt = node(stmt)
     { While (e, stmt) }
   ;
 

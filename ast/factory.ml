@@ -82,7 +82,7 @@ module Make (Ex : Node.S) (St : Node.S) = struct
       | Assign of assign_target * Expr.node
       | MultiInit of multi_target list * Expr.call
       | ProcCall of Expr.call
-      | Return of expr list
+      | Return of Expr.node list
       | ExprStmt of Expr.node
       | Block of block
 
@@ -298,7 +298,7 @@ module Make (Ex : Node.S) (St : Node.S) = struct
   (** [sexp_of_return \[e1; ...; en\]] is the s-expression serialization
       of the statement [return e1, ..., en]. *)
   and sexp_of_return es =
-    Sexp.List (Sexp.Atom "return" :: List.map ~f:sexp_of_expr es)
+    Sexp.List (Sexp.Atom "return" :: List.map ~f:sexp_of_enode es)
 
   (** [sexp_of_expr_stmt e] is the s-expression serialization of the
       statement [_ = e]. *)

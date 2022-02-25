@@ -1,4 +1,4 @@
 include
   Abstract.S
-    with module Expr.Node = Node.Ident
-     and module Stmt.Node = Node.Ident
+    with module Expr.Node = Node.Pos
+     and module Stmt.Node = Node.Pos

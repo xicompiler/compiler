@@ -12,7 +12,7 @@ let parse ~start lexbuf =
   try Ok (start Lex.read lexbuf) with
   | Lex.Error err -> Error (LexicalError err)
   | Parser.Error ->
-      let pos = Lex.get_position lexbuf in
+      let pos = Position.get_position_lb lexbuf in
       Error (SyntaxError pos)
 
 let syntax_error_msg = "error:Syntax Error"
