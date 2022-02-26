@@ -61,10 +61,10 @@ module type S = sig
   type expr = Expr.t
   (** An [expr] is a Xi expression *)
 
-  (** [Type] is a type that includes an optional length expression node*)
-  module Type : sig
+  (** [Tau] is a type that includes an optional length expression node*)
+  module Tau : sig
     module N : Node.S with type 'a t = 'a * Expr.node option
-    include Type.S with module Node = N
+    include Tau.S with module Node = N
 
     val array : t -> Expr.node option -> t
     (** [array contents length] is [Array (contents, length)] *)
@@ -74,7 +74,7 @@ module type S = sig
     (** A [typ] is a Xi type whose arrays are optionally initialized
         with an expression of type [expr] *)
 
-    type decl = id * Type.t
+    type decl = id * Tau.t
     (** A [decl] is the type of a Xi declaration represented as a pair
         [(id, t)] where [id] is the name of the identifier and [t] is
         its type. *)
@@ -109,7 +109,7 @@ module type S = sig
       | Assign of assign_target * Expr.node
       | MultiInit of init_target list * Expr.call
       | PrCall of Expr.call
-      | Return of expr list
+      | Return of Expr.node list
       | Block of block
 
     and node = t Node.t
@@ -127,7 +127,7 @@ module type S = sig
   type signature = {
     id : id;
     params : Stmt.decl list;
-    types : Type.t list;
+    types : Tau.t list;
   }
   (** A [signature] is a signature or interface for an individual method
       where [types] is the list of (possibly none) return types. *)

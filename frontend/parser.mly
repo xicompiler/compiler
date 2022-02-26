@@ -62,7 +62,7 @@
 %token EOF
 
 (* A primitive type *)
-%token <Ast.Type.primitive> TYPE
+%token <Ast.Tau.primitive> TYPE
 
 %start <Ast.t> program
 %start <Ast.t> source
@@ -161,7 +161,7 @@ decl:
 
 typ:
   | t = TYPE; array_type = loption(array_type)
-    { List.fold_left ~f:Type.array ~init:(Type.Primitive t) array_type }
+    { List.fold_left ~f:Tau.array ~init:(t :> Tau.t) array_type }
   ;
 
 array_type:

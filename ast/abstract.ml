@@ -47,15 +47,15 @@ module type S = sig
 
   type expr = Expr.t
 
-  module Type : sig
+  module Tau : sig
     module N : Node.S with type 'a t = 'a * Expr.node option
-    include Type.S with module Node = N
+    include Tau.S with module Node = N
 
     val array : t -> Expr.node option -> t
   end
 
   module Stmt : sig
-    type decl = id * Type.t
+    type decl = id * Tau.t
 
     type assign_target =
       | Var of id
@@ -77,7 +77,7 @@ module type S = sig
       | Assign of assign_target * Expr.node
       | MultiInit of init_target list * Expr.call
       | PrCall of Expr.call
-      | Return of expr list
+      | Return of Expr.node list
       | Block of block
 
     and node = t Node.t
@@ -89,7 +89,7 @@ module type S = sig
   type signature = {
     id : id;
     params : Stmt.decl list;
-    types : Type.t list;
+    types : Tau.t list;
   }
 
   type fn = signature * Stmt.block
