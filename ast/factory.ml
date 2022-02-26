@@ -48,20 +48,20 @@ module Make (Ex : Node.S) (St : Node.S) = struct
 
   type expr = Expr.t
 
-  module Type = struct
+  module Tau = struct
     module N = struct
       type 'a t = 'a * Expr.node option
 
       let get = fst
     end
 
-    include Type.Make (N)
+    include Tau.Make (N)
 
-    let array contents length = Array (contents, length)
+    let array contents length = `Array (contents, length)
   end
 
   module Stmt = struct
-    type decl = id * Type.t
+    type decl = id * Tau.t
 
     type assign_target =
       | Var of id
@@ -83,7 +83,7 @@ module Make (Ex : Node.S) (St : Node.S) = struct
       | Assign of assign_target * Expr.node
       | MultiInit of init_target list * Expr.call
       | PrCall of Expr.call
-      | Return of expr list
+      | Return of Expr.node list
       | Block of block
 
     and node = t Node.t
@@ -95,7 +95,7 @@ module Make (Ex : Node.S) (St : Node.S) = struct
   type signature = {
     id : id;
     params : Stmt.decl list;
-    types : Type.t list;
+    types : Tau.t list;
   }
 
   type fn = signature * Stmt.block
@@ -216,9 +216,9 @@ module Make (Ex : Node.S) (St : Node.S) = struct
 
   (** [sexp_of_type t] is the s-expression serialization of type [t] *)
   let rec sexp_of_type = function
-    | Type.Primitive Int -> Sexp.Atom "int"
-    | Type.Primitive Bool -> Sexp.Atom "bool"
-    | Type.Array (contents, length) ->
+    | `Int -> Sexp.Atom "int"
+    | `Bool -> Sexp.Atom "bool"
+    | `Array (contents, length) ->
         let lst = Option.to_list (Option.map length ~f:sexp_of_enode) in
         Sexp.List (Sexp.Atom "[]" :: sexp_of_type contents :: lst)
 
@@ -296,7 +296,7 @@ module Make (Ex : Node.S) (St : Node.S) = struct
   (** [sexp_of_return \[e1; ...; en\]] is the s-expression serialization
       of the statement [return e1, ..., en]. *)
   and sexp_of_return es =
-    Sexp.List (Sexp.Atom "return" :: List.map ~f:sexp_of_expr es)
+    Sexp.List (Sexp.Atom "return" :: List.map ~f:sexp_of_enode es)
 
   (** [sexp_of_expr_stmt e] is the s-expression serialization of the
       statement [_ = e]. *)
