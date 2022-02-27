@@ -141,10 +141,26 @@ use:
   ;
 
 definitions:
-  | global = global; SEMICOLON?; definitions = definitions
+  | global = global_semi; definitions = definitions
     { global :: definitions }
-  | fn = fn; definitions = loption(definitions)
-    { FnDefn fn :: definitions }
+  | fn_defn = fn_defn; definitions = definition*
+    { fn_defn :: definitions }
+  ;
+
+definition:
+  | defn = global_semi
+  | defn = fn_defn
+    { defn }
+  ;
+
+global_semi:
+  | global = global; SEMICOLON?
+    { global }
+  ;
+
+fn_defn:
+  | fn = fn
+    { FnDefn fn }
   ;
 
 global:
