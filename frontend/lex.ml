@@ -1,6 +1,7 @@
 open Core
 open Parser
 include Lexer
+open Position
 
 (** [string_of_error_cause e] is the error message corresponding to [e] *)
 let string_of_error_cause = function

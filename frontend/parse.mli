@@ -5,7 +5,7 @@ include module type of Parser
     variants carry the position at which they occur. *)
 type error =
   | LexicalError of Lex.error
-  | SyntaxError of Lex.position
+  | SyntaxError of Position.t
 
 type start = (Lexing.lexbuf -> Parser.token) -> Lexing.lexbuf -> Ast.t
 (** [start] is the type of a parsing function that consumes a lexeme and
