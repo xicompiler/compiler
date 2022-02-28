@@ -47,7 +47,8 @@ module type S = sig
       | Bop of binop * node * node
       | Uop of unop * node
       | FnCall of call
-      | Index of node * node
+      | Length of node
+      | Index of index
 
     and node = t Node.t
     (** [node] is the type of an expression node *)
@@ -56,15 +57,19 @@ module type S = sig
     (** A [call] is the type of a function call represented as a pair
         [(id, args)] where [id] is the name of the function and [args]
         is the list of arguments *)
+
+    and index = node * node
+    (** [index] is the type of an array index expression, represented as
+        the pair [(array, idx)] where [array] is the array being indexed
+        and [idx] is the corresponding index. *)
   end
 
   type expr = Expr.t
   (** An [expr] is a Xi expression *)
 
-  (** [Type] is a type that includes an optional length expression node*)
-  module Type : sig
-    module N : Node.S with type 'a t = 'a * Expr.node option
-    include Type.S with module Node = N
+  (** [Tau] is a type that includes an optional length expression node*)
+  module Tau : sig
+    include Tau.S with type 'a node = 'a * Expr.node option
 
     val array : t -> Expr.node option -> t
     (** [array contents length] is [Array (contents, length)] *)
@@ -74,7 +79,7 @@ module type S = sig
     (** A [typ] is a Xi type whose arrays are optionally initialized
         with an expression of type [expr] *)
 
-    type decl = id * Type.t
+    type decl = id * Tau.t
     (** A [decl] is the type of a Xi declaration represented as a pair
         [(id, t)] where [id] is the name of the identifier and [t] is
         its type. *)
@@ -83,7 +88,7 @@ module type S = sig
         statement in Xi; either a variable or an array element. *)
     type assign_target =
       | Var of id
-      | ArrayElt of assign_target * Expr.node
+      | ArrayElt of Expr.index
 
     (** A [init_target] is the type of a target of an initialization
         expression in Xi; either a declaration or a wildcard, [_]. *)
@@ -127,7 +132,7 @@ module type S = sig
   type signature = {
     id : id;
     params : Stmt.decl list;
-    types : Type.t list;
+    types : Tau.t list;
   }
   (** A [signature] is a signature or interface for an individual method
       where [types] is the list of (possibly none) return types. *)

@@ -40,32 +40,30 @@ module Make (Ex : Node.S) (St : Node.S) = struct
       | Bop of binop * node * node
       | Uop of unop * node
       | FnCall of call
-      | Index of node * node
+      | Length of node
+      | Index of index
 
     and node = t Node.t
     and call = id * node list
+    and index = node * node
   end
 
   type expr = Expr.t
 
-  module Type = struct
-    module N = struct
+  module Tau = struct
+    include Tau.Make (struct
       type 'a t = 'a * Expr.node option
+    end)
 
-      let get = fst
-    end
-
-    include Type.Make (N)
-
-    let array contents length = Array (contents, length)
+    let array contents length = `Array (contents, length)
   end
 
   module Stmt = struct
-    type decl = id * Type.t
+    type decl = id * Tau.t
 
     type assign_target =
       | Var of id
-      | ArrayElt of assign_target * Expr.node
+      | ArrayElt of Expr.index
 
     type init_target =
       | InitDecl of decl
@@ -95,7 +93,7 @@ module Make (Ex : Node.S) (St : Node.S) = struct
   type signature = {
     id : id;
     params : Stmt.decl list;
-    types : Type.t list;
+    types : Tau.t list;
   }
 
   type fn = signature * Stmt.block
@@ -175,6 +173,7 @@ module Make (Ex : Node.S) (St : Node.S) = struct
     | Bop (bop, e1, e2) -> sexp_of_infix_bop bop e1 e2
     | Uop (uop, e) -> sexp_of_uop uop e
     | FnCall (id, args) -> sexp_of_call id args
+    | Length e -> sexp_of_length e
     | Index (e1, e2) -> sexp_of_index e1 e2
 
   (** [sexp_of_enode node] is the s-expression serialization of the
@@ -210,15 +209,19 @@ module Make (Ex : Node.S) (St : Node.S) = struct
     Sexp.List
       (args |> List.map ~f:sexp_of_enode |> List.cons (Sexp.Atom id))
 
+  (** [sexo_of_length e] is the s-expression serialization of the
+      expression [length(e)] *)
+  and sexp_of_length e = sexp_of_call "length" [ e ]
+
   (** [sexp_of_index e1 e2] is the s-expression serialization of the
       indexing of array [e1] at index [e2]. *)
   and sexp_of_index e1 e2 = sexp_of_bop "[]" e1 e2
 
   (** [sexp_of_type t] is the s-expression serialization of type [t] *)
   let rec sexp_of_type = function
-    | Type.Primitive Int -> Sexp.Atom "int"
-    | Type.Primitive Bool -> Sexp.Atom "bool"
-    | Type.Array (contents, length) ->
+    | `Int -> Sexp.Atom "int"
+    | `Bool -> Sexp.Atom "bool"
+    | `Array (contents, length) ->
         let lst = Option.to_list (Option.map length ~f:sexp_of_enode) in
         Sexp.List (Sexp.Atom "[]" :: sexp_of_type contents :: lst)
 
@@ -232,9 +235,7 @@ module Make (Ex : Node.S) (St : Node.S) = struct
       element. *)
   let rec sexp_of_target = function
     | Var id -> Sexp.Atom id
-    | ArrayElt (target, e) ->
-        Sexp.List
-          [ Sexp.Atom "[]"; sexp_of_target target; sexp_of_enode e ]
+    | ArrayElt (e1, e2) -> sexp_of_index e1 e2
 
   (** [sexp_of_assign target e] is the s-expression serialization of the
       statement [target = e] *)

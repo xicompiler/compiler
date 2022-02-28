@@ -39,27 +39,28 @@ module type S = sig
       | Bop of binop * node * node
       | Uop of unop * node
       | FnCall of call
-      | Index of node * node
+      | Length of node
+      | Index of index
 
     and node = t Node.t
     and call = id * node list
+    and index = node * node
   end
 
   type expr = Expr.t
 
-  module Type : sig
-    module N : Node.S with type 'a t = 'a * Expr.node option
-    include Type.S with module Node = N
+  module Tau : sig
+    include Tau.S with type 'a node = 'a * Expr.node option
 
     val array : t -> Expr.node option -> t
   end
 
   module Stmt : sig
-    type decl = id * Type.t
+    type decl = id * Tau.t
 
     type assign_target =
       | Var of id
-      | ArrayElt of assign_target * Expr.node
+      | ArrayElt of Expr.index
 
     type init_target =
       | InitDecl of decl
@@ -89,7 +90,7 @@ module type S = sig
   type signature = {
     id : id;
     params : Stmt.decl list;
-    types : Type.t list;
+    types : Tau.t list;
   }
 
   type fn = signature * Stmt.block

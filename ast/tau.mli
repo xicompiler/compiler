@@ -1,21 +1,27 @@
+open Core
+
 (** [S] is the type of a type *)
 module type S = sig
-  module Node : Node.S
-  (** [Node] wraps the array type *)
+  type 'a node
+  (** [node] wraps the array type *)
 
+  type nonrec primitive =
+    [ `Int
+    | `Bool
+    ]
   (** A [primitive] is the type of a primitive value in Xi: either an
       integer or a boolean *)
-  type nonrec primitive =
-    | Int
-    | Bool
 
+  type t =
+    [ primitive
+    | `Array of t node
+    ]
   (** A type in Xi is either a primitive type or an array of a type,
       where an Array is represented by a pair (contents, length) *)
-  type t =
-    | Primitive of primitive
-    | Array of t Node.t
 end
 
 (** [Make (Node)] is an [S] where the the array type is wrapped in
     [Node] *)
-module Make (Node : Node.S) : S with module Node = Node
+module Make (T1 : T1) : S with type 'a node = 'a T1.t
+
+include S with type 'a node = 'a
