@@ -1,11 +1,6 @@
 {
 open Parser
 
-type position = {
-  line : int;
-  column : int;
-}
-
 type error_cause =
   | InvalidChar
   | InvalidString
@@ -13,7 +8,7 @@ type error_cause =
 
 type error = {
   cause : error_cause;
-  position : position;
+  position : Position.t;
 }
 
 exception Error of error
@@ -48,20 +43,10 @@ let get_or_raise e = function
   | Some x -> x
   | None -> raise e
 
-(** [col_offset] is the offset between the lexer buffer "column" and the
-    true file column *)
-let col_offset = 1
-
-let get_position ({ lex_start_p = p; _ } : Lexing.lexbuf) =
-  { 
-    line = p.pos_lnum; 
-    column = col_offset + p.pos_cnum - p.pos_bol 
-  }
-
 (** [make_error cause lexbuf] is an [Error] with the specified cause and the
     current position of the lexer buffer. *)
 let make_error cause lexbuf =
-  Error { cause; position = get_position lexbuf }
+  Error { cause; position = Position.get_position_lb lexbuf }
 
 (** [parse_ascii_char s] is the first ascii character of the lexeme last
     lexed from [lexbuf], wrapped in a [Uchar.t]. Requires: at least one

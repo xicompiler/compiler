@@ -3,6 +3,7 @@
   open Ast
   open Expr
   open Stmt
+  open Position
 %}
 
 (* Keywords *)
@@ -80,11 +81,17 @@
 
 %%
 
+node(TERM):
+  | e = TERM
+    { (e, get_position $startpos) }
+  ;
+
 list_maybe_followed(X, TERM):
   | e = TERM?
     { Option.to_list e }
   | x = X; xs = list_maybe_followed(X, TERM)
     { x :: xs }
+  ;
 
 semi(X):
   | x = X; SEMICOLON?
@@ -217,19 +224,19 @@ init:
   ;
 
 index(lhs):
-  | e1 = lhs; LBRACKET; e2 = expr; RBRACKET
+  | e1 = node(lhs); LBRACKET; e2 = expr; RBRACKET
     { (e1, e2) }
   ;
 
 expr:
-  | e1 = expr; bop = binop; e2 = expr
+  | e1 = node(expr); bop = binop; e2 = node(expr)
     { Bop (bop, e1, e2) }
   | e = uop_expr
     { e }
   ;
 
 uop_expr:
-  | uop = unop; e = uop_expr
+  | uop = unop; e = node(uop_expr)
     { Uop (uop, e) }
   | e = call_expr
     { e }
@@ -262,14 +269,14 @@ primitive:
   ; 
 
 array:
-  | e = expr?; RBRACE
+  | e = node(expr)?; RBRACE
     { Option.to_list e }
-  | e = expr; COMMA; rest = array
+  | e = node(expr); COMMA; rest = array
     { e :: rest }
   ;
 
 call:
-  | id = ID; args = parens(separated_list(COMMA, expr));
+  | id = ID; args = parens(separated_list(COMMA, node(expr)));
     { (id, args) }
   ;
 
@@ -316,7 +323,7 @@ block:
   ;
 
 return:
-  | RETURN; es = semi(separated_list(COMMA, expr));
+  | RETURN; es = semi(separated_list(COMMA, node(expr)));
     { Return es }
   ;
 
@@ -328,7 +335,7 @@ stmt:
   ;
 
 if_stmt:
-  | IF; e = expr; stmt1 = stmt; stmt2 = ioption(else_stmt)
+  | IF; e = node(expr); stmt1 = node(stmt); stmt2 = ioption(node(else_stmt))
     { If (e, stmt1, stmt2) }
   ;
 
@@ -338,7 +345,7 @@ if_stmt:
   ;
 
 while_stmt:
-  | WHILE; e = expr; stmt = stmt
+  | WHILE; e = node(expr); stmt = node(stmt)
     { While (e, stmt) }
   ;
 
