@@ -19,10 +19,9 @@ module Type = struct
     ]
 
   type env =
-    [ `Var of tau
-    | `Ret of kind
-    | `Fn of kind * kind
-    ]
+    | Var of tau
+    | Ret of kind
+    | Fn of kind * kind
 
   type error = |
   type nonrec 'a result = ('a, error) result
