@@ -39,6 +39,7 @@ module type S = sig
       | Bop of binop * node * node
       | Uop of unop * node
       | FnCall of call
+      | Length of node
       | Index of index
 
     and node = t Node.t
@@ -49,8 +50,7 @@ module type S = sig
   type expr = Expr.t
 
   module Tau : sig
-    module N : Node.S with type 'a t = 'a * Expr.node option
-    include Tau.S with module Node = N
+    include Tau.S with type 'a node = 'a * Expr.node option
 
     val array : t -> Expr.node option -> t
   end

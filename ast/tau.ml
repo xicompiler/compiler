@@ -1,5 +1,7 @@
+open Core
+
 module type S = sig
-  module Node : Node.S
+  type 'a node
 
   type nonrec primitive =
     [ `Int
@@ -8,12 +10,12 @@ module type S = sig
 
   type t =
     [ primitive
-    | `Array of t Node.t
+    | `Array of t node
     ]
 end
 
-module Make (Node : Node.S) = struct
-  module Node = Node
+module Make (T1 : T1) = struct
+  type 'a node = 'a T1.t
 
   type nonrec primitive =
     [ `Int
@@ -22,8 +24,8 @@ module Make (Node : Node.S) = struct
 
   type t =
     [ primitive
-    | `Array of t Node.t
+    | `Array of t node
     ]
 end
 
-include Make (Node.Ident)
+include Make (Monad.Ident)
