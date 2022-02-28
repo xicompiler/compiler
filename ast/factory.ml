@@ -40,10 +40,11 @@ module Make (Ex : Node.S) (St : Node.S) = struct
       | Bop of binop * node * node
       | Uop of unop * node
       | FnCall of call
-      | Index of node * node
+      | Index of index
 
     and node = t Node.t
     and call = id * node list
+    and index = node * node
   end
 
   type expr = Expr.t
@@ -65,7 +66,7 @@ module Make (Ex : Node.S) (St : Node.S) = struct
 
     type assign_target =
       | Var of id
-      | ArrayElt of assign_target * Expr.node
+      | ArrayElt of Expr.index
 
     type init_target =
       | InitDecl of decl
@@ -232,9 +233,7 @@ module Make (Ex : Node.S) (St : Node.S) = struct
       element. *)
   let rec sexp_of_target = function
     | Var id -> Sexp.Atom id
-    | ArrayElt (target, e) ->
-        Sexp.List
-          [ Sexp.Atom "[]"; sexp_of_target target; sexp_of_enode e ]
+    | ArrayElt (e1, e2) -> sexp_of_index e1 e2
 
   (** [sexp_of_assign target e] is the s-expression serialization of the
       statement [target = e] *)
