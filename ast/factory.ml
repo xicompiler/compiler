@@ -50,13 +50,9 @@ module Make (Ex : Node.S) (St : Node.S) = struct
   type expr = Expr.t
 
   module Tau = struct
-    module N = struct
+    include Tau.Make (struct
       type 'a t = 'a * Expr.node option
-
-      let get = fst
-    end
-
-    include Tau.Make (N)
+    end)
 
     let array contents length = `Array (contents, length)
   end
