@@ -47,7 +47,7 @@ module type S = sig
       | Bop of binop * node * node
       | Uop of unop * node
       | FnCall of call
-      | Index of node * node
+      | Index of index
 
     and node = t Node.t
     (** [node] is the type of an expression node *)
@@ -56,6 +56,11 @@ module type S = sig
     (** A [call] is the type of a function call represented as a pair
         [(id, args)] where [id] is the name of the function and [args]
         is the list of arguments *)
+
+    and index = node * node
+    (** [index] is the type of an array index expression, represented as
+        the pair [(array, idx)] where [array] is the array being indexed
+        and [idx] is the corresponding index. *)
   end
 
   type expr = Expr.t
@@ -83,7 +88,7 @@ module type S = sig
         statement in Xi; either a variable or an array element. *)
     type assign_target =
       | Var of id
-      | ArrayElt of assign_target * Expr.node
+      | ArrayElt of Expr.index
 
     (** A [init_target] is the type of a target of an initialization
         expression in Xi; either a declaration or a wildcard, [_]. *)

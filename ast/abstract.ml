@@ -39,10 +39,11 @@ module type S = sig
       | Bop of binop * node * node
       | Uop of unop * node
       | FnCall of call
-      | Index of node * node
+      | Index of index
 
     and node = t Node.t
     and call = id * node list
+    and index = node * node
   end
 
   type expr = Expr.t
@@ -59,7 +60,7 @@ module type S = sig
 
     type assign_target =
       | Var of id
-      | ArrayElt of assign_target * Expr.node
+      | ArrayElt of Expr.index
 
     type init_target =
       | InitDecl of decl

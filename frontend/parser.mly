@@ -86,6 +86,17 @@ list_maybe_followed(X, TERM):
   | x = X; xs = list_maybe_followed(X, TERM)
     { x :: xs }
 
+semi(X):
+  | x = X; SEMICOLON?
+    { x }
+  ;
+
+(** [epsilon] derives the empty string *)
+epsilon:
+  | (* nothing *)
+    { None }
+  ;
+
 %inline binop:
   | MULT { Mult }
   | HIGHMULT { HighMult }
@@ -136,7 +147,7 @@ interface_entry:
   ;
 
 use:
-  | USE; id = ID; SEMICOLON?
+  | USE; id = semi(ID);
     { id }
   ;
 
@@ -154,7 +165,7 @@ definition:
   ;
 
 global_semi:
-  | global = global; SEMICOLON?
+  | global = semi(global)
     { global }
   ;
 
@@ -164,30 +175,47 @@ fn_defn:
   ;
 
 global:
-  | decl = decl
+  | decl = global_decl
     { GlobalDecl decl }
-  | decl = decl; GETS; v = primitive
+  | decl = global_decl; GETS; v = primitive
     { GlobalInit (decl, v) }
   ;
 
-decl:
-  | id = ID; COLON; t = typ
-    { (id, t) }
+global_decl:
+  | decl = decl_length(epsilon)
+    { decl }
   ;
+
+decl:
+  | decl = decl_length(expr?)
+    { decl }
+  ;
+
+decl_length(length):
+  | id = ID; COLON; t = typ_length(length)
+    { (id, t) }
 
 typ:
-  | t = TYPE; array_type = loption(array_type)
-    { List.fold_left ~f:Tau.array ~init:(t :> Tau.t) array_type }
+  | t = typ_length(expr?)
+    { t }
   ;
 
-array_type:
-  | t = loption(array_type); LBRACKET; length = expr?; RBRACKET
+typ_length(length):
+  | t = TYPE; array_type = loption(array_type(length))
+    { List.fold_left ~f:Tau.array ~init:(t :> Tau.t) array_type }
+
+array_type(length):
+  | t = loption(array_type(length)); LBRACKET; length = length; RBRACKET
     { length :: t }
-  ;
 
 init:
   | init = separated_pair(init_target, GETS, expr)
     { init }
+  ;
+
+index(lhs):
+  | e1 = lhs; LBRACKET; e2 = expr; RBRACKET
+    { (e1, e2) }
   ;
 
 expr:
@@ -205,20 +233,18 @@ uop_expr:
   ;
 
 call_expr:
-  | e1 = call_expr; LBRACKET; e2 = expr; RBRACKET
-    { Index (e1, e2) }
-  | call = call
-    { FnCall call }
+  | index = index(call_expr)
+    { Index index }
   | LPAREN; e = expr; RPAREN
     { e }
   | v = primitive
     { Primitive v }
-  | s = STRING
-    { String s }
   | LBRACE; array = array
     { Array (Array.of_list array) }
-  | id = ID
-    { Id id }
+  | s = STRING
+    { String s }
+  | e = array_assign_expr
+    { e }
   ;
 
 primitive:
@@ -249,6 +275,23 @@ callee:
     { "length" }
   ;
 
+(** [array_assign_expr] is any non-array-index expression [e1] that can appear 
+    in the statement [e1[e2] = e3] *)
+array_assign_expr:
+  | call = call
+    { FnCall call }
+  | id = ID
+    { Id id }
+  ;
+
+(** [array_assign_lhs] is any expression e1 that can appear in the statement 
+    [e1[e2] = e3] *)
+array_assign_lhs:
+  | index = index(array_assign_lhs)
+    { Index index }
+  | e = array_assign_expr
+    { e }
+
 fn:
   | signature = signature; body = block
     { (signature, body) }
@@ -275,14 +318,14 @@ block:
   ;
 
 return:
-  | RETURN; es = separated_list(COMMA, expr); SEMICOLON?
+  | RETURN; es = semi(separated_list(COMMA, expr));
     { Return es }
   ;
 
 stmt:
   | stmt = if_stmt
   | stmt = while_stmt
-  | stmt = semicolon_terminated; SEMICOLON?
+  | stmt = semi(semicolon_terminated);
     { stmt }
   ;
 
@@ -323,8 +366,8 @@ semicolon_terminated:
 assign_target:
   | id = ID
     { Var id }
-  | target = assign_target; LBRACKET; e = expr; RBRACKET
-    { ArrayElt (target, e) }
+  | index = index(array_assign_lhs)
+    { ArrayElt index }
   ;
 
 init_target:
