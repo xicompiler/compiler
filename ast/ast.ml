@@ -1,4 +1,4 @@
-include Factory.Make (Node.Ident) (Node.Ident)
+include Factory.Make (Node.Pos) (Node.Pos)
 open Expr
 module Context = Decorated.Context
 

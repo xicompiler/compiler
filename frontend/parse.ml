@@ -2,21 +2,19 @@ open Core
 
 type error =
   | LexicalError of Lex.error
-  | SyntaxError of Lex.position
+  | SyntaxError of Position.t
 
 type start = (Lexing.lexbuf -> Parser.token) -> Lexing.lexbuf -> Ast.t
-
 type nonrec result = (Ast.t, error) result
 
 let parse ~start lexbuf =
   try Ok (start Lex.read lexbuf) with
   | Lex.Error err -> Error (LexicalError err)
   | Parser.Error ->
-      let pos = Lex.get_position lexbuf in
+      let pos = Position.get_position_lb lexbuf in
       Error (SyntaxError pos)
 
 let syntax_error_msg = "error:Syntax Error"
-
 let ext_error_msg = "error:Invalid Extension"
 
 (** [string_of_error e] is the string representing error [e] *)

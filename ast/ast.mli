@@ -1,7 +1,7 @@
 include
   Abstract.S
-    with module Expr.Node = Node.Ident
-     and module Stmt.Node = Node.Ident
+    with module Expr.Node = Node.Pos
+     and module Stmt.Node = Node.Pos
 
 val type_check : t -> Decorated.result
 (** [type_check ast] is [Ok ast'] where [ast'] is [ast] decorated if

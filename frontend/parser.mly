@@ -3,6 +3,7 @@
   open Ast
   open Expr
   open Stmt
+  open Position
 %}
 
 (* Keywords *)
@@ -79,6 +80,26 @@
 %nonassoc ELSE
 
 %%
+
+node(TERM):
+  | e = TERM
+    { (e, get_position $startpos) }
+  ;
+
+enode:
+  | node = node(expr)
+    { node }
+  ;
+
+enodes:
+  | nodes = separated_list(COMMA, enode)
+    { nodes }
+  ;
+
+snode:
+  | node = node(stmt)
+    { node }
+  ;
 
 list_maybe_followed(X, TERM):
   | e = TERM?
@@ -178,19 +199,19 @@ fn_defn:
   ;
 
 global:
-  | decl = global_decl
+  | decl = decl
     { GlobalDecl decl }
-  | decl = global_decl; GETS; v = primitive
+  | decl = decl; GETS; v = primitive
     { GlobalInit (decl, v) }
   ;
 
-global_decl:
+decl:
   | decl = decl_length(epsilon)
     { decl }
   ;
 
-decl:
-  | decl = decl_length(expr?)
+local_decl:
+  | decl = decl_length(enode?)
     { decl }
   ;
 
@@ -199,7 +220,7 @@ decl_length(length):
     { (id, t) }
 
 typ:
-  | t = typ_length(expr?)
+  | t = typ_length(enode?)
     { t }
   ;
 
@@ -212,24 +233,24 @@ array_type(length):
     { length :: t }
 
 init:
-  | init = separated_pair(init_target, GETS, expr)
+  | init = separated_pair(init_target, GETS, enode)
     { init }
   ;
 
 index(lhs):
-  | e1 = lhs; LBRACKET; e2 = expr; RBRACKET
+  | e1 = node(lhs); LBRACKET; e2 = enode; RBRACKET
     { (e1, e2) }
   ;
 
 expr:
-  | e1 = expr; bop = binop; e2 = expr
+  | e1 = enode; bop = binop; e2 = enode
     { Bop (bop, e1, e2) }
   | e = uop_expr
     { e }
   ;
 
 uop_expr:
-  | uop = unop; e = uop_expr
+  | uop = unop; e = node(uop_expr)
     { Uop (uop, e) }
   | e = call_expr
     { e }
@@ -246,7 +267,7 @@ call_expr:
     { Array (Array.of_list array) }
   | s = STRING
     { String s }
-  | LENGTH; e = parens(expr)
+  | LENGTH; e = parens(enode)
     { Length e }
   | e = array_assign_expr
     { e }
@@ -262,14 +283,14 @@ primitive:
   ; 
 
 array:
-  | e = expr?; RBRACE
+  | e = enode?; RBRACE
     { Option.to_list e }
-  | e = expr; COMMA; rest = array
+  | e = enode; COMMA; rest = array
     { e :: rest }
   ;
 
 call:
-  | id = ID; args = parens(separated_list(COMMA, expr));
+  | id = ID; args = parens(enodes);
     { (id, args) }
   ;
 
@@ -311,12 +332,12 @@ types:
   ;
 
 block:
-  | LBRACE; body = list_maybe_followed(stmt, return); RBRACE
+  | LBRACE; body = list_maybe_followed(snode, node(return)); RBRACE
     { body }
   ;
 
 return:
-  | RETURN; es = semi(separated_list(COMMA, expr));
+  | RETURN; es = semi(enodes);
     { Return es }
   ;
 
@@ -328,7 +349,7 @@ stmt:
   ;
 
 if_stmt:
-  | IF; e = expr; stmt1 = stmt; stmt2 = ioption(else_stmt)
+  | IF; e = enode; stmt1 = snode; stmt2 = ioption(node(else_stmt))
     { If (e, stmt1, stmt2) }
   ;
 
@@ -338,7 +359,7 @@ if_stmt:
   ;
 
 while_stmt:
-  | WHILE; e = expr; stmt = stmt
+  | WHILE; e = enode; stmt = snode
     { While (e, stmt) }
   ;
 
@@ -347,11 +368,11 @@ separated_multiple_list(sep, X):
     { x :: xs }
 
 semicolon_terminated:
-  | decl = decl
+  | decl = local_decl
     { Decl decl }
   | init = init
     { Init init }
-  | target = assign_target; GETS; e = expr
+  | target = assign_target; GETS; e = enode
     { Assign (target, e) }
   | lhs = separated_multiple_list(COMMA, init_target); GETS; rhs = call
     { MultiInit (lhs, rhs) }
@@ -369,7 +390,7 @@ assign_target:
   ;
 
 init_target:
-  | decl = decl
+  | decl = local_decl
     { InitDecl decl }
   | WILDCARD
     { Wildcard }

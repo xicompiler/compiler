@@ -10,3 +10,6 @@ end
 
 module Ident : S with type 'a t = 'a
 (** [Ident] is the type of an identity node *)
+
+module Pos : S with type 'a t = 'a * Position.t
+(** [Pos] is the type of a node with position information *)
