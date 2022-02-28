@@ -30,6 +30,12 @@ module Type : sig
     | `Fn of kind * kind
     ]
   (** [env] is a type used in an environment entry. *)
+
+  (** An [error] is the type of a Xi type error *)
+  type error = |
+
+  type nonrec 'a result = ('a, error) result
+  (** An ['a result] is either [Ok 'a] or [Error error] *)
 end
 
 module Context : Map.S with type Key.t = string
@@ -42,25 +48,29 @@ type context = Type.env Context.t
 module type ContextNode = sig
   include Node.S
 
+  type typ
+  (** [typ] is the type of a value wrapped in a node *)
+
   val context : 'a t -> context
   (** [context node] is the context of node *)
+
+  val typ : 'a t -> typ
+  (** [typ v] is the type of the value wrapped in [v] *)
+
+  val make : 'a -> ctx:context -> typ:typ -> 'a t
+  (** [make v ~ctx ~typ] is a node wrapping value [v] with context [ctx]
+      and type [typ] *)
 end
 
+module Ex : ContextNode with type typ := Type.expr
 (** [Ex] is a module wrapping an expression node *)
-module Ex : sig
-  include ContextNode
 
-  val typ : 'a t -> Type.expr
-  (** [typ node] is the type of [node] *)
-end
-
+module St : ContextNode with type typ := Type.stmt
 (** [St] is a module wrapping a statement node *)
-module St : sig
-  include ContextNode
-
-  val typ : 'a t -> Type.stmt
-  (** [typ node] is the type of [node] *)
-end
 
 include
   Abstract.S with module Expr.Node := Ex and module Stmt.Node := St
+
+type nonrec result = t Type.result
+(** A [result] is either [Ok ast] where [ast] is a decorated AST, or
+    [Error terr] where [terr] is a type error *)

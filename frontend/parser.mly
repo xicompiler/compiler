@@ -89,7 +89,10 @@ list_maybe_followed(X, TERM):
 semi(X):
   | x = X; SEMICOLON?
     { x }
-  ;
+
+parens(X):
+  | LPAREN; x = X; RPAREN
+    { x }
 
 (** [epsilon] derives the empty string *)
 epsilon:
@@ -235,7 +238,7 @@ uop_expr:
 call_expr:
   | index = index(call_expr)
     { Index index }
-  | LPAREN; e = expr; RPAREN
+  | e = parens(expr)
     { e }
   | v = primitive
     { Primitive v }
@@ -243,6 +246,8 @@ call_expr:
     { Array (Array.of_list array) }
   | s = STRING
     { String s }
+  | LENGTH; e = parens(expr)
+    { Length e }
   | e = array_assign_expr
     { e }
   ;
@@ -264,15 +269,8 @@ array:
   ;
 
 call:
-  | id = callee; LPAREN; args = separated_list(COMMA, expr); RPAREN
+  | id = ID; args = parens(separated_list(COMMA, expr));
     { (id, args) }
-  ;
-
-callee:
-  | id = ID
-    { id }
-  | LENGTH
-    { "length" }
   ;
 
 (** [array_assign_expr] is any non-array-index expression [e1] that can appear 

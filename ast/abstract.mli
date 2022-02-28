@@ -47,6 +47,7 @@ module type S = sig
       | Bop of binop * node * node
       | Uop of unop * node
       | FnCall of call
+      | Length of node
       | Index of index
 
     and node = t Node.t

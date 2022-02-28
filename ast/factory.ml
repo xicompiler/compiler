@@ -40,6 +40,7 @@ module Make (Ex : Node.S) (St : Node.S) = struct
       | Bop of binop * node * node
       | Uop of unop * node
       | FnCall of call
+      | Length of node
       | Index of index
 
     and node = t Node.t
@@ -172,6 +173,7 @@ module Make (Ex : Node.S) (St : Node.S) = struct
     | Bop (bop, e1, e2) -> sexp_of_infix_bop bop e1 e2
     | Uop (uop, e) -> sexp_of_uop uop e
     | FnCall (id, args) -> sexp_of_call id args
+    | Length e -> sexp_of_length e
     | Index (e1, e2) -> sexp_of_index e1 e2
 
   (** [sexp_of_enode node] is the s-expression serialization of the
@@ -206,6 +208,10 @@ module Make (Ex : Node.S) (St : Node.S) = struct
   and sexp_of_call id args =
     Sexp.List
       (args |> List.map ~f:sexp_of_enode |> List.cons (Sexp.Atom id))
+
+  (** [sexo_of_length e] is the s-expression serialization of the
+      expression [length(e)] *)
+  and sexp_of_length e = sexp_of_call "length" [ e ]
 
   (** [sexp_of_index e1 e2] is the s-expression serialization of the
       indexing of array [e1] at index [e2]. *)
