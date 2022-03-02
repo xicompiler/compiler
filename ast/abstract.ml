@@ -1,4 +1,5 @@
 open Core
+open Type
 
 module type S = sig
   type id = string
@@ -51,19 +52,20 @@ module type S = sig
   type expr = Expr.t
 
   module Stmt : sig
-    type decl = id * Tau.t
+    type decl = id * Type.tau
 
     module Node : Node.S
 
     type t =
-      | If of Expr.node * node * node option
+      | If of Expr.node * node
+      | IfElse of Expr.node * node * node
       | While of Expr.node * node
       | VarDecl of decl
-      | ArrayDecl of id * Tau.t * Expr.node option list
+      | ArrayDecl of id * Type.tau * Expr.node option list
       | Assign of id * Expr.node
       | ArrAssign of Expr.node * Expr.node * Expr.node
       | ExprStmt of Expr.call
-      | VarInit of id * Tau.t * Expr.node
+      | VarInit of id * Type.tau * Expr.node
       | MultiAssign of decl option list * id * Expr.nodes
       | PrCall of Expr.call
       | Return of Expr.nodes
@@ -78,7 +80,7 @@ module type S = sig
   type signature = {
     id : id;
     params : Stmt.decl list;
-    types : Tau.t list;
+    types : Type.tau list;
   }
 
   type fn = signature * Stmt.block
@@ -86,7 +88,7 @@ module type S = sig
   type definition =
     | FnDefn of fn
     | GlobalDecl of Stmt.decl
-    | GlobalInit of id * Tau.t * Expr.primitive
+    | GlobalInit of id * Type.tau * Expr.primitive
 
   type source = {
     uses : id list;

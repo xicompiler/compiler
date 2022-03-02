@@ -1,53 +1,19 @@
 open Core
 
-module Type = struct
-  type tau = Tau.t
-
-  type expr =
-    [ tau
-    | `Tuple of tau list
-    ]
-
-  type kind =
-    [ expr
-    | `Unit
-    ]
-
-  type stmt =
-    [ `Unit
-    | `Void
-    ]
-
-  type env =
-    | Var of tau
-    | Ret of kind
-    | Fn of kind * kind
-
-  type error = 
-  | Unbound
-  | ExpectedVar of string
-
-  type nonrec 'a result = ('a, error) result
-end
-
-module Context = Map.Make (String)
-
-type context = Type.env Context.t
-
 module type ContextNode = sig
   include Node.S
 
   type typ
 
-  val context : 'a t -> context
+  val context : 'a t -> Type.context
   val typ : 'a t -> typ
-  val make : 'a -> ctx:context -> typ:typ -> 'a t
+  val make : 'a -> ctx:Type.context -> typ:typ -> 'a t
 end
 
 module Ex = struct
   type 'a t = {
     expr : 'a;
-    context : context;
+    context : Type.context;
     typ : Type.expr;
   }
 
@@ -60,7 +26,7 @@ end
 module St = struct
   type 'a t = {
     stmt : 'a;
-    context : context;
+    context : Type.context;
     typ : Type.stmt;
   }
 

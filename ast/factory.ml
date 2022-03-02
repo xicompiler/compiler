@@ -52,19 +52,20 @@ module Make (Ex : Node.S) (St : Node.S) = struct
   type expr = Expr.t
 
   module Stmt = struct
-    type decl = id * Tau.t
+    type decl = id * Type.tau
 
     module Node = St
 
     type t =
-      | If of Expr.node * node * node option
+      | If of Expr.node * node
+      | IfElse of Expr.node * node * node
       | While of Expr.node * node
       | VarDecl of decl
-      | ArrayDecl of id * Tau.t * Expr.node option list
+      | ArrayDecl of id * Type.tau * Expr.node option list
       | Assign of id * Expr.node
       | ArrAssign of Expr.node * Expr.node * Expr.node
       | ExprStmt of Expr.call
-      | VarInit of id * Tau.t * Expr.node
+      | VarInit of id * Type.tau * Expr.node
       | MultiAssign of decl option list * id * Expr.nodes
       | PrCall of Expr.call
       | Return of Expr.nodes
@@ -79,7 +80,7 @@ module Make (Ex : Node.S) (St : Node.S) = struct
   type signature = {
     id : id;
     params : Stmt.decl list;
-    types : Tau.t list;
+    types : Type.tau list;
   }
 
   type fn = signature * Stmt.block
@@ -87,7 +88,7 @@ module Make (Ex : Node.S) (St : Node.S) = struct
   type definition =
     | FnDefn of fn
     | GlobalDecl of Stmt.decl
-    | GlobalInit of id * Tau.t * Expr.primitive
+    | GlobalInit of id * Type.tau * Expr.primitive
 
   type source = {
     uses : id list;
@@ -281,7 +282,8 @@ module Make (Ex : Node.S) (St : Node.S) = struct
 
   (** [sexp_of_stmt stmt] is the s-expression serialization of [stmt] *)
   let rec sexp_of_stmt = function
-    | If (e, s1, s2) -> sexp_of_if e s1 s2
+    | If (e, s) -> sexp_of_if e s
+    | IfElse (e, s1, s2) -> sexp_of_if_else e s1 s2
     | While (e, s) -> sexp_of_while e s
     | VarDecl (id, typ) -> sexp_of_var_decl id typ
     | ArrayDecl (id, typ, lengths) -> sexp_of_array_decl id typ lengths
@@ -302,13 +304,17 @@ module Make (Ex : Node.S) (St : Node.S) = struct
       wrapped in [mode]*)
   and sexp_of_snode node = node |> Stmt.Node.get |> sexp_of_stmt
 
-  (** [sexp_of_if e s1 s2] is the s-expression serialization of if
-      statement [if e s1 else s2] where the else clause may or may not
-      be present. *)
-  and sexp_of_if e s1 s2 =
-    let lst = Option.to_list (Option.map s2 ~f:sexp_of_snode) in
+  and sexp_of_cond e s lst =
     Sexp.List
-      (Sexp.Atom "if" :: sexp_of_enode e :: sexp_of_snode s1 :: lst)
+      (Sexp.Atom "if" :: sexp_of_enode e :: sexp_of_snode s :: lst)
+
+  (** [sexp_of_if e s1] is the s-expression serialization of if
+      statement [if e s1] *)
+  and sexp_of_if e s = sexp_of_cond e s []
+
+  (** [sexp_of_if_else e s1 s2] is the s-expression serialization of the
+      statement [if e s1 else s2] *)
+  and sexp_of_if_else e s1 s2 = sexp_of_cond e s1 [ sexp_of_snode s2 ]
 
   (** [sexp_of_while e s] is the s-expression serialzation of the
       statement [while e s] *)
