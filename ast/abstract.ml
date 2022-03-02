@@ -43,42 +43,30 @@ module type S = sig
       | Index of index
 
     and node = t Node.t
-    and call = id * node list
+    and nodes = node list
+    and call = id * nodes
     and index = node * node
   end
 
   type expr = Expr.t
 
-  module Tau : sig
-    include Tau.S with type 'a node = 'a * Expr.node option
-
-    val array : t -> Expr.node option -> t
-  end
-
   module Stmt : sig
     type decl = id * Tau.t
-
-    type assign_target =
-      | Var of id
-      | ArrayElt of Expr.index
-
-    type init_target =
-      | InitDecl of decl
-      | Wildcard
-
-    type init = init_target * Expr.node
 
     module Node : Node.S
 
     type t =
       | If of Expr.node * node * node option
       | While of Expr.node * node
-      | Decl of decl
-      | Init of init
-      | Assign of assign_target * Expr.node
-      | MultiInit of init_target list * Expr.call
+      | VarDecl of decl
+      | ArrayDecl of id * Tau.t * Expr.node option list
+      | Assign of id * Expr.node
+      | ArrAssign of Expr.node * Expr.node * Expr.node
+      | ExprStmt of Expr.call
+      | VarInit of id * Tau.t * Expr.node
+      | MultiAssign of decl option list * id * Expr.nodes
       | PrCall of Expr.call
-      | Return of Expr.node list
+      | Return of Expr.nodes
       | Block of block
 
     and node = t Node.t
@@ -98,7 +86,7 @@ module type S = sig
   type definition =
     | FnDefn of fn
     | GlobalDecl of Stmt.decl
-    | GlobalInit of Stmt.decl * Expr.primitive
+    | GlobalInit of id * Tau.t * Expr.primitive
 
   type source = {
     uses : id list;
