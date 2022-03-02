@@ -53,27 +53,21 @@ module type S = sig
     and node = t Node.t
     (** [node] is the type of an expression node *)
 
-    and call = id * node list
+    and nodes = node list
+    (** [nodes] is the type of a list of expression nodes *)
+
+    and call = id * nodes
     (** A [call] is the type of a function call represented as a pair
         [(id, args)] where [id] is the name of the function and [args]
         is the list of arguments *)
 
     and index = node * node
-    (** [index] is the type of an array index expression, represented as
-        the pair [(array, idx)] where [array] is the array being indexed
-        and [idx] is the corresponding index. *)
+    (** [index] represents an index expression [e1\[e2\]] as a pair
+        [(e1, e2)]*)
   end
 
   type expr = Expr.t
   (** An [expr] is a Xi expression *)
-
-  (** [Tau] is a type that includes an optional length expression node*)
-  module Tau : sig
-    include Tau.S with type 'a node = 'a * Expr.node option
-
-    val array : t -> Expr.node option -> t
-    (** [array contents length] is [Array (contents, length)] *)
-  end
 
   module Stmt : sig
     (** A [typ] is a Xi type whose arrays are optionally initialized
@@ -84,24 +78,6 @@ module type S = sig
         [(id, t)] where [id] is the name of the identifier and [t] is
         its type. *)
 
-    (** An [assign_target] represents the target of an assignment
-        statement in Xi; either a variable or an array element. *)
-    type assign_target =
-      | Var of id
-      | ArrayElt of Expr.index
-
-    (** A [init_target] is the type of a target of an initialization
-        expression in Xi; either a declaration or a wildcard, [_]. *)
-    type init_target =
-      | InitDecl of decl
-      | Wildcard
-
-    type init = init_target * Expr.node
-    (** An [init] is the type of a Xi initialization statement
-        represented as a pair [(target, e)] where [target] is the
-        declaration of the identifier or wildcard and [e] is the
-        initialization expression. *)
-
     module Node : Node.S
     (** A [Node] is a statement node in the ast *)
 
@@ -109,12 +85,15 @@ module type S = sig
     type t =
       | If of Expr.node * node * node option
       | While of Expr.node * node
-      | Decl of decl
-      | Init of init
-      | Assign of assign_target * Expr.node
-      | MultiInit of init_target list * Expr.call
+      | VarDecl of decl
+      | ArrayDecl of id * Tau.t * Expr.node option list
+      | Assign of id * Expr.node
+      | ArrAssign of Expr.node * Expr.node * Expr.node
+      | ExprStmt of Expr.call
+      | VarInit of id * Tau.t * Expr.node
+      | MultiAssign of decl option list * id * Expr.nodes
       | PrCall of Expr.call
-      | Return of Expr.node list
+      | Return of Expr.nodes
       | Block of block
 
     and node = t Node.t
@@ -148,7 +127,7 @@ module type S = sig
   type definition =
     | FnDefn of fn
     | GlobalDecl of Stmt.decl
-    | GlobalInit of Stmt.decl * Expr.primitive
+    | GlobalInit of id * Tau.t * Expr.primitive
 
   type source = {
     uses : id list;

@@ -81,46 +81,55 @@
 
 %%
 
+(** [node(TERM)] is the pair [(e, start)] where [TERM] produces [e] and 
+    [startpos] is the start position of [TERM] *)
 node(TERM):
   | e = TERM
     { (e, get_position $startpos) }
   ;
 
+(** [enode] produces a node wrapping an [expr] *)
 enode:
   | node = node(expr)
     { node }
   ;
 
+(** [enodes] produces a comma-separated list of [enode]s *)
 enodes:
   | nodes = separated_list(COMMA, enode)
     { nodes }
   ;
 
+(** [snode] produces a node wrapping a statement *)
 snode:
   | node = node(stmt)
     { node }
   ;
 
+(** [list_maybe_followed(X, TERM)] recognizes either [x1; ...; xn] where 
+    [xi : X] or [x1; ...; xn; term] where [term : TERM]. *)
 list_maybe_followed(X, TERM):
   | e = TERM?
     { Option.to_list e }
   | x = X; xs = list_maybe_followed(X, TERM)
     { x :: xs }
 
+(** [semi(X)] derives [X;] or [X] and produces [X] *)
 semi(X):
   | x = X; SEMICOLON?
     { x }
 
+(** [parens(X)] derives [(X)] and produces [X] *)
 parens(X):
   | LPAREN; x = X; RPAREN
     { x }
 
-(** [epsilon] derives the empty string *)
-epsilon:
-  | (* nothing *)
-    { None }
-  ;
+(** [bracketed(X)] derives [[X]] and produces [X] *)
+bracketed(X):
+  | LBRACKET; x = X; RBRACKET
+    { x }
 
+(** A [binop] is a binary operator in Xi *)
 %inline binop:
   | MULT { Mult }
   | HIGHMULT { HighMult }
@@ -138,40 +147,41 @@ epsilon:
   | OR { Or }
   ;
 
+(** A [unop] is a unary operator in Xi *)
 %inline unop:
   | MINUS { IntNeg }
   | NOT { LogicalNeg }
   ;
 
+(** A program is either a source or interface *)
 program:
   | s = source { s }
   | i = interface { i }
   ;
 
+(** A [source] derives a source file in  Xi, followed by EOF *)
 source:
-  | s = source_entry; EOF
+  | s = source_file; EOF
     { Source s }
   ;
 
+(** An [interface] derives an interface file in Xi, followed by EOF  *)
 interface:
-  | i = interface_entry; EOF
-    { Interface i }
+  | signatures = signature+; EOF
+    { Interface signatures }
   ;
 
-source_entry:
+(** A [source_file] derives a source file in  Xi *)
+source_file:
   | definitions = definitions
     { { uses = []; definitions } }
   | uses = use+; definitions = definitions
     { { uses; definitions } }
   ;
 
-interface_entry:
-  | signatures = signature+
-    { signatures }
-  ;
-
+(** [use] derives the top level statement [use id] *)
 use:
-  | USE; id = semi(ID);
+  | USE; id = semi(ID)
     { id }
   ;
 
@@ -202,43 +212,31 @@ global:
   | decl = decl
     { GlobalDecl decl }
   | decl = decl; GETS; v = primitive
-    { GlobalInit (decl, v) }
+    { let (id, typ) = decl in GlobalInit (id, typ, v) }
   ;
 
 decl:
-  | decl = decl_length(epsilon)
-    { decl }
+  | id = ID; COLON; typ = typ
+    { (id, typ) }
   ;
-
-local_decl:
-  | decl = decl_length(enode?)
-    { decl }
-  ;
-
-decl_length(length):
-  | id = ID; COLON; t = typ_length(length)
-    { (id, t) }
 
 typ:
-  | t = typ_length(enode?)
-    { t }
+  | typ = TYPE
+    { typ :> Tau.t }
+  | typ = typ; LBRACKET; RBRACKET
+    { `Array typ }
   ;
 
-typ_length(length):
-  | t = TYPE; array_type = loption(array_type(length))
-    { List.fold_left ~f:Tau.array ~init:(t :> Tau.t) array_type }
-
-array_type(length):
-  | t = loption(array_type(length)); LBRACKET; length = length; RBRACKET
-    { length :: t }
-
-init:
-  | init = separated_pair(init_target, GETS, enode)
-    { init }
+array_init:
+  | base = typ; e = bracketed(enode); es = bracketed(enode?)*
+    { 
+      let es = Some e :: es in
+      (List.fold_left ~f:(fun acc _ -> `Array acc) ~init:base es, es)
+    }
   ;
 
 index(lhs):
-  | e1 = node(lhs); LBRACKET; e2 = enode; RBRACKET
+  | e1 = node(lhs); e2 = bracketed(enode)
     { (e1, e2) }
   ;
 
@@ -344,7 +342,7 @@ return:
 stmt:
   | stmt = if_stmt
   | stmt = while_stmt
-  | stmt = semi(semicolon_terminated);
+  | stmt = semi(semicolon_terminated)
     { stmt }
   ;
 
@@ -368,30 +366,29 @@ separated_multiple_list(sep, X):
     { x :: xs }
 
 semicolon_terminated:
-  | decl = local_decl
-    { Decl decl }
-  | init = init
-    { Init init }
-  | target = assign_target; GETS; e = enode
-    { Assign (target, e) }
-  | lhs = separated_multiple_list(COMMA, init_target); GETS; rhs = call
-    { MultiInit (lhs, rhs) }
+  | decl = decl
+    { VarDecl decl }
+  | decl = decl; GETS; e = enode
+    { let (id, typ) = decl in VarInit (id, typ, e) }
+  | id = ID; COLON; init = array_init
+    { let (typ, es) = init in ArrayDecl (id, typ, es) }
+  | id = ID; GETS; e = enode
+    { Assign (id, e) }
+  | index = index(array_assign_lhs); GETS; e3 = enode
+    { let (e1, e2) = index in ArrAssign (e1, e2, e3) }
+  | ds = separated_multiple_list(COMMA, d); GETS; rhs = call
+    { let (id, args) = rhs in MultiAssign (ds, id, args) }
+  | WILDCARD; GETS; rhs = call
+    { ExprStmt rhs }
   | call = call
     { PrCall call }
   | block = block
     { Block block }
   ;
 
-assign_target:
-  | id = ID
-    { Var id }
-  | index = index(array_assign_lhs)
-    { ArrayElt index }
-  ;
-
-init_target:
-  | decl = local_decl
-    { InitDecl decl }
+d:
+  | decl = decl
+    { Some decl }
   | WILDCARD
-    { Wildcard }
+    { None }
   ;

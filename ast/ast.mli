@@ -8,3 +8,6 @@ val type_check : t -> Decorated.result
     [ast] represents a semantically valid Xi program, or
     [Error type_error] where [type_error] describes the type error,
     otherwise. *)
+
+module Tau : module type of Tau
+(** export [Tau] for use by Menhir *)
