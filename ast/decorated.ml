@@ -4,10 +4,11 @@ module type ContextNode = sig
   include Node.S
 
   type typ
+  type context
 
-  val context : 'a t -> Type.context
+  val context : 'a t -> context
   val typ : 'a t -> typ
-  val make : 'a -> ctx:Type.context -> typ:typ -> 'a t
+  val make : 'a -> ctx:context -> typ:typ -> 'a t
 end
 
 module Ex = struct
@@ -26,7 +27,7 @@ end
 module St = struct
   type 'a t = {
     stmt : 'a;
-    context : Type.context;
+    context : Type.Context.fn;
     typ : Type.stmt;
   }
 

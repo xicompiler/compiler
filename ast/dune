@@ -1,6 +1,6 @@
 (library
  (name ast)
- (private_modules abstract factory node)
+ (private_modules abstract factory node op primitive)
  (libraries core unicode position type)
  (preprocess
   (pps ppx_let)))

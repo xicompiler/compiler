@@ -5,31 +5,8 @@ module type S = sig
   type id = string
 
   module Expr : sig
-    type unop =
-      | IntNeg
-      | LogicalNeg
-
-    type binop =
-      | Mult
-      | HighMult
-      | Div
-      | Mod
-      | Plus
-      | Minus
-      | Lt
-      | Leq
-      | Geq
-      | Gt
-      | Eq
-      | Neq
-      | And
-      | Or
-
-    type primitive =
-      | Int of string
-      | Bool of bool
-      | Char of Uchar.t
-
+    include module type of Op
+    include module type of Primitive
     module Node : Node.S
 
     type t =

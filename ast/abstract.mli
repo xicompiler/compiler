@@ -7,33 +7,8 @@ module type S = sig
 
   (** An [Expr] represents an expression in the Xi langauge *)
   module Expr : sig
-    type unop =
-      | IntNeg
-      | LogicalNeg
-
-    (** A [binop] is the type of a Xi binary operator *)
-    type binop =
-      | Mult
-      | HighMult
-      | Div
-      | Mod
-      | Plus
-      | Minus
-      | Lt
-      | Leq
-      | Geq
-      | Gt
-      | Eq
-      | Neq
-      | And
-      | Or
-
-    (** A [literal] represents a literal char, int, bool, or string
-        value in Xi *)
-    type primitive =
-      | Int of string
-      | Bool of bool
-      | Char of Uchar.t
+    include module type of Op
+    include module type of Primitive
 
     module Node : Node.S
     (** [Node] wraps an expression node *)

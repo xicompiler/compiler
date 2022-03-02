@@ -29,12 +29,14 @@ type id =
 (** An [error] is the type of a Xi type error *)
 type error =
   | Unbound
+  | Bound of string
   | IdMismatch of string
   | ExpectedTau
   | ExpectedArray
   | ExpectedFun
   | ExpectedTerm
   | ArgMismatch
+  | OpMismatch
   | Mismatch of expr * expr
 
 type nonrec 'a result = ('a, error) result
@@ -43,9 +45,17 @@ type nonrec 'a result = ('a, error) result
 type context = id Context.t
 (** [context] is the type of a static typing context *)
 
+val lub : term -> term -> term
+(** [lub t1 t2] is [`Void] iff both of [t1] and [t2] are [`Void] and
+    [`Unit] otherwise *)
+
 (** [Context] is the type of a typing context *)
 module Context : sig
   include module type of Context
+
+  val assert_unbound : id:string -> context -> unit result
+  (** [assert_unbound ~id ctx] is [Ok ()] if [id] is unbound in [ctx]
+      and [Error Bound] otherwise *)
 
   (** [Fn] represents a typing context present within a function body *)
   module Fn : sig
@@ -58,7 +68,14 @@ module Context : sig
     val ret : t -> term
     (** [ret fn_ctx] is the return type of the function represented by
         [fn_ctx] *)
+
+    val assert_unbound : id:string -> t -> unit result
+    (** [assert_unbound ~id ctx] is [Ok ()] if [id] is unbound in [ctx]
+        and [Error Bound] otherwise *)
   end
+
+  type fn = Fn.t
+  (** [fn] is an alias for [Fn.t] *)
 end
 
 module Tau : module type of Tau

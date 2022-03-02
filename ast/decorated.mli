@@ -7,22 +7,31 @@ module type ContextNode = sig
   type typ
   (** [typ] is the type of a value wrapped in a node *)
 
-  val context : 'a t -> Type.context
+  type context
+  (** [context] is the type of the context wrapped in a node *)
+
+  val context : 'a t -> context
   (** [context node] is the context of node *)
 
   val typ : 'a t -> typ
   (** [typ v] is the type of the value wrapped in [v] *)
 
-  val make : 'a -> ctx:Type.context -> typ:typ -> 'a t
+  val make : 'a -> ctx:context -> typ:typ -> 'a t
   (** [make v ~ctx ~typ] is a node wrapping value [v] with context [ctx]
       and type [typ] *)
 end
 
-module Ex : ContextNode with type typ := Type.expr
 (** [Ex] is a module wrapping an expression node *)
+module Ex :
+  ContextNode
+    with type typ := Type.expr
+     and type context := Type.context
 
-module St : ContextNode with type typ := Type.stmt
 (** [St] is a module wrapping a statement node *)
+module St :
+  ContextNode
+    with type typ := Type.stmt
+     and type context := Type.Context.fn
 
 include
   Abstract.S with module Expr.Node := Ex and module Stmt.Node := St

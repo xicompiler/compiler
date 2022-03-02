@@ -5,31 +5,8 @@ module Make (Ex : Node.S) (St : Node.S) = struct
   type id = string
 
   module Expr = struct
-    type unop =
-      | IntNeg
-      | LogicalNeg
-
-    type binop =
-      | Mult
-      | HighMult
-      | Div
-      | Mod
-      | Plus
-      | Minus
-      | Lt
-      | Leq
-      | Geq
-      | Gt
-      | Eq
-      | Neq
-      | And
-      | Or
-
-    type primitive =
-      | Int of string
-      | Bool of bool
-      | Char of Uchar.t
-
+    include Op
+    include Primitive
     module Node = Ex
 
     type t =
