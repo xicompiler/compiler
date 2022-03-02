@@ -24,12 +24,11 @@ module Type : sig
     ]
   (** [stmt] is the type of the outcome of evaluating a statement. *)
 
-  type env =
-    [ `Var of tau
-    | `Ret of kind
-    | `Fn of kind * kind
-    ]
   (** [env] is a type used in an environment entry. *)
+  type env =
+    | Var of tau
+    | Ret of kind
+    | Fn of kind * kind
 
   (** An [error] is the type of a Xi type error *)
   type error = |

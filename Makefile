@@ -8,9 +8,10 @@ test: build
 
 clean: bisect-clean
 	dune clean
-	find . -name '*.lexed'  -delete
+	find . -name '*.lexed' -delete
 	find . -name '*.parsed' -delete
 	find . -name '*.output' -delete
+	find . -name '*.conflicts' -delete
 	rm -f xic *.zip *.log
 
 cloc: clean

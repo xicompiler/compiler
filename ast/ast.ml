@@ -1,4 +1,5 @@
 include Factory.Make (Node.Pos) (Node.Pos)
+module Tau = Tau
 open Expr
 module Context = Decorated.Context
 
