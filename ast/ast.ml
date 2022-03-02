@@ -1,12 +1,12 @@
 open Core
 open Result.Monad_infix
+open Result.Let_syntax
+
 include Factory.Make (Node.Pos) (Node.Pos)
 module Tau = Tau
+
 open Expr
 module Context = Decorated.Context
-
-type error = 
-  | UnboundError
 
 let type_check ast = failwith "unimplemented"
 
@@ -18,10 +18,8 @@ let type_of_primitive = function
       `Int
   | Bool _ -> `Bool
 
-let type_of_id ctx i =
-  match Context.find ctx i with
-  | Some t -> Ok t
-  | None -> Error UnboundError
+let type_of_id ctx i = 
+  Result.of_option (Context.find ctx i) ~error:Decorated.Type.Unbound
   
 (** [type_check_primitive ctx p] is [Ok expr] where [expr] is a
     decorated expression node for [p]. *)
@@ -32,7 +30,9 @@ let type_check_primitive ctx p =
     decorated expression node for [i] if [i] is in [ctx], or
     [Error err] otherwise. *)
 let type_check_id ctx i = 
-  type_of_id ctx i >>| fun typ -> Decorated.Ex.make i ~ctx ~typ
+  type_of_id ctx i >>| function
+    | Var tau -> Decorated.Ex.make i ~ctx ~typ:tau
+    | _ -> Error (Decorated.Type.ExpectedVar i)
 
 let type_check_array ctx arr = failwith "unimplemented"
 
@@ -49,7 +49,7 @@ let type_check_bop ctx op n1 n2 = match op with
   | Geq
   | Gt
   | Eq
-  | Neq -> begin match (type_check n1, type_check n2) with
+  | Neq -> begin match (type_check_expr n1, type_check_expr n2) with
     | _ -> failwith "unimplemented" end
   | And
   | Or
@@ -87,12 +87,15 @@ let type_check_expr ctx = function
   | Index i -> type_check_index ctx i
 
 let type_check_statement ctx = function
-  | If (expr_node, n1, n2, opt) -> failwith "unimplemented"
+  | If (expr_node, n1, n2) -> failwith "unimplemented"
   | While (expr_node, node) -> failwith "unimplemented"
-  | Decl decl -> failwith "unimplemented"
-  | Init init -> failwith "unimplemented"
-  | Assign (target, node) -> failwith "unimplemented"
-  | MultiInit (target, list, call) -> failwith "unimplemented"
+  | VarDecl decl -> failwith "unimplemented"
+  | ArrayDecl (id, typ, nodes) -> failwith "unimplemented"
+  | Assign (id, node) -> failwith "unimplemented"
+  | ArrAssign (n1, n2, n3) -> failwith "unimplemented"
+  | ExprStmt call -> failwith "unimplemented"
+  | VarInit (id, t, node) -> failwith "unimplemented"
+  | MultiAssign (list, id, nodes) -> failwith "unimplemented"
   | PrCall call -> failwith "unimplemented"
-  | Return list -> failwith "unimplemented"
+  | Return nodes -> failwith "unimplemented"
   | Block block -> failwith "unimplemented"

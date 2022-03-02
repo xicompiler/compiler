@@ -23,7 +23,10 @@ module Type = struct
     | Ret of kind
     | Fn of kind * kind
 
-  type error = |
+  type error = 
+  | Unbound
+  | ExpectedVar of string
+
   type nonrec 'a result = ('a, error) result
 end
 

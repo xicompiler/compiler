@@ -1,4 +1,5 @@
 (library
  (name ast)
  (private_modules abstract factory node)
- (libraries core unicode position))
+ (libraries core unicode position)
+ (preprocess (pps ppx_let)))

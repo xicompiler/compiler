@@ -31,7 +31,7 @@ module Type : sig
     | Fn of kind * kind
 
   (** An [error] is the type of a Xi type error *)
-  type error = |
+  type error = Unbound
 
   type nonrec 'a result = ('a, error) result
   (** An ['a result] is either [Ok 'a] or [Error error] *)
