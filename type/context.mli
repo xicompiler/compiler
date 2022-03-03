@@ -21,12 +21,12 @@ module Fn : sig
 
   val add : id:string -> typ:id -> t -> t result
   (** [add ~id ~typ ctx] is [Ok ctx'] where [ctx'] is [ctx :: (id, typ)]
-      if [id] is unbound in [ctx], or [Error (Bound key)] otherwise *)
+      if [id] is unbound in [ctx], or [Error (Bound id)] otherwise *)
 
   val add_var : id:string -> typ:tau -> t -> t result
   (** [add ~id ~typ ctx] is [Ok ctx'] where [ctx'] is
       [ctx :: (id, Var typ)] if [id] is unbound in [ctx], or
-      [Error (Bound key)] otherwise *)
+      [Error (Bound id)] otherwise *)
 
   val context : t -> context
   (** [context fn_ctx] is the typing context found within [fn_ctx] *)
