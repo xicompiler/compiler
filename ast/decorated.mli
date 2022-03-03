@@ -23,15 +23,18 @@ end
 
 (** [Ex] is a module wrapping an expression node *)
 module Ex :
-  ContextNode
-    with type typ := Type.expr
-     and type context := Type.context
+  ContextNode with type typ = Type.expr and type context = Type.context
 
 (** [St] is a module wrapping a statement node *)
-module St :
-  ContextNode
-    with type typ := Type.stmt
-     and type context := Type.Context.fn
+module St : sig
+  include
+    ContextNode
+      with type typ = Type.stmt
+       and type context = Type.Context.fn
+
+  val make_unit : 'a -> ctx:context -> 'a t
+  (** [make_unit v ~ctx] is [make v ~ctx ~typ:`Unit] *)
+end
 
 include
   Abstract.S with module Expr.Node := Ex and module Stmt.Node := St
