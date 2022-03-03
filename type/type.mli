@@ -19,10 +19,6 @@ val tau_of_expr : expr -> tau option
 (** [tau_of_expr e] is [Some t] if [e] is tau type [t] and [None]
     otherwise *)
 
-val assert_eq : exp:expr -> expr -> unit result
-(** [assert_eq got ~exp] is [Ok ()] if [got] and [exp] represent the
-    same type and [Error Mismatch] otherwise. *)
-
 val assert_bool : expr -> unit result
 (** [assert_bool e] is [Ok ()] if [e] is the boolean type and
     [Error Mismatch] otherwise *)
@@ -33,3 +29,7 @@ val tau_of_expr_res : expr -> tau result
 
 val mismatch : [< expr ] -> [< expr ] -> error
 (** [mismatch t1 t2] is [Mismatch (t1 :> expr, t2 :> expr)] *)
+
+val assert_eq : exp:[< expr ] -> [< expr ] -> unit result
+(** [assert_eq got ~exp] is [Ok ()] if [got] and [exp] represent the
+    same type and [Error Mismatch] otherwise. *)

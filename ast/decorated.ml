@@ -1,19 +1,9 @@
 open Core
 
-module type ContextNode = sig
-  include Node.S
-
-  type typ
-  type context
-
-  val context : 'a t -> context
-  val typ : 'a t -> typ
-  val make : 'a -> ctx:context -> typ:typ -> 'a t
-end
-
 module Ex = struct
   type typ = Type.expr
   type context = Type.context
+  type nonrec 'a result = ('a, Type.error Position.error) result
 
   type 'a t = {
     expr : 'a;
@@ -30,6 +20,7 @@ end
 module St = struct
   type typ = Type.stmt
   type context = Type.Context.fn
+  type nonrec 'a result = ('a, Type.error Position.error) result
 
   type 'a t = {
     stmt : 'a;
@@ -46,4 +37,4 @@ end
 
 include Factory.Make (Ex) (St)
 
-type nonrec result = t Type.result
+type nonrec result = (t, Type.error Position.error) result

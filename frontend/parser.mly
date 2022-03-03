@@ -1,4 +1,5 @@
 %{
+  module Pos = Node.Position
   open Core
   open Ast
   open Expr
@@ -85,7 +86,7 @@
     [startpos] is the start position of [TERM] *)
 node(TERM):
   | e = TERM
-    { (e, get_position $startpos) }
+    { Pos.make ~position:(get_position $startpos) e }
   ;
 
 (** [enode] produces a node wrapping an [expr] *)

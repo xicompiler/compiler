@@ -1,5 +1,5 @@
 (library
  (name ast)
- (libraries core unicode position type)
+ (libraries core unicode node type)
  (preprocess
   (pps ppx_let)))

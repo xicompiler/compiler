@@ -26,6 +26,8 @@ let expr_of_term = function
 let mismatch t1 t2 = Mismatch ((t1 :> expr), (t2 :> expr))
 
 let assert_eq ~exp got =
+  let exp = (exp :> expr) in
+  let got = (got :> expr) in
   if Poly.equal got exp then Ok () else Error (Mismatch (got, exp))
 
 let assert_bool = assert_eq ~exp:`Bool
