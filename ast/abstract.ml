@@ -1,5 +1,4 @@
 open Core
-open Type
 
 module type S = sig
   type id = string

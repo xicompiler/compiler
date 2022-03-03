@@ -33,3 +33,6 @@ val mismatch : [< expr ] -> [< expr ] -> error
 val assert_eq : exp:[< expr ] -> [< expr ] -> unit result
 (** [assert_eq got ~exp] is [Ok ()] if [got] and [exp] represent the
     same type and [Error Mismatch] otherwise. *)
+
+module Node : module type of TypeNode
+(** [Node] is the type of a decorated AST node *)

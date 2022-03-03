@@ -31,3 +31,17 @@ let assert_eq ~exp got =
   if Poly.equal got exp then Ok () else Error (Mismatch (got, exp))
 
 let assert_bool = assert_eq ~exp:`Bool
+
+module type Context = sig
+  include Node.S
+
+  type typ
+  type context
+  type nonrec 'a result = ('a, error Position.error) Result.t
+
+  val context : 'a t -> context
+  val typ : 'a t -> typ
+  val make : 'a -> ctx:context -> typ:typ -> 'a t
+end
+
+module Node = TypeNode
