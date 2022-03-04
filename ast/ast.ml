@@ -1,6 +1,7 @@
 open Core
 open Result.Monad_infix
 open Result.Let_syntax
+open Util.Result
 module Node = Node.Position
 include Factory.Make (Node) (Node)
 module PosNode = Node
@@ -12,6 +13,9 @@ open Type
 (** [map_error ~pos result] decorates the error variant of [result] with
     the position [pos] at which it occurs *)
 let map_error ~pos = Result.map_error ~f:(Decorated.Error.make ~pos)
+
+(** [r >>? pos] is [map_error ~pos r] *)
+let ( >>? ) r pos = map_error ~pos r
 
 (** fold2 ~pos ~f ~init:a [b1; ...; bn] [c1; ...; cn] is
     [f (... (f (f a b1 c1) b2 c2) ...) bn cn], short circuiting on
@@ -51,7 +55,7 @@ let type_check_primitive ~ctx ~pos p =
 (** [type_check_id ctx i] is [Ok expr] where [expr] is a decorated
     expression node for [i] if [i] is in [ctx], or [Error err] otherwise *)
 let type_check_id ~ctx ~pos id =
-  let%map typ = ctx |> Context.find_var ~id |> map_error ~pos in
+  Context.find_var ~id ctx >>? pos >>| fun typ ->
   let e = Decorated.Expr.Id id in
   Node.Expr.make ~ctx ~typ:(typ :> expr) ~pos e
 
@@ -130,7 +134,7 @@ and type_check_uop ~ctx ~pos op e =
 (* TODO add op + type to opmismatch *)
 
 and type_check_call ~ctx ~pos id es =
-  let%bind t1, t2 = ctx |> Context.find_fun ~id |> map_error ~pos in
+  Context.find_fun ~id ctx >>? pos >>= fun (t1, t2) ->
   let types = tau_list_of_term t1 in
   let%map es = type_check_exprs ~ctx ~pos ~types es in
   (es, t2)
@@ -144,8 +148,7 @@ and type_check_length ~ctx ~pos node =
   let%bind dec = type_check_expr ctx node in
   let typ = Node.Expr.typ dec in
   let e = Decorated.Expr.Length dec in
-  map_error ~pos (assert_array typ) >>| fun () ->
-  Node.Expr.make ~ctx ~typ ~pos e
+  assert_array typ >>? pos >>| fun () -> Node.Expr.make ~ctx ~typ ~pos e
 
 and type_check_index ~ctx ~pos e1 e2 =
   let%bind dec1 = type_check_expr ctx e1 in
@@ -167,7 +170,7 @@ let bool_or_error ~ctx e =
   Node.Expr.assert_bool e >>| fun () -> e
 
 let type_check_var_decl ~ctx ~pos id typ =
-  let%map ctx = ctx |> Context.Fn.add_var ~id ~typ |> map_error ~pos in
+  Context.Fn.add_var ~id ~typ ctx >>? pos >>| fun ctx ->
   let s = Decorated.Stmt.VarDecl (id, typ) in
   Node.Stmt.make_unit s ~ctx ~pos
 
@@ -191,14 +194,14 @@ let rec type_check_sizes ~ctx = function
   | None :: es -> type_check_empty es
 
 let type_check_array_decl ~ctx ~pos id typ es =
-  let%bind ctx = ctx |> Context.Fn.add_var ~id ~typ |> map_error ~pos in
+  Context.Fn.add_var ~id ~typ ctx >>? pos >>= fun ctx ->
   let%map es = type_check_sizes ~ctx:(Context.Fn.context ctx) es in
   let es = List.map ~f:Option.some es in
   let s = Decorated.Stmt.ArrayDecl (id, typ, es) in
   Node.Stmt.make_unit ~ctx ~pos s
 
 let type_check_assign ~ctx ~pos id e =
-  let%bind typ = ctx |> Context.Fn.find_var ~id |> map_error ~pos in
+  Context.Fn.find_var ~id ctx >>? pos >>= fun typ ->
   let%bind dec = type_check_expr_fn_ctx ~ctx e in
   let%map () = Node.Expr.assert_eq_sub ~expect:typ dec in
   let s = Decorated.Stmt.Assign (id, dec) in
@@ -211,7 +214,7 @@ let type_check_expr_stmt ~ctx:fn_ctx ~pos id es =
   Node.Stmt.make_unit ~ctx:fn_ctx ~pos s
 
 let type_check_var_init ~ctx ~pos id typ e =
-  let%bind ctx = ctx |> Context.Fn.add_var ~id ~typ |> map_error ~pos in
+  Context.Fn.add_var ~id ~typ ctx >>? pos >>= fun ctx ->
   let%bind dec = type_check_expr_fn_ctx ~ctx e in
   let%map () = Node.Expr.assert_eq_sub ~expect:typ dec in
   let s = Decorated.Stmt.VarInit (id, typ, dec) in
@@ -233,11 +236,15 @@ let type_check_arr_assign ~ctx ~pos e1 e2 e3 =
   | _, `Int, _ -> Error (Positioned.make ~pos:pos1 ExpectedArray)
   | _, t, _ -> Error (Positioned.make ~pos:pos2 (Mismatch (`Int, t)))
 
-let rec check_decls ~ctx ~pos ds ts =
+let check_decls ~ctx ~pos ds ts =
   let f ctx d typ =
     match d with
     | Some (id, tau) ->
-        ctx |> Context.Fn.add_var ~id ~typ |> map_error ~pos
+        let error () =
+          Positioned.make ~pos (Mismatch ((typ :> expr), (tau :> expr)))
+        in
+        ok_if_true_lazy (Tau.equal typ tau) ~error >>= fun () ->
+        Context.Fn.add_var ~id ~typ ctx >>? pos
     | None -> Ok ctx
   in
   fold2_result ~pos ~f ~init:ctx ds ts
@@ -307,7 +314,7 @@ and type_check_pr_call ~ctx:fn_ctx ~pos id es =
   let ctx = Context.Fn.context fn_ctx in
   let%bind es, t2 = type_check_call ~ctx ~pos id es in
   let s = Decorated.Stmt.PrCall (id, es) in
-  map_error ~pos (assert_unit t2) >>| fun () ->
+  assert_unit t2 >>? pos >>| fun () ->
   Node.Stmt.make_unit ~ctx:fn_ctx ~pos s
 
 and type_check_block ~ctx ~pos stmts =
