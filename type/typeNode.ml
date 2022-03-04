@@ -1,6 +1,8 @@
 open Core
+open Result.Let_syntax
 open Definitions
 open TypeError
+open Util.Result
 
 module type Params = sig
   type typ
@@ -73,6 +75,10 @@ module Expr = struct
   let assert_eq_sub ~expect = assert_eq ~expect:(expect :> typ)
   let assert_int expr = assert_eq_sub ~expect:`Int expr
   let assert_bool expr = assert_eq_sub ~expect:`Bool expr
+
+  let assert_eq_tau e1 e2 =
+    let%bind t = Conversions.tau_of_expr_res (typ e1) (position e1) in
+    assert_eq_sub ~expect:t e2
 end
 
 type 'a expr = 'a Expr.t
@@ -90,6 +96,7 @@ module Stmt = struct
   let make_unit = make ~typ:`Unit
   let make_void = make ~typ:`Void
   let assert_unit stmt = assert_eq ~expect:`Unit stmt
+  let lub s1 s2 = lub (typ s1) (typ s2)
 end
 
 type 'a stmt = 'a Stmt.t

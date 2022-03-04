@@ -28,6 +28,4 @@ module Positioned = struct
   let expected_unit pos = make ~pos ExpectedUnit
 end
 
-let ok_if_true_lazy ~error b = if b then Ok () else Error (error ())
-
 type nonrec 'a result = ('a, error) result

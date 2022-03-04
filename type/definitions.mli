@@ -23,3 +23,7 @@ type stmt =
 type id =
   | Var of tau
   | Fn of term * term
+
+val lub : stmt -> stmt -> stmt
+(** [lub t1 t2] is [`Void] iff both of [t1] and [t2] are [`Void] and
+    [`Unit] otherwise *)

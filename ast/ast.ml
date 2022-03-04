@@ -13,7 +13,25 @@ open Type
     the position [pos] at which it occurs *)
 let map_error ~pos = Result.map_error ~f:(Decorated.Error.make ~pos)
 
-let type_check ast = failwith "unimplemented"
+(** fold2 ~pos ~f ~init:a [b1; ...; bn] [c1; ...; cn] is
+    [f (... (f (f a b1 c1) b2 c2) ...) bn cn], short circuiting on
+    return of [Error _]. If the lengths of [l1] and [l2] are not equal,
+    [Error CountMismatch] is returned. *)
+let rec fold2_result ~pos ~f ~init l1 l2 =
+  match (l1, l2) with
+  | h1 :: t1, h2 :: t2 ->
+      let%bind init = f init h1 h2 in
+      fold2_result ~pos ~f ~init t1 t2
+  | [], [] -> Ok init
+  | _ -> Error (Positioned.count_mismatch pos)
+
+let type_check_function signature = failwith "unimplemented"
+let type_check_source source = failwith "unimplemented"
+let type_check_interface interface = failwith "unimplemented"
+
+let type_check = function
+  | Source source -> type_check_source source
+  | Interface interface -> type_check_interface interface
 
 (** [type_of_primitive p] is [`Int] if [p] is [Int] or [Char] and
     [`Bool] if [p] is [Bool] *)
@@ -60,31 +78,28 @@ let rec type_check_expr ~ctx enode =
     propogated during the type-checking of any of [es] prior to a
     [CountMismatch] *)
 and type_check_exprs ~ctx ~pos ~types es =
-  match (types, es) with
-  | typ :: types, e :: es ->
-      let%bind e = type_check_expr ~ctx e in
-      let%bind () = Node.Expr.assert_eq_sub ~expect:typ e in
-      type_check_exprs ~ctx ~pos ~types es >>| List.cons e
-  | [], [] -> Ok []
-  | _ -> Error (Positioned.count_mismatch pos)
+  let f acc typ e =
+    let%bind e = type_check_expr ~ctx e in
+    let%map () = Node.Expr.assert_eq_sub ~expect:typ e in
+    e :: acc
+  in
+  fold2_result ~f ~pos ~init:[] types es >>| List.rev
 
 and type_check_array ~ctx ~pos arr =
   if Array.is_empty arr then failwith "any array"
   else
     let%bind dec = type_check_expr ~ctx (Array.get arr 0) in
-    let typ = Node.Expr.typ dec in
     let%bind lst =
-      Array.fold_result arr ~init:[] ~f:(fold_array ctx typ)
+      Array.fold_result arr ~init:[] ~f:(fold_array ctx dec)
     in
     let dec_array = lst |> List.rev |> Array.of_list in
     let e = Decorated.Expr.Array dec_array in
+    let typ = Node.Expr.typ dec in
     Ok (Node.Expr.make ~ctx ~typ ~pos e)
 
-and fold_array ctx typ acc elt =
+and fold_array ctx fst acc elt =
   let%bind dec = type_check_expr ~ctx elt in
-  let pos = PosNode.position elt in
-  let e_typ = Node.Expr.typ dec in
-  map_error ~pos (assert_eq_tau typ e_typ) >>| fun () -> dec :: acc
+  Node.Expr.assert_eq_tau fst dec >>| fun () -> dec :: acc
 
 and type_check_string ~ctx ~pos str =
   let e = Decorated.Expr.String str in
@@ -100,8 +115,8 @@ and type_check_bop ~ctx ~pos op e1 e2 =
   | (Lt | Leq | Gt | Geq), `Int, `Int
   | (And | Or), `Bool, `Bool ->
       Ok (Node.Expr.make ~ctx ~typ:`Bool ~pos e)
-  | (Eq | Neq), t1, t2 ->
-      map_error ~pos (assert_eq_tau t1 t2) >>| fun () ->
+  | (Eq | Neq), _, _ ->
+      Node.Expr.assert_eq_tau dec1 dec2 >>| fun () ->
       Node.Expr.make ~ctx ~typ:`Bool ~pos e
   | _ -> Error (Positioned.make ~pos OpMismatch)
 
@@ -212,25 +227,20 @@ let type_check_arr_assign ~ctx ~pos e1 e2 e3 =
   match
     (Node.Expr.typ dec1, Node.Expr.typ dec2, Node.Expr.typ dec3)
   with
-  | `Array t1, `Int, t2 ->
-      map_error ~pos (assert_eq_tau t1 t2) >>| fun () ->
+  | `Array t, `Int, _ ->
+      Node.Expr.assert_eq_sub ~expect:t dec2 >>| fun () ->
       Node.Stmt.make_unit s ~ctx ~pos
   | _, `Int, _ -> Error (Positioned.make ~pos:pos1 ExpectedArray)
   | _, t, _ -> Error (Positioned.make ~pos:pos2 (Mismatch (`Int, t)))
 
 let rec check_decls ~ctx ~pos ds ts =
-  match (ds, ts) with
-  | [], [] -> Ok ctx
-  | decl :: decls, typ :: typs -> begin
-      match (decl, typ) with
-      | Some (id, tau), t ->
-          let%bind ctx =
-            ctx |> Context.Fn.add_var ~id ~typ:tau |> map_error ~pos
-          in
-          check_decls ~ctx ~pos decls typs
-      | None, _ -> check_decls ~ctx ~pos decls typs
-    end
-  | _ -> Error (Positioned.count_mismatch pos)
+  let f ctx d typ =
+    match d with
+    | Some (id, tau) ->
+        ctx |> Context.Fn.add_var ~id ~typ |> map_error ~pos
+    | None -> Ok ctx
+  in
+  fold2_result ~pos ~f ~init:ctx ds ts
 
 let type_check_multi_assign ~ctx:fn_ctx ~pos ds id es =
   let ctx = Context.Fn.context fn_ctx in
@@ -286,7 +296,7 @@ and type_check_if ~ctx ~pos e s =
 and type_check_if_else ~ctx ~pos e s1 s2 =
   let%bind e, s1 = type_check_cond ctx e s1 in
   let%map s2 = type_check_stmt ctx s2 in
-  let typ = lub_stmt s1 s2 in
+  let typ = Node.Stmt.lub s1 s2 in
   let s = Decorated.Stmt.IfElse (e, s1, s2) in
   Node.Stmt.make ~ctx ~pos ~typ s
 

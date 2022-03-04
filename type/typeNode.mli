@@ -64,6 +64,10 @@ module Expr : sig
   val assert_bool : 'a t -> unit TypeError.Positioned.result
   (** [assert_bool expr] is [Ok ()] if [expr] has the boolean type and
       [Error Mismatch] otherwise *)
+
+  val assert_eq_tau : 'a t -> 'a t -> unit TypeError.Positioned.result
+  (** [assert_eq_tau e1 e2] is [Ok ()] if [e1] and [e2] have the same
+      tau type and [Error Mismatch] otherwise *)
 end
 
 type 'a expr = 'a Expr.t
@@ -82,6 +86,10 @@ module Stmt : sig
 
   val make_void : 'a -> ctx:context -> pos:Position.t -> 'a t
   (** [make_void v ~ctx ~pos] is [make v ~ctx ~typ:`Void ~pos] *)
+
+  val lub : 'a t -> 'a t -> typ
+  (** [lub s1 s2] is [Definitions.lub t1 t2] if [s1] has type [t1] and
+      [s2] has type [t2] *)
 end
 
 type 'a stmt = 'a Stmt.t
