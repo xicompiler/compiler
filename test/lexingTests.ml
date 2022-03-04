@@ -59,6 +59,12 @@ let lexing_file_tests dir =
   in
   Sys.readdir dir |> Array.to_list |> List.filter_map make_test
 
+let str_error =
+  Position.Error.make ~cause:InvalidString { line = 1; column = 1 }
+
+let char_error =
+  Position.Error.make ~cause:InvalidChar { line = 1; column = 1 }
+
 (** [lexing_test_cases] is a list of unit tests for [lex_string]. *)
 let lexing_test_cases =
   [
@@ -76,14 +82,10 @@ let lexing_test_cases =
       [ char_token_of_int 0x5c ];
     lexing_test_ok "test quote" "'\"' '\\x{22}'"
       [ char_token_of_char '\"'; char_token_of_int 0x22 ];
-    lexing_test_err "test open string" "\""
-      [ { cause = InvalidString; position = { line = 1; column = 1 } } ];
-    lexing_test_err "test open char" "'"
-      [ { cause = InvalidChar; position = { line = 1; column = 1 } } ];
-    lexing_test_err "test invalid unicode" "'\\k'"
-      [ { cause = InvalidChar; position = { line = 1; column = 1 } } ];
-    lexing_test_err "test invalid unicode" "'\\x{FFFFFF}'"
-      [ { cause = InvalidChar; position = { line = 1; column = 1 } } ];
+    lexing_test_err "test open string" "\"" [ str_error ];
+    lexing_test_err "test open char" "'" [ str_error ];
+    lexing_test_err "test invalid unicode" "'\\k'" [ str_error ];
+    lexing_test_err "test invalid unicode" "'\\x{FFFFFF}'" [ str_error ];
   ]
 
 (** [lexing_test_cases] is a list of unit tests for our test files. *)

@@ -1,11 +1,25 @@
 open Core
+open Result.Let_syntax
 include Definitions
-include TypeError
 
 type context = Context.context
 
 module Tau = Tau
 module Context = Context
+
+module type Context = sig
+  include Node.S
+
+  type typ
+  type context
+  type nonrec 'a result = ('a, TypeError.error Position.error) result
+
+  val context : 'a t -> context
+  val typ : 'a t -> typ
+  val make : 'a -> ctx:context -> typ:typ -> 'a t
+end
+
+include TypeError
 
 let lub t1 t2 =
   match (t1, t2) with
@@ -26,24 +40,17 @@ let expr_of_term = function
   | t -> Ok t
 
 let mismatch t1 t2 = Mismatch ((t1 :> expr), (t2 :> expr))
+let equal_expr t1 t2 = Poly.equal (t1 :> expr) (t2 :> expr)
 
 let assert_eq ~exp got =
-  let exp = (exp :> expr) in
-  let got = (got :> expr) in
   if Poly.equal got exp then Ok () else Error (Mismatch (got, exp))
 
 let assert_bool = assert_eq ~exp:`Bool
+let assert_eq_tau ~exp got = failwith "unimplemented"
 
-module type Context = sig
-  include Node.S
-
-  type typ
-  type context
-  type nonrec 'a result = ('a, error Position.error) Result.t
-
-  val context : 'a t -> context
-  val typ : 'a t -> typ
-  val make : 'a -> ctx:context -> typ:typ -> 'a t
-end
+let assert_array = function
+  | `Array _ -> Ok ()
+  | t -> failwith "unimplemented"
 
 module Node = TypeNode
+module Error = TypeError

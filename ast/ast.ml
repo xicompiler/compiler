@@ -15,13 +15,109 @@ let map_error ~pos = Result.map_error ~f:(Decorated.Error.make ~pos)
 
 let type_check ast = failwith "unimplemented"
 
+(** [type_of_primitive p] is [`Int] if [p] is [Int] or [Char] and
+    [`Bool] if [p] is [Bool] *)
+let type_of_primitive = function
+  | Int _
+  | Char _ ->
+      `Int
+  | Bool _ -> `Bool
+
+(** [type_check_primitive ctx p] is [Ok expr] where [expr] is a
+    decorated expression node for [p] *)
+let type_check_primitive ~ctx ~pos p =
+  let e = Decorated.Expr.Primitive p in
+  let typ = type_of_primitive p in
+  Node.Expr.make ~ctx ~typ ~pos e
+
+(** [type_check_id ctx i] is [Ok expr] where [expr] is a decorated
+    expression node for [i] if [i] is in [ctx], or [Error err] otherwise *)
+let type_check_id ~ctx ~pos id =
+  let%map typ = ctx |> Context.find_var ~id |> map_error ~pos in
+  let e = Decorated.Expr.Id id in
+  Node.Expr.make ~ctx ~typ:(typ :> expr) ~pos e
+
+let check_equality acc elt =
+  let pos = Node.Expr.position elt in
+  let typ = Node.Expr.typ elt in
+  map_error ~pos (assert_eq_tau ~exp:acc typ) >>| fun () -> acc
+
 (** [type_check_expr ctx enode] is [Ok expr] where [expr] is [enode]
     decorated within context [ctx] or [Error type_error] where
     [type_error] describes a semantic error of [enode] *)
 let rec type_check_expr ~(ctx : Type.context) (enode : Expr.node) :
     Decorated.expr_result =
-  failwith "unimplemented"
+  let pos = PosNode.position enode in
+  match Expr.Node.get enode with
+  | Primitive p -> Ok (type_check_primitive ~ctx ~pos p)
+  | Id id -> type_check_id ~ctx ~pos id
+  | Array arr -> type_check_array ~ctx ~pos arr
+  | String s -> Ok (type_check_string ~ctx ~pos s)
+  | Bop (op, e1, e2) -> type_check_bop ~ctx ~pos op e1 e2
+  | Uop (op, e) -> type_check_uop ~ctx ~pos op e
+  | FnCall call -> type_check_fncall ~ctx ~pos call
+  | Length node -> type_check_length ~ctx ~pos node
+  | Index (e1, e2) -> type_check_index ~ctx ~pos e1 e2
 
+and type_check_array ~ctx ~pos arr = 
+  if Array.is_empty arr then failwith "unimplemented" else
+  let%bind dec = type_check_expr ~ctx (Array.get arr 0) in
+  let dec_array = Array.map arr (type_check_expr ~ctx) in
+  let e = Decorated.Expr.Array dec_array in
+  let typ = Node.Expr.typ dec in
+  let%map arr_type = Array.fold_result arr typ (check_equality) in
+  Node.Expr.make ~ctx ~typ:arr_type ~pos e
+
+and type_check_string ~ctx ~pos str =
+  let e = Decorated.Expr.String str in
+  Node.Expr.make ~ctx ~typ:(`Array `Int) ~pos e
+
+and type_check_bop ~ctx ~pos op e1 e2 =
+  let%bind dec1 = type_check_expr ctx e1 in
+  let%bind dec2 = type_check_expr ctx e2 in
+  let e = Decorated.Expr.Bop (op, dec1, dec2) in
+  match (op, Node.Expr.typ dec1, Node.Expr.typ dec2) with
+  | (Plus | Minus | Mult | HighMult | Div | Mod), `Int, `Int ->
+      Ok (Node.Expr.make ~ctx ~typ:`Int ~pos e)
+  | (Lt | Leq | Gt | Geq), `Int, `Int
+  | (And | Or), `Bool, `Bool ->
+      Ok (Node.Expr.make ~ctx ~typ:`Bool ~pos e)
+  | (Eq | Neq), t1, t2 -> (* FIX *)
+      let%bind tau = map_error ~pos (tau_of_expr_res t1) in
+      map_error ~pos (assert_eq ~exp:tau t2) >>| fun () ->
+      Node.Expr.make ~ctx ~typ:`Bool ~pos e
+  | _ -> failwith "unimplemented"
+
+and type_check_uop ~ctx ~pos op e =
+  let%bind dec = type_check_expr ctx e in
+  let e = Decorated.Expr.Uop (op, dec) in
+  match (op, Node.Expr.typ dec) with
+  | IntNeg, `Int -> Ok (Node.Expr.make ~ctx ~typ:`Int ~pos e)
+  | LogicalNeg, `Bool -> Ok (Node.Expr.make ~ctx ~typ:`Bool ~pos e)
+  | _ -> map_error ~pos (Error OpMismatch)
+(* TODO add op + type to opmismatch *)
+
+and type_check_fncall ~ctx ~pos call = failwith "unimplemented"
+  
+and type_check_length ~ctx ~pos node =
+  let%bind dec = type_check_expr ctx node in
+  let typ = Node.Expr.typ dec in
+  let e = Decorated.Expr.Length dec in
+  map_error ~pos (assert_array typ) >>| fun () ->
+    Ok (Node.Expr.make ~ctx ~typ ~pos e)
+
+and type_of_array ~ctx ~pos arr = failwith "unimplemented"
+
+and type_check_index ~ctx ~pos e1 e2 =
+  let%bind dec1 = type_check_expr ctx e1 in
+  let%bind dec2 = type_check_expr ctx e2 in
+  let e = Decorated.Expr.Index (dec1, dec2) in
+  match (Node.Expr.typ dec1, Node.Expr.typ dec2) with
+  | `Array arr, `Int ->
+      Ok (Node.Expr.make ~ctx ~typ:(type_of_array ~ctx ~pos arr) ~pos e)
+  | _ ->
+      map_error ~pos (Error (Mismatch (Node.Expr.typ dec1) (Node.Expr.typ dec2)))
+      
 (** [bool_or_error ctx e] is [Ok e] if [e] is [Ok e] and [e] has bool
     type in context [ctx] and [Error Mismatch] otherwise *)
 let bool_or_error ~ctx expr =
@@ -35,10 +131,15 @@ let bool_or_error ~ctx expr =
 let bool_or_error_stmt ~ctx =
   bool_or_error ~ctx:(Context.Fn.context ctx)
 
-let type_check_var_decl ~ctx pos id typ =
-  let%map ctx = map_error ~pos (Context.Fn.add_var ~id ~typ ctx) in
+let type_check_var_decl ~ctx ~pos id typ =
+  let%map ctx = ctx |> Context.Fn.add_var ~id ~typ |> map_error ~pos in
   let s = Decorated.Stmt.VarDecl (id, typ) in
   Node.Stmt.make_unit s ~ctx ~pos
+
+let type_check_assign ~ctx ~pos id e =
+  let%bind lhs = ctx |> Context.Fn.find_var ~id |> map_error in
+  let%bind e = type_check_expr (Context.Fn.context ctx) e in
+  assert_eq ~exp:lhs (Node.Expr.typ e)
 
 (** [type_check_stmt ctx snode] is [Ok stmt] where [stmt] is [snode]
     decorated within function context [ctx] or [Error type_error] where
@@ -50,16 +151,16 @@ let rec type_check_stmt ~(ctx : Context.fn) (snode : Stmt.node) :
   | If (e, s) -> type_check_if ~ctx ~pos e s
   | IfElse (e, s1, s2) -> type_check_if_else ~ctx ~pos e s1 s2
   | While (e, s) -> type_check_while ~ctx ~pos e s
-  | VarDecl (id, typ) -> type_check_var_decl ~ctx pos id typ
+  | VarDecl (id, typ) -> type_check_var_decl ~ctx ~pos id typ
   | ArrayDecl (id, typ, nodes) -> failwith "unimplemented"
-  | Assign (id, node) -> failwith "unimplemented"
-  | ArrAssign (n1, n2, n3) -> failwith "unimplemented"
+  | Assign (id, e) -> failwith "unimplemented"
+  | ArrAssign (e1, e2, e3) -> failwith "unimplemented"
   | ExprStmt call -> failwith "unimplemented"
-  | VarInit (id, t, node) -> failwith "unimplemented"
-  | MultiAssign (list, id, nodes) -> failwith "unimplemented"
-  | PrCall call -> failwith "unimplemented"
-  | Return nodes -> failwith "unimplemented"
-  | Block block -> failwith "unimplemented"
+  | VarInit (id, typ, e) -> failwith "unimplemented"
+  | MultiAssign (ds, id, es) -> failwith "unimplemented"
+  | PrCall (id, es) -> failwith "unimplemented"
+  | Return es -> failwith "unimplemented"
+  | Block stmts -> failwith "unimplemented"
 
 and type_check_cond ~ctx e s =
   let%bind e = bool_or_error_stmt ~ctx e in

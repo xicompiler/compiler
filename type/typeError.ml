@@ -13,4 +13,9 @@ type error =
   | OpMismatch
   | Mismatch of expr * expr
 
+module Position = struct
+  type t = error Position.error
+  type nonrec 'a result = ('a, t) result
+end
+
 type nonrec 'a result = ('a, error) result

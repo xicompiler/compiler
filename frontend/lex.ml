@@ -12,8 +12,9 @@ let string_of_error_cause = function
 let format_position { line; column } =
   Printf.sprintf "%d:%d %s" line column
 
-let string_of_error { position; cause } =
-  cause |> string_of_error_cause |> format_position position
+let string_of_error error =
+  let pos = Error.position error in
+  error |> Error.cause |> string_of_error_cause |> format_position pos
 
 module Diagnostic = struct
   type nonrec result = (Parser.token, error) result
@@ -100,7 +101,7 @@ module Diagnostic = struct
       a list with their positions. *)
   let lex_pos lexbuf =
     let flatten (res, pos) =
-      let res' = Result.map_error ~f:(fun e -> e.cause) res in
+      let res' = Result.map_error ~f:Error.cause res in
       (res', pos)
     in
     lexbuf |> lex_pos_rev |> List.rev_map ~f:flatten
