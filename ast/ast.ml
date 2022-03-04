@@ -40,8 +40,7 @@ let type_check_id ~ctx ~pos id =
 (** [type_check_expr ctx enode] is [Ok expr] where [expr] is [enode]
     decorated within context [ctx] or [Error type_error] where
     [type_error] describes a semantic error of [enode] *)
-let rec type_check_expr ~(ctx : Type.context) (enode : Expr.node) :
-    Decorated.expr_result =
+let rec type_check_expr ~ctx enode =
   let pos = PosNode.position enode in
   match Expr.Node.get enode with
   | Primitive p -> Ok (type_check_primitive ~ctx ~pos p)
@@ -254,8 +253,7 @@ let type_check_return ~ctx:fn_ctx ~pos es =
 (** [type_check_stmt ctx snode] is [Ok stmt] where [stmt] is [snode]
     decorated within function context [ctx] or [Error type_error] where
     [type_error] describes a semantic error of [snode] *)
-let rec type_check_stmt ~(ctx : Context.fn) (snode : Stmt.node) :
-    Decorated.stmt_result =
+let rec type_check_stmt ~ctx snode =
   let pos = PosNode.position snode in
   match Stmt.Node.get snode with
   | If (e, s) -> type_check_if ~ctx ~pos e s

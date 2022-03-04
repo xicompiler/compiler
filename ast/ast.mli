@@ -11,3 +11,17 @@ val type_check : t -> Decorated.result
     [ast] represents a semantically valid Xi program, or
     [Error type_error] where [type_error] describes the type error,
     otherwise. *)
+
+val type_check_expr :
+  ctx:Type.context -> Expr.node -> Decorated.expr_result
+(** [type_check_expr ~ctx expr] is [Ok expr'] where [expr'] is [expr]
+    decorated if [expr] represents a semantically valid Xi expression in
+    context [ctx], or [Error type_error] where [type_error] describes
+    the type error, otherwise. *)
+
+val type_check_stmt :
+  ctx:Type.Context.fn -> Stmt.node -> Decorated.stmt_result
+(** [type_check_stmt stmt] is [Ok stmt'] where [stmt'] is [stmt]
+    decorated if [stmt] represents a semantically valid Xi expression in
+    context [ctx], or [Error type_error] where [type_error] describes
+    the type error, otherwise. *)
