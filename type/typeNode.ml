@@ -1,5 +1,4 @@
 open Definitions
-open TypeError
 
 module type Params = sig
   type typ

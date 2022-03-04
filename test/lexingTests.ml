@@ -60,10 +60,10 @@ let lexing_file_tests dir =
   Sys.readdir dir |> Array.to_list |> List.filter_map make_test
 
 let str_error =
-  Position.Error.make ~cause:InvalidString { line = 1; column = 1 }
+  Position.Error.make ~pos:{ line = 1; column = 1 } InvalidString
 
 let char_error =
-  Position.Error.make ~cause:InvalidChar { line = 1; column = 1 }
+  Position.Error.make ~pos:{ line = 1; column = 1 } InvalidChar
 
 (** [lexing_test_cases] is a list of unit tests for [lex_string]. *)
 let lexing_test_cases =

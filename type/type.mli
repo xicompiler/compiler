@@ -23,10 +23,6 @@ val tau_of_expr : expr -> tau option
 (** [tau_of_expr e] is [Some t] if [e] is tau type [t] and [None]
     otherwise *)
 
-val assert_bool : 'a TypeNode.expr -> unit result
-(** [assert_bool epr] is [Ok ()] if [expr] has the boolean type and
-    [Error Mismatch] otherwise *)
-
 val tau_of_expr_res : expr -> tau result
 (** [tau_of_expr_res e] is [Ok t] if [e] is tau type [t] and
     [Error ExpectedTau] otherwise *)
@@ -34,13 +30,22 @@ val tau_of_expr_res : expr -> tau result
 val mismatch : [< expr ] -> [< expr ] -> error
 (** [mismatch t1 t2] is [Mismatch (t1 :> expr, t2 :> expr)] *)
 
-val equal_expr : [< expr ] -> [< expr ] -> bool
-(** [equal_expr t1 t2] is [true] iff [t1] and [t2] represent equivalent
-    expression types *)
+val assert_eq :
+  expect:[< expr ] -> 'a TypeNode.expr -> unit Positioned.result
+(** [assert_eq ~expect expr] is [Ok ()] if [expect] and the type of
+    [expr] represent the same type and [Error Mismatch] otherwise. *)
 
-val assert_eq : expr:'a TypeNode.expr -> [< expr ] -> unit result
-(** [assert_eq ~expr t] is [Ok ()] if [got] and the type of [expr]
-    represent the same type and [Error Mismatch] otherwise. *)
+val assert_bool : 'a TypeNode.expr -> unit Positioned.result
+(** [assert_bool expr] is [Ok ()] if [expr] has the boolean type and
+    [Error Mismatch] otherwise *)
+
+val assert_eq_tau : [< expr ] -> [< expr ] -> unit result
+(** [assert_eq_tau t1 t2] is [Ok ()] if [t1] and [t2] are equivalent
+    non-tuple types and [Error Mismatch] otherwise *)
+
+val assert_array : [< expr ] -> unit result
+(** [assert_array expr] is [Ok ()] if [expr] is an array type and
+    [Error Mismatch] otherwise *)
 
 module Node : module type of TypeNode
 (** [Node] is the type of a decorated AST node *)

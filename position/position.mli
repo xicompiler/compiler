@@ -13,8 +13,8 @@ module Error : sig
   (** ['a t] is the type of an error with cause of type ['a], occurring
       at a specified position. *)
 
-  val make : cause:'a -> position -> 'a t
-  (** [make ~cause pos] is a [t] ocurring at position [pos] with cause
+  val make : pos:position -> 'a -> 'a t
+  (** [make ~pos cause] is a [t] ocurring at position [pos] with cause
       [cause] *)
 
   val cause : 'a t -> 'a

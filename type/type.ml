@@ -40,17 +40,34 @@ let expr_of_term = function
   | t -> Ok t
 
 let mismatch t1 t2 = Mismatch ((t1 :> expr), (t2 :> expr))
-let equal_expr t1 t2 = Poly.equal (t1 :> expr) (t2 :> expr)
 
-let assert_eq ~exp got =
-  if Poly.equal got exp then Ok () else Error (Mismatch (got, exp))
+(** [ok_if_true_lazy ~error b] is [Ok ()] if [b] is [true] and
+    [Error (error ())] if [b] is false *)
+let ok_if_true_lazy ~error b = if b then Ok () else Error (error ())
 
-let assert_bool = assert_eq ~exp:`Bool
-let assert_eq_tau ~exp got = failwith "unimplemented"
+let assert_eq ~expect expr =
+  let expect = (expect :> expr) in
+  let got = TypeNode.Expr.typ expr in
+  let error () =
+    let pos = TypeNode.Expr.position expr in
+    let cause = Mismatch (got, expect) in
+    TypeError.Positioned.make ~pos cause
+  in
+  expect |> Poly.equal got |> ok_if_true_lazy ~error
+
+let assert_bool expr = assert_eq ~expect:`Bool expr
 
 let assert_array = function
   | `Array _ -> Ok ()
-  | t -> failwith "unimplemented"
+  | `Int
+  | `Bool
+  | `Tuple _ ->
+      failwith "unimplemented"
+
+let assert_eq_tau t1 t2 =
+  let%bind t1 = tau_of_expr_res t1 in
+  let%bind t2 = tau_of_expr_res t2 in
+  ok_if_true_lazy (Tau.equal t1 t2) ~error:(fun () -> mismatch t1 t2)
 
 module Node = TypeNode
 module Error = TypeError

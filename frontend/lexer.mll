@@ -43,8 +43,8 @@ let get_or_raise e = function
 (** [make_error cause lexbuf] is an [Error] with the specified cause and the
     current position of the lexer buffer. *)
 let make_error cause lexbuf =
-  let position = Position.get_position_lb lexbuf in
-  Error (Position.Error.make ~cause position)
+  let pos = Position.get_position_lb lexbuf in
+  Error (Position.Error.make ~pos cause)
 
 (** [parse_ascii_char s] is the first ascii character of the lexeme last
     lexed from [lexbuf], wrapped in a [Uchar.t]. Requires: at least one

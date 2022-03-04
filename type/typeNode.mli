@@ -1,5 +1,4 @@
 open Definitions
-open TypeError
 
 (** [Params] wraps the types [S] is parameterized on *)
 module type Params = sig

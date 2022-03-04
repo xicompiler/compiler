@@ -15,6 +15,8 @@ val find_var : id:string -> context -> tau result
     [tau] in [ctx], [Error ExpectedTau] if [id] is bound to a function
     type, or [Error (Unbound id)] if [id] is not bound. *)
 
+val find_fun : id:string -> context -> (term * term) result
+
 (** [Fn] represents a typing context present within a function body *)
 module Fn : sig
   type t
@@ -28,6 +30,12 @@ module Fn : sig
   (** [find_var ~id ctx] is [Ok tau] if [id] is bound to expressible
       type [tau] in [ctx], [Error ExpectedTau] if [id] is bound to a
       function type, or [Error (Unbound id)] if [id] is not bound. *)
+
+  val find_fun : id:string -> t -> (term * term) result
+  (** [find_fun ~id ctx] is [Ok (t1, t2)] if [id] is bound to function
+      with input [t1] and output [t2] [ctx], [Error ExpectedFun] if [id]
+      is bound to a tau type, or [Error (Unbound id)] if [id] is not
+      bound. *)
 
   val add : id:string -> typ:id -> t -> t result
   (** [add ~id ~typ ctx] is [Ok ctx'] where [ctx'] is [ctx :: (id, typ)]

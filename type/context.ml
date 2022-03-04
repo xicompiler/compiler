@@ -13,6 +13,11 @@ let find_var ~id ctx =
   | Var typ -> Ok typ
   | Fn _ -> Error ExpectedTau
 
+let find_fun ~id ctx =
+  match%bind find ~id ctx with
+  | Var _ -> Error ExpectedFun
+  | Fn (t1, t2) -> Ok (t1, t2)
+
 module Fn = struct
   type t = {
     context : context;
@@ -24,6 +29,7 @@ module Fn = struct
 
   let find = map_find ~f:find
   let find_var = map_find ~f:find_var
+  let find_fun = map_find ~f:find_fun
 
   let add ~id ~typ ctx =
     match add ~key:id ~data:typ ctx.context with

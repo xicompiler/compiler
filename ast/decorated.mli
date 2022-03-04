@@ -7,7 +7,7 @@ include
 
 (** [Error] represents a semantic error in the AST *)
 module Error : module type of struct
-  include Type.Error.Position
+  include Type.Error.Positioned
 end
 
 type expr_result = Expr.node Error.result

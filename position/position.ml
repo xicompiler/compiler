@@ -15,7 +15,7 @@ module Error = struct
     position : position;
   }
 
-  let make ~cause position = { cause; position }
+  let make ~pos cause = { cause; position = pos }
   let cause { cause } = cause
   let position { position } = position
 end
