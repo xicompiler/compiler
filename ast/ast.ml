@@ -242,25 +242,14 @@ let type_check_multi_assign ~ctx:fn_ctx ~pos ds id es =
   in
   Node.Stmt.make_unit ~ctx:fn_ctx ~pos s
 
-let type_check_return ~ctx ~pos es =
-  let rho = Context.Fn.ret ctx in
-  let context = Context.Fn.context ctx in
-  match (es, rho) with
-  | [], `Unit ->
-      Ok (Node.Stmt.make_void (Decorated.Stmt.Return []) ~ctx ~pos)
-  | _, `Unit -> map_error ~pos (Error CountMismatch)
-  | _, `Tuple types ->
-      let%bind s_lst = type_check_exprs ~ctx:context ~pos ~types es in
-      let s = Decorated.Stmt.Return s_lst in
-      Ok (Node.Stmt.make_void s ~ctx ~pos)
-  | [ h ], term ->
-      let%bind s_lst =
-        type_check_exprs ~ctx:context ~pos
-          ~types:(tau_list_of_term term) es
-      in
-      let s = Decorated.Stmt.Return s_lst in
-      Ok (Node.Stmt.make_void s ~ctx ~pos)
-  | _ -> map_error ~pos (Error CountMismatch)
+let type_check_return ~ctx:fn_ctx ~pos es =
+  let rho = Context.Fn.ret fn_ctx in
+  let ctx = Context.Fn.context fn_ctx in
+  let%bind s_lst =
+    type_check_exprs ~ctx ~pos ~types:(tau_list_of_term rho) es
+  in
+  let s = Decorated.Stmt.Return s_lst in
+  Ok (Node.Stmt.make_void s ~ctx:fn_ctx ~pos)
 
 (** [type_check_stmt ctx snode] is [Ok stmt] where [stmt] is [snode]
     decorated within function context [ctx] or [Error type_error] where

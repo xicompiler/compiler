@@ -34,7 +34,9 @@ module type S = sig
 end
 
 (** [Expr] is a module wrapping an expression node *)
-module Expr : S with type typ = expr and type context = Context.context
+module Expr : sig
+  include S with type typ = expr and type context = Context.context
+end
 
 type 'a expr = 'a Expr.t
 (** [expr] is the type of an expression node *)
@@ -45,6 +47,9 @@ module Stmt : sig
 
   val make_unit : 'a -> ctx:context -> pos:Position.t -> 'a t
   (** [make_unit v ~ctx ~pos] is [make v ~ctx ~typ:`Unit ~pos] *)
+
+  val make_void : 'a -> ctx:context -> pos:Position.t -> 'a t
+  (** [make_void v ~ctx ~pos] is [make v ~ctx ~typ:`Void ~pos] *)
 end
 
 type 'a stmt = 'a Stmt.t
