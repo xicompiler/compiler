@@ -1,75 +1,36 @@
 open Core
 
-(** [Type] is a module representing the Xi type system. *)
-module Type : sig
-  type tau = Tau.t
-  (** [tau] is either a primitive or an array type. *)
-
-  type expr =
-    [ tau
-    | `Tuple of tau list
-    ]
-  (** [expr] is the type of an expression node in Xi. *)
-
-  type kind =
-    [ expr
-    | `Unit
-    ]
-  (** [kind] is a type in procedures, functions, and multiple
-      assignments. *)
-
-  type stmt =
-    [ `Unit
-    | `Void
-    ]
-  (** [stmt] is the type of the outcome of evaluating a statement. *)
-
-  (** [env] is a type used in an environment entry. *)
-  type env =
-    | Var of tau
-    | Ret of kind
-    | Fn of kind * kind
-
-  (** An [error] is the type of a Xi type error *)
-  type error = |
-
-  type nonrec 'a result = ('a, error) result
-  (** An ['a result] is either [Ok 'a] or [Error error] *)
-end
-
-module Context : Map.S with type Key.t = string
-(** [Context] is a module representing a static typing context *)
-
-type context = Type.env Context.t
-(** [context] is the type of a static typing context *)
-
-(** [ContextNode] represents a node containing a static context *)
-module type ContextNode = sig
-  include Node.S
-
-  type typ
-  (** [typ] is the type of a value wrapped in a node *)
-
-  val context : 'a t -> context
-  (** [context node] is the context of node *)
-
-  val typ : 'a t -> typ
-  (** [typ v] is the type of the value wrapped in [v] *)
-
-  val make : 'a -> ctx:context -> typ:typ -> 'a t
-  (** [make v ~ctx ~typ] is a node wrapping value [v] with context [ctx]
-      and type [typ] *)
-end
-
-module Ex : ContextNode with type typ := Type.expr
-(** [Ex] is a module wrapping an expression node *)
-
-module St : ContextNode with type typ := Type.stmt
-(** [St] is a module wrapping a statement node *)
-
 include
-  Abstract.S with module Expr.Node := Ex and module Stmt.Node := St
+  Abstract.S
+    with module Expr.Node := Type.Node.Expr
+     and module Stmt.Node := Type.Node.Stmt
 
-type nonrec result = t Type.result
-(** A [result] is either [Ok ast] where [ast] is a decorated AST, or
-    [Error terr] where [terr] is a type error *)
+(** [Error] represents a semantic error in the AST *)
+module Error : sig
+  type t
+  (** [t] is the abstract type of an error *)
+
+  val make : pos:Position.t -> Type.error -> t
+  (** [make ~pos cause] is a semantic error occurring at pos [pos]
+      having semantic cause [cause] *)
+
+  val cause : t -> Type.error
+  (** [cause error] is the cause of [error] *)
+
+  val pos : t -> Position.t
+  (** [pos error] is the position at which [error] occurs *)
+
+  type nonrec 'a result = ('a, t) result
+  (** An ['a result] is either [Ok 'a] or a semantic error *)
+end
+
+type expr_result = Expr.node Error.result
+(** An [expr_result] is either [Ok expr] or [Error type_error] *)
+
+type stmt_result = Stmt.node Error.result
+(** An [stmt_result] is either [Ok stmt] or [Error type_error] *)
+
+type nonrec result = t Error.result
+(** A [result] is either [Ok ast] where [ast] is a decorated AST or
+    [Error err] where [err] details the semantic error causing
+    decoration to fail *)

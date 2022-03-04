@@ -1,7 +1,6 @@
 (library
  (name frontend)
- (libraries ast unicode position core sexpPrinter xiFile)
- (private_modules parser lexer)
+ (libraries ast unicode position core sexpPrinter node type xiFile)
  (instrumentation
   (backend bisect_ppx)))
 

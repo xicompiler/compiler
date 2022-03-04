@@ -7,11 +7,13 @@ type t = {
   column : int;
 }
 
+type 'a error = {
+  cause : 'a;
+  position : t;
+}
+
 let get_position (p : Lexing.position) =
-  { 
-    line = p.pos_lnum; 
-    column = col_offset + p.pos_cnum - p.pos_bol 
-  }
+  { line = p.pos_lnum; column = col_offset + p.pos_cnum - p.pos_bol }
 
 let get_position_lb ({ lex_start_p = p; _ } : Lexing.lexbuf) =
   get_position p

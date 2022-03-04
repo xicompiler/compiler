@@ -1,0 +1,5 @@
+(library
+ (name type)
+ (libraries core node position)
+ (preprocess
+  (pps ppx_let)))

@@ -10,4 +10,10 @@ type t =
   | `Array of t
   ]
 
-let array t = `Array t
+let equal = Poly.equal
+
+let is_array = function
+  | `Array _ -> true
+  | `Int
+  | `Bool ->
+      false

@@ -7,33 +7,8 @@ module type S = sig
 
   (** An [Expr] represents an expression in the Xi langauge *)
   module Expr : sig
-    type unop =
-      | IntNeg
-      | LogicalNeg
-
-    (** A [binop] is the type of a Xi binary operator *)
-    type binop =
-      | Mult
-      | HighMult
-      | Div
-      | Mod
-      | Plus
-      | Minus
-      | Lt
-      | Leq
-      | Geq
-      | Gt
-      | Eq
-      | Neq
-      | And
-      | Or
-
-    (** A [literal] represents a literal char, int, bool, or string
-        value in Xi *)
-    type primitive =
-      | Int of string
-      | Bool of bool
-      | Char of Uchar.t
+    include module type of Op
+    include module type of Primitive
 
     module Node : Node.S
     (** [Node] wraps an expression node *)
@@ -73,7 +48,7 @@ module type S = sig
     (** A [typ] is a Xi type whose arrays are optionally initialized
         with an expression of type [expr] *)
 
-    type decl = id * Tau.t
+    type decl = id * Type.tau
     (** A [decl] is the type of a Xi declaration represented as a pair
         [(id, t)] where [id] is the name of the identifier and [t] is
         its type. *)
@@ -83,14 +58,15 @@ module type S = sig
 
     (** A [stmt] is a legal statement in Xi, also known as a command. *)
     type t =
-      | If of Expr.node * node * node option
+      | If of Expr.node * node
+      | IfElse of Expr.node * node * node
       | While of Expr.node * node
       | VarDecl of decl
-      | ArrayDecl of id * Tau.t * Expr.node option list
+      | ArrayDecl of id * Type.tau * Expr.node option list
       | Assign of id * Expr.node
       | ArrAssign of Expr.node * Expr.node * Expr.node
       | ExprStmt of Expr.call
-      | VarInit of id * Tau.t * Expr.node
+      | VarInit of id * Type.tau * Expr.node
       | MultiAssign of decl option list * id * Expr.nodes
       | PrCall of Expr.call
       | Return of Expr.nodes
@@ -111,7 +87,7 @@ module type S = sig
   type signature = {
     id : id;
     params : Stmt.decl list;
-    types : Tau.t list;
+    types : Type.tau list;
   }
   (** A [signature] is a signature or interface for an individual method
       where [types] is the list of (possibly none) return types. *)
@@ -127,7 +103,7 @@ module type S = sig
   type definition =
     | FnDefn of fn
     | GlobalDecl of Stmt.decl
-    | GlobalInit of id * Tau.t * Expr.primitive
+    | GlobalInit of id * Type.tau * Expr.primitive
 
   type source = {
     uses : id list;

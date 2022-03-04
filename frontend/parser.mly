@@ -1,4 +1,5 @@
 %{
+  module Pos = Node.Position
   open Core
   open Ast
   open Expr
@@ -63,7 +64,7 @@
 %token EOF
 
 (* A primitive type *)
-%token <Ast.Tau.primitive> TYPE
+%token <Type.Tau.primitive> TYPE
 
 %start <Ast.t> program
 %start <Ast.t> source
@@ -85,7 +86,7 @@
     [startpos] is the start position of [TERM] *)
 node(TERM):
   | e = TERM
-    { (e, get_position $startpos) }
+    { Pos.make ~pos:(get_position $startpos) e }
   ;
 
 (** [enode] produces a node wrapping an [expr] *)
@@ -222,7 +223,7 @@ decl:
 
 typ:
   | typ = TYPE
-    { typ :> Tau.t }
+    { typ :> Type.tau }
   | typ = typ; LBRACKET; RBRACKET
     { `Array typ }
   ;
@@ -341,19 +342,20 @@ return:
 
 stmt:
   | stmt = if_stmt
+  | stmt = if_else
   | stmt = while_stmt
   | stmt = semi(semicolon_terminated)
     { stmt }
   ;
 
 if_stmt:
-  | IF; e = enode; stmt1 = snode; stmt2 = ioption(node(else_stmt))
-    { If (e, stmt1, stmt2) }
+  | IF; e = enode; s = snode
+    { If (e, s) }
   ;
 
-%inline else_stmt:
-  | ELSE; stmt = stmt
-    { stmt }
+if_else:
+  | IF; e = enode; s1 = snode; ELSE; s2 = snode
+    { IfElse (e, s1, s2) }
   ;
 
 while_stmt:

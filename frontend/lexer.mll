@@ -6,10 +6,7 @@ type error_cause =
   | InvalidString
   | InvalidSource
 
-type error = {
-  cause : error_cause;
-  position : Position.t;
-}
+type error = error_cause Position.error
 
 exception Error of error
 

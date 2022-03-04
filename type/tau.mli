@@ -14,5 +14,8 @@ type t =
 (** A type in Xi is either a primitive type or an array of a type, where
     an Array is represented by a pair (contents, length) *)
 
-val array : t -> t
-(** [array t] is [`Array t] *)
+val equal : t -> t -> bool
+(** [equal t1 t2] is [true] iff [t1] and [t2] are the same types. *)
+
+val is_array : t -> bool
+(** [is_array t] is [true] iff [t] is an array type. *)
