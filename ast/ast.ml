@@ -158,7 +158,7 @@ and type_check_index ~ctx ~pos e1 e2 =
   let dec2_typ = Node.Expr.typ dec2 in
   match (dec1_typ, dec2_typ) with
   | `Array t, `Int -> Ok (Node.Expr.make ~ctx ~typ:(t :> expr) ~pos e)
-  | _ -> Error (Positioned.make ~pos (Mismatch (dec1_typ, dec2_typ)))
+  | _ -> Error (Positioned.mismatch pos ~expect:dec1_typ dec2_typ)
 
 let type_check_expr_fn_ctx ~ctx =
   type_check_expr ~ctx:(Context.Fn.context ctx)
@@ -233,16 +233,14 @@ let type_check_arr_assign ~ctx ~pos e1 e2 e3 =
   | `Array t, `Int, _ ->
       Node.Expr.assert_eq_sub ~expect:t dec2 >>| fun () ->
       Node.Stmt.make_unit s ~ctx ~pos
-  | _, `Int, _ -> Error (Positioned.make ~pos:pos1 ExpectedArray)
-  | _, t, _ -> Error (Positioned.make ~pos:pos2 (Mismatch (`Int, t)))
+  | _, `Int, _ -> Error (Positioned.expected_array pos1)
+  | _, t, _ -> Error (Positioned.mismatch pos2 ~expect:`Int t)
 
 let check_decls ~ctx ~pos ds ts =
   let f ctx d typ =
     match d with
     | Some (id, tau) ->
-        let error () =
-          Positioned.make ~pos (Mismatch ((typ :> expr), (tau :> expr)))
-        in
+        let error () = Positioned.mismatch pos ~expect:typ tau in
         ok_if_true_lazy (Tau.equal typ tau) ~error >>= fun () ->
         Context.Fn.add_var ~id ~typ ctx >>? pos
     | None -> Ok ctx
@@ -253,17 +251,15 @@ let type_check_multi_assign ~ctx:fn_ctx ~pos ds id es =
   let ctx = Context.Fn.context fn_ctx in
   let%bind es, t2 = type_check_call ~ctx ~pos id es in
   let s = Decorated.Stmt.MultiAssign (ds, id, es) in
-  let%map fn_ctx =
-    check_decls ~ctx:fn_ctx ~pos ds (tau_list_of_term t2)
-  in
+  let ts = tau_list_of_term t2 in
+  let%map fn_ctx = check_decls ~ctx:fn_ctx ~pos ds ts in
   Node.Stmt.make_unit ~ctx:fn_ctx ~pos s
 
 let type_check_return ~ctx:fn_ctx ~pos es =
   let rho = Context.Fn.ret fn_ctx in
   let ctx = Context.Fn.context fn_ctx in
-  let%bind s_lst =
-    type_check_exprs ~ctx ~pos ~types:(tau_list_of_term rho) es
-  in
+  let types = tau_list_of_term rho in
+  let%bind s_lst = type_check_exprs ~ctx ~pos ~types es in
   let s = Decorated.Stmt.Return s_lst in
   Ok (Node.Stmt.make_void s ~ctx:fn_ctx ~pos)
 

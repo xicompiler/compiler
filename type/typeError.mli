@@ -28,14 +28,20 @@ module Positioned : sig
   type nonrec 'a result = ('a, error) result
   (** An ['a result] is either [Ok 'a] or a semantic error *)
 
+  val mismatch : Position.t -> expect:[< expr ] -> [< expr ] -> error
+  (** [mismatch pos expect got] is [make ~pos Mismatch(expect,got)] *)
+
   val count_mismatch : Position.t -> error
-  (** [count_mismatch pos] is [make ~pos CountMismatch]*)
+  (** [count_mismatch pos] is [make ~pos CountMismatch] *)
 
   val illegal_arr_decl : Position.t -> error
   (** [illegal_arr_decl pos] is [make ~pos IllegalArrayDecl] *)
 
   val expected_unit : Position.t -> error
   (** [expected_unit pos] is [make ~pos ExpectedUnit] *)
+
+  val expected_array : Position.t -> error
+  (** [expected_array pos] is [make ~pos ExpectedArray] *)
 end
 
 type nonrec 'a result = ('a, error) result
