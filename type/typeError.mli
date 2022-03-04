@@ -10,9 +10,12 @@ type error =
   | ExpectedArray
   | ExpectedFun
   | ExpectedTerm
+  | ExpectedUnit
   | ArgMismatch
   | OpMismatch
   | Mismatch of expr * expr
+  | CountMismatch
+  | IllegalArrayDecl
 
 (** [Positioned] represents an error with a position *)
 module Positioned : sig
@@ -23,6 +26,15 @@ module Positioned : sig
 
   type nonrec 'a result = ('a, error) result
   (** An ['a result] is either [Ok 'a] or a semantic error *)
+
+  val count_mismatch : Position.t -> error
+  (** [count_mismatch pos] is [make ~pos CountMismatch]*)
+
+  val illegal_arr_decl : Position.t -> error
+  (** [illegal_arr_decl pos] is [make ~pos IllegalArrayDecl] *)
+
+  val expected_unit : Position.t -> error
+  (** [expected_unit pos] is [make ~pos ExpectedUnit] *)
 end
 
 type nonrec 'a result = ('a, error) result

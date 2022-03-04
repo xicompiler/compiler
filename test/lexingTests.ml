@@ -83,9 +83,10 @@ let lexing_test_cases =
     lexing_test_ok "test quote" "'\"' '\\x{22}'"
       [ char_token_of_char '\"'; char_token_of_int 0x22 ];
     lexing_test_err "test open string" "\"" [ str_error ];
-    lexing_test_err "test open char" "'" [ str_error ];
-    lexing_test_err "test invalid unicode" "'\\k'" [ str_error ];
-    lexing_test_err "test invalid unicode" "'\\x{FFFFFF}'" [ str_error ];
+    lexing_test_err "test open char" "'" [ char_error ];
+    lexing_test_err "test invalid unicode" "'\\k'" [ char_error ];
+    lexing_test_err "test invalid unicode" "'\\x{FFFFFF}'"
+      [ char_error ];
   ]
 
 (** [lexing_test_cases] is a list of unit tests for our test files. *)

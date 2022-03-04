@@ -13,6 +13,9 @@ module type S = sig
   val typ : 'a t -> typ
   val make : 'a -> ctx:context -> typ:typ -> pos:Position.t -> 'a t
   val position : 'a t -> Position.t
+
+  val positioned :
+    error:TypeError.error -> 'a t -> TypeError.Positioned.error
 end
 
 (** [Make (Args)] is a concrete Node with concrete types wrapped in
@@ -35,6 +38,9 @@ module Make (Args : Params) = struct
     { value; context = ctx; typ; position = pos }
 
   let position { position } = position
+
+  let positioned ~error { position } =
+    TypeError.Positioned.make ~pos:position error
 end
 
 module Expr = Make (struct
@@ -51,6 +57,7 @@ module Stmt = struct
   end)
 
   let make_unit = make ~typ:`Unit
+  let make_void = make ~typ:`Void
 end
 
 type 'a stmt = 'a Stmt.t

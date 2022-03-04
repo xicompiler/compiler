@@ -26,6 +26,11 @@ module type S = sig
 
   val position : 'a t -> Position.t
   (** [position node] is the position corresponding to [node] *)
+
+  val positioned :
+    error:TypeError.error -> 'a t -> TypeError.Positioned.error
+  (** [positioned ~error node] is an [error] occuring at position
+      [position node]*)
 end
 
 (** [Expr] is a module wrapping an expression node *)

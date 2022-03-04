@@ -35,9 +35,15 @@ let tau_of_expr = function
 let tau_of_expr_res e =
   e |> tau_of_expr |> Result.of_option ~error:ExpectedTau
 
+let tau_list_of_term = function
+  | `Unit -> []
+  | `Tuple ts -> ts
+  | (`Int | `Bool | `Array _) as t -> [ t ]
+
 let expr_of_term = function
-  | `Unit -> Error ExpectedTerm
-  | t -> Ok t
+  | `Unit -> `Tuple []
+  | `Tuple t -> `Tuple t
+  | (`Int | `Bool | `Array _) as t -> t
 
 let mismatch t1 t2 = Mismatch ((t1 :> expr), (t2 :> expr))
 
@@ -55,6 +61,8 @@ let assert_eq ~expect expr =
   in
   expect |> Poly.equal got |> ok_if_true_lazy ~error
 
+let equal_stmt = Poly.equal
+let assert_int expr = assert_eq ~expect:`Int expr
 let assert_bool expr = assert_eq ~expect:`Bool expr
 
 let assert_array = function
@@ -62,12 +70,21 @@ let assert_array = function
   | `Int
   | `Bool
   | `Tuple _ ->
-      failwith "unimplemented"
+      Error ExpectedArray
 
+(* TODO add pos *)
 let assert_eq_tau t1 t2 =
   let%bind t1 = tau_of_expr_res t1 in
   let%bind t2 = tau_of_expr_res t2 in
   ok_if_true_lazy (Tau.equal t1 t2) ~error:(fun () -> mismatch t1 t2)
+
+let assert_unit = function
+  | `Unit -> Ok ()
+  | `Int
+  | `Bool
+  | `Array _
+  | `Tuple _ ->
+      Error ExpectedUnit
 
 module Node = TypeNode
 module Error = TypeError
