@@ -64,7 +64,7 @@ and type_check_exprs ~ctx ~pos ~types es =
   match (types, es) with
   | typ :: types, e :: es ->
       let%bind e = type_check_expr ~ctx e in
-      let%bind () = assert_eq ~expect:typ e in
+      let%bind () = Node.Expr.assert_eq_sub ~expect:typ e in
       type_check_exprs ~ctx ~pos ~types es >>| List.cons e
   | [], [] -> Ok []
   | _ -> Error (Positioned.count_mismatch pos)
@@ -150,7 +150,7 @@ let type_check_expr_fn_ctx ~ctx =
     bool type in function context [ctx] and [Error Mismatch] otherwise *)
 let bool_or_error ~ctx e =
   let%bind e = type_check_expr_fn_ctx ~ctx e in
-  assert_bool e >>| fun () -> e
+  Node.Expr.assert_bool e >>| fun () -> e
 
 let type_check_var_decl ~ctx ~pos id typ =
   let%map ctx = ctx |> Context.Fn.add_var ~id ~typ |> map_error ~pos in
@@ -172,7 +172,7 @@ let rec type_check_sizes ~ctx = function
   | [] -> Ok []
   | Some e :: es ->
       let%bind e = type_check_expr ~ctx e in
-      let%bind () = assert_int e in
+      let%bind () = Node.Expr.assert_int e in
       type_check_sizes ~ctx es >>| List.cons e
   | None :: es -> type_check_empty es
 
@@ -186,7 +186,7 @@ let type_check_array_decl ~ctx ~pos id typ es =
 let type_check_assign ~ctx ~pos id e =
   let%bind typ = ctx |> Context.Fn.find_var ~id |> map_error ~pos in
   let%bind dec = type_check_expr_fn_ctx ~ctx e in
-  let%map () = assert_eq ~expect:typ dec in
+  let%map () = Node.Expr.assert_eq_sub ~expect:typ dec in
   let s = Decorated.Stmt.Assign (id, dec) in
   Node.Stmt.make_unit ~ctx ~pos s
 
@@ -199,7 +199,7 @@ let type_check_expr_stmt ~ctx:fn_ctx ~pos id es =
 let type_check_var_init ~ctx ~pos id typ e =
   let%bind ctx = ctx |> Context.Fn.add_var ~id ~typ |> map_error ~pos in
   let%bind dec = type_check_expr_fn_ctx ~ctx e in
-  let%map () = assert_eq ~expect:typ dec in
+  let%map () = Node.Expr.assert_eq_sub ~expect:typ dec in
   let s = Decorated.Stmt.VarInit (id, typ, dec) in
   Node.Stmt.make_unit ~ctx ~pos s
 
@@ -303,19 +303,16 @@ and type_check_pr_call ~ctx:fn_ctx ~pos id es =
   Node.Stmt.make_unit ~ctx:fn_ctx ~pos s
 
 and type_check_block ~ctx ~pos stmts =
-  let%map stmts, typ = type_check_stmts ~ctx stmts in
+  let%map stmts, typ = type_check_stmts ~ctx [] stmts in
   let s = Decorated.Stmt.Block stmts in
   Node.Stmt.make ~ctx ~pos ~typ s
 
-and type_check_stmts ~ctx = function
+and type_check_stmts ~ctx acc = function
   | [] -> Ok ([], `Unit)
   | s :: stmts ->
       let%bind s = type_check_stmt ~ctx s in
-      let typ = Node.Stmt.typ s in
-      if List.is_empty stmts then Ok ([ s ], typ)
-      else if equal_stmt typ `Void then
-        Error (Node.Stmt.positioned ~error:ExpectedUnit s)
+      let acc = s :: acc in
+      if List.is_empty stmts then Ok (List.rev acc, Node.Stmt.typ s)
       else
-        let ctx = Node.Stmt.context s in
-        let%map stmts, typ = type_check_stmts ~ctx stmts in
-        (s :: stmts, typ)
+        let%bind () = Node.Stmt.assert_unit s in
+        type_check_stmts ~ctx:(Node.Stmt.context s) acc stmts
