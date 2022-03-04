@@ -14,5 +14,5 @@ module Position = struct
 
   let get { value } = value
   let position { position } = position
-  let make ~position value = { value; position }
+  let make ~pos value = { value; position = pos }
 end

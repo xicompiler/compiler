@@ -15,6 +15,10 @@ val lub : stmt -> stmt -> stmt
 (** [lub t1 t2] is [`Void] iff both of [t1] and [t2] are [`Void] and
     [`Unit] otherwise *)
 
+val lub_stmt : 'a TypeNode.stmt -> 'a TypeNode.stmt -> stmt
+(** [lub_stmt s1 s2] is [lub t1 t2] if [s1] has type [t1] and [s2] has
+    type [t2] *)
+
 val tau_of_expr : expr -> tau option
 (** [tau_of_expr e] is [Some t] if [e] is tau type [t] and [None]
     otherwise *)

@@ -12,6 +12,8 @@ let lub t1 t2 =
   | `Void, `Void -> `Void
   | _ -> `Unit
 
+let lub_stmt s1 s2 = lub (TypeNode.Stmt.typ s1) (TypeNode.Stmt.typ s2)
+
 let tau_of_expr = function
   | (`Int | `Bool | `Array _) as t -> Some t
   | `Tuple _ -> None

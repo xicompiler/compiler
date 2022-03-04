@@ -1,49 +1,57 @@
 open Definitions
 open TypeError
 
-module type S = sig
-  include Node.S
-
+module type Params = sig
   type typ
   type context
-  type nonrec 'a result = ('a, error Position.error) Result.t
+end
+
+module type S = sig
+  include Node.S
+  include Params
 
   val context : 'a t -> context
   val typ : 'a t -> typ
-  val make : 'a -> ctx:context -> typ:typ -> 'a t
+  val make : 'a -> ctx:context -> typ:typ -> pos:Position.t -> 'a t
+  val position : 'a t -> Position.t
 end
 
-module Expr = struct
+(** [Make (Args)] is a concrete Node with concrete types wrapped in
+    [Args] *)
+module Make (Args : Params) = struct
+  include Args
+
+  type 'a t = {
+    value : 'a;
+    context : context;
+    typ : typ;
+    position : Position.t;
+  }
+
+  let context { context } = context
+  let typ { typ } = typ
+  let get { value } = value
+
+  let make value ~ctx ~typ ~pos =
+    { value; context = ctx; typ; position = pos }
+
+  let position { position } = position
+end
+
+module Expr = Make (struct
   type typ = expr
   type context = Context.context
-  type nonrec 'a result = ('a, error Position.error) Result.t
+end)
 
-  type 'a t = {
-    expr : 'a;
-    context : context;
-    typ : typ;
-  }
-
-  let context { context } = context
-  let typ { typ } = typ
-  let get { expr } = expr
-  let make expr ~ctx ~typ = { expr; context = ctx; typ }
-end
+type 'a expr = 'a Expr.t
 
 module Stmt = struct
-  type typ = stmt
-  type context = Context.fn
-  type nonrec 'a result = ('a, error Position.error) Result.t
+  include Make (struct
+    type typ = stmt
+    type context = Context.fn
+  end)
 
-  type 'a t = {
-    stmt : 'a;
-    context : context;
-    typ : typ;
-  }
-
-  let context { context } = context
-  let typ { typ } = typ
-  let get { stmt } = stmt
-  let make stmt ~ctx ~typ = { stmt; context = ctx; typ }
   let make_unit = make ~typ:`Unit
 end
+
+type 'a stmt = 'a Stmt.t

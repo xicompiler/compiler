@@ -15,7 +15,7 @@ module Position : sig
   val position : 'a t -> Position.t
   (** [position node] is the position wrapped by node [node] *)
 
-  val make : position:Position.t -> 'a -> 'a t
-  (** [make ~position value] is a [Position] carrying value [value] and
+  val make : pos:Position.t -> 'a -> 'a t
+  (** [make ~pos value] is a [Position] carrying value [value] and
       position [position] *)
 end

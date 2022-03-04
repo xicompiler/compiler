@@ -86,7 +86,7 @@
     [startpos] is the start position of [TERM] *)
 node(TERM):
   | e = TERM
-    { Pos.make ~position:(get_position $startpos) e }
+    { Pos.make ~pos:(get_position $startpos) e }
   ;
 
 (** [enode] produces a node wrapping an [expr] *)
