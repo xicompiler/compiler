@@ -4,7 +4,7 @@ include Definitions
 include TypeError
 
 let tau_of_expr = function
-  | (`Int | `Bool | `Array _) as t -> Some t
+  | (`Int | `Bool | `Poly | `Array _) as t -> Some t
   | `Tuple _ -> None
 
 let tau_of_expr_res e pos =
@@ -14,8 +14,12 @@ let tau_of_expr_res e pos =
 let tau_list_of_term = function
   | `Unit -> []
   | `Tuple ts -> ts
-  | (`Int | `Bool | `Array _) as t -> [ t ]
+  | (`Int | `Bool | `Poly | `Array _) as t -> [ t ]
+
+let term_of_tau_list = function
+  | [] -> `Unit
+  | lst -> `Tuple lst
 
 let expr_of_term = function
   | `Unit -> `Tuple []
-  | (`Int | `Bool | `Array _ | `Tuple _) as t -> t
+  | (`Int | `Bool | `Poly | `Array _ | `Tuple _) as t -> t

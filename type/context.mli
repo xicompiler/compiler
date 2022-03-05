@@ -1,58 +1,49 @@
 open Core
 open Definitions
 open TypeError
-include Map.S with type Key.t = string
 
-type context = id t
-(** [context] is the type of a static typing context *)
+type t
+(** [t] is the type of a static typing context *)
 
-val find : id:string -> context -> id result
+val empty : t
+(** [empty] is an empty typing context having return type [`Unit] *)
+
+val with_ret : ret:term -> t -> t
+(** [with_ret ~ret ctx] is [ctx] requiring that any return statement
+    return type [ret] *)
+
+val ret : t -> term
+(** [ret ctx] is the return type of the enclosing function in context
+    ctx, or [`Unit] if no return type is needed *)
+
+val find : id:string -> t -> id result
 (** [find ~id ctx] is [Ok typ] if [id] is bound to [typ] in [ctx], or
     [Error (Unbound ctx)] if [id] is not bound. *)
 
-val find_var : id:string -> context -> tau result
+val find_var : id:string -> t -> tau result
 (** [find_var ~id ctx] is [Ok tau] if [id] is bound to expressible type
     [tau] in [ctx], [Error ExpectedTau] if [id] is bound to a function
     type, or [Error (Unbound id)] if [id] is not bound. *)
 
-val find_fun : id:string -> context -> (term * term) result
+val find_fn : id:string -> t -> (term * term) result
+(** [find_fn ~id ctx] is [Ok (t1, t2)] if [id] is bound to function with
+    input [t1] and output [t2] [ctx], [Error ExpectedFn] if [id] is
+    bound to a tau type, or [Error (Unbound id)] if [id] is not bound. *)
 
-(** [Fn] represents a typing context present within a function body *)
-module Fn : sig
-  type t
-  (** [t] represents the typing context found within a function. *)
+val add : id:string -> typ:id -> t -> t result
+(** [add ~id ~typ ctx] is [Ok ctx'] where [ctx'] is [ctx :: (id, typ)]
+    if [id] is unbound in [ctx], or [Error (Bound id)] otherwise *)
 
-  val find : id:string -> t -> id result
-  (** [find ~id ctx] is [Ok typ] if [id] is bound to [typ] in [ctx], or
-      [Error (Unbound id)] if [id] is not bound. *)
+val add_var : id:string -> typ:tau -> t -> t result
+(** [add ~id ~typ ctx] is [Ok ctx'] where [ctx'] is
+    [ctx :: (id, Var typ)] if [id] is unbound in [ctx], or
+    [Error (Bound id)] otherwise *)
 
-  val find_var : id:string -> t -> tau result
-  (** [find_var ~id ctx] is [Ok tau] if [id] is bound to expressible
-      type [tau] in [ctx], [Error ExpectedTau] if [id] is bound to a
-      function type, or [Error (Unbound id)] if [id] is not bound. *)
+val add_fn : id:string -> arg:term -> ret:term -> t -> t result
+(** [add ~id ~arg ~ret ctx] is [Ok ctx'] where [ctx'] is
+    [ctx :: (id, Fn (arg, ret))] if [id] is unbound in [ctx], or
+    [Error (Bound id)] otherwise *)
 
-  val find_fun : id:string -> t -> (term * term) result
-  (** [find_fun ~id ctx] is [Ok (t1, t2)] if [id] is bound to function
-      with input [t1] and output [t2] [ctx], [Error ExpectedFun] if [id]
-      is bound to a tau type, or [Error (Unbound id)] if [id] is not
-      bound. *)
-
-  val add : id:string -> typ:id -> t -> t result
-  (** [add ~id ~typ ctx] is [Ok ctx'] where [ctx'] is [ctx :: (id, typ)]
-      if [id] is unbound in [ctx], or [Error (Bound id)] otherwise *)
-
-  val add_var : id:string -> typ:tau -> t -> t result
-  (** [add ~id ~typ ctx] is [Ok ctx'] where [ctx'] is
-      [ctx :: (id, Var typ)] if [id] is unbound in [ctx], or
-      [Error (Bound id)] otherwise *)
-
-  val context : t -> context
-  (** [context fn_ctx] is the typing context found within [fn_ctx] *)
-
-  val ret : t -> term
-  (** [ret fn_ctx] is the return type of the function represented by
-      [fn_ctx] *)
-end
-
-type fn = Fn.t
-(** [fn] is an alias for [Fn.t] *)
+val add_fn_list :
+  id:string -> arg:tau list -> ret:tau list -> t -> t result
+(** Same as [add_fn] but takes list of argument and return types *)

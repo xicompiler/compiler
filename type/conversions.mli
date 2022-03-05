@@ -11,7 +11,10 @@ val tau_of_expr_res :
     error otherwise *)
 
 val tau_list_of_term : [< term ] -> tau list
-(** [tau_list_of_term e] is [e] converted to a [tau list] *)
+(** [tau_list_of_term e] is [e] converted from a [term] to a [tau list] *)
+
+val term_of_tau_list : tau list -> term
+(** [term_of_tau_list e] is [e] converted from a [tau list] to a [term] *)
 
 val expr_of_term : [< term ] -> expr
-(** [expr_of_term e] is [e] converted to an [expr] type *)
+(** [expr_of_term e] is [e] converted from a [term] to an [expr] type *)

@@ -12,9 +12,6 @@ module type Params = sig
   val mismatch : expect:typ -> typ -> TypeError.error
   (** [mismatch ~expect got] is an error representing a type mismatch
       between [t1] and [t2] *)
-
-  type context
-  (** [context] is the type of the context wrapped in a node *)
 end
 
 (** [S] represents an abstract node *)
@@ -22,13 +19,13 @@ module type S = sig
   include Node.S
   include Params
 
-  val context : 'a t -> context
+  val context : 'a t -> Context.t
   (** [context node] is the context of node *)
 
   val typ : 'a t -> typ
   (** [typ v] is the type of the value wrapped in [v] *)
 
-  val make : 'a -> ctx:context -> typ:typ -> pos:Position.t -> 'a t
+  val make : 'a -> ctx:Context.t -> typ:typ -> pos:Position.t -> 'a t
   (** [make v ~ctx ~typ] is a node wrapping value [v] with context [ctx]
       and type [typ] *)
 
@@ -48,7 +45,7 @@ end
 
 (** [Expr] is a module wrapping an expression node *)
 module Expr : sig
-  include S with type typ = expr and type context = Context.context
+  include S with type typ = expr
 
   val mismatch_sub : expect:[< typ ] -> [< typ ] -> TypeError.error
   (** Same as [mismatch] but accepts subtypes of [typ] *)
@@ -75,16 +72,16 @@ type 'a expr = 'a Expr.t
 
 (** [Stmt] is a module wrapping a statement node *)
 module Stmt : sig
-  include S with type typ = stmt and type context = Context.fn
+  include S with type typ = stmt
 
   val assert_unit : 'a t -> unit TypeError.Positioned.result
   (** [assert_unit stmt] is [Ok ()] if [expr] has the unit type and
       [Error StmtMismatch] otherwise *)
 
-  val make_unit : 'a -> ctx:context -> pos:Position.t -> 'a t
+  val make_unit : 'a -> ctx:Context.t -> pos:Position.t -> 'a t
   (** [make_unit v ~ctx ~pos] is [make v ~ctx ~typ:`Unit ~pos] *)
 
-  val make_void : 'a -> ctx:context -> pos:Position.t -> 'a t
+  val make_void : 'a -> ctx:Context.t -> pos:Position.t -> 'a t
   (** [make_void v ~ctx ~pos] is [make v ~ctx ~typ:`Void ~pos] *)
 
   val lub : 'a t -> 'a t -> typ

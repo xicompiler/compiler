@@ -2,7 +2,7 @@ open Core
 include Definitions
 include Conversions
 
-type context = Context.context
+type context = Context.t
 
 module Tau = Tau
 module Context = Context
@@ -23,6 +23,7 @@ include TypeError
 
 let assert_array = function
   | `Array _ -> Ok ()
+  | `Poly
   | `Int
   | `Bool
   | `Tuple _ ->
@@ -30,6 +31,7 @@ let assert_array = function
 
 let assert_unit = function
   | `Unit -> Ok ()
+  | `Poly
   | `Int
   | `Bool
   | `Array _

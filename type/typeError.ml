@@ -7,7 +7,7 @@ type error =
   | IdMismatch of string
   | ExpectedTau
   | ExpectedArray
-  | ExpectedFun
+  | ExpectedFn
   | ExpectedTerm
   | ExpectedUnit
   | ArgMismatch

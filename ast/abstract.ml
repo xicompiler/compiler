@@ -53,29 +53,35 @@ module type S = sig
 
   type stmt = Stmt.t
 
-  type signature = {
-    id : id;
-    params : Stmt.decl list;
-    types : Type.tau list;
-  }
+  module Toplevel : sig
+    module Node : Node.S
 
-  type fn = signature * Stmt.block
+    type signature = {
+      id : id;
+      params : Stmt.decl list;
+      types : Type.tau list;
+    }
 
-  type definition =
-    | FnDefn of fn
-    | GlobalDecl of Stmt.decl
-    | GlobalInit of id * Type.tau * Expr.primitive
+    type fn = signature * Stmt.block
 
-  type source = {
-    uses : id list;
-    definitions : definition list;
-  }
+    type definition =
+      | FnDefn of fn
+      | GlobalDecl of Stmt.decl
+      | GlobalInit of id * Type.tau * Expr.primitive
 
-  type interface = signature list
+    type node = definition Node.t
+
+    type source = {
+      uses : id list;
+      definitions : node list;
+    }
+
+    type interface = signature Node.t list
+  end
 
   type t =
-    | Source of source
-    | Interface of interface
+    | Source of Toplevel.source
+    | Interface of Toplevel.interface
 
   val sexp_of_t : t -> Sexp.t
 end

@@ -4,7 +4,10 @@ module Node : module type of struct
 end
 
 include
-  Abstract.S with module Expr.Node := Node and module Stmt.Node := Node
+  Abstract.S
+    with module Expr.Node := Node
+     and module Stmt.Node := Node
+     and module Toplevel.Node := Node
 
 val type_check : t -> Decorated.result
 (** [type_check ast] is [Ok ast'] where [ast'] is [ast] decorated if
@@ -20,7 +23,7 @@ val type_check_expr :
     the type error, otherwise. *)
 
 val type_check_stmt :
-  ctx:Type.Context.fn -> Stmt.node -> Decorated.stmt_result
+  ctx:Type.context -> Stmt.node -> Decorated.stmt_result
 (** [type_check_stmt stmt] is [Ok stmt'] where [stmt'] is [stmt]
     decorated if [stmt] represents a semantically valid Xi expression in
     context [ctx], or [Error type_error] where [type_error] describes

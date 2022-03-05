@@ -9,17 +9,15 @@ module type Params = sig
 
   val typ_equal : typ -> typ -> bool
   val mismatch : expect:typ -> typ -> error
-
-  type context
 end
 
 module type S = sig
   include Node.S
   include Params
 
-  val context : 'a t -> context
+  val context : 'a t -> Context.t
   val typ : 'a t -> typ
-  val make : 'a -> ctx:context -> typ:typ -> pos:Position.t -> 'a t
+  val make : 'a -> ctx:Context.t -> typ:typ -> pos:Position.t -> 'a t
   val position : 'a t -> Position.t
   val positioned : error:error -> 'a t -> Positioned.error
   val assert_eq : expect:typ -> 'a t -> unit TypeError.Positioned.result
@@ -32,7 +30,7 @@ module Make (Args : Params) = struct
 
   type 'a t = {
     value : 'a;
-    context : context;
+    context : Context.t;
     typ : typ;
     position : Position.t;
   }
@@ -65,8 +63,6 @@ module Expr = struct
 
     let typ_equal = Poly.equal
     let mismatch ~expect got = Mismatch (expect, got)
-
-    type context = Context.context
   end)
 
   let mismatch_sub ~expect got =
@@ -89,8 +85,6 @@ module Stmt = struct
 
     let typ_equal = Poly.equal
     let mismatch ~expect got = StmtMismatch (expect, got)
-
-    type context = Context.fn
   end)
 
   let make_unit = make ~typ:`Unit

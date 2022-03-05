@@ -2,7 +2,8 @@ open Core
 
 include
   Abstract.S
-    with module Expr.Node := Type.Node.Expr
+    with module Toplevel.Node := Node.Position
+     and module Expr.Node := Type.Node.Expr
      and module Stmt.Node := Type.Node.Stmt
 
 (** [Error] represents a semantic error in the AST *)

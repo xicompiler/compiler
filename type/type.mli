@@ -3,7 +3,7 @@ include module type of Definitions
 include module type of TypeError
 include module type of Conversions
 
-type context = Context.context
+type context = Context.t
 (** [context] is the type of a static typing context *)
 
 module Tau : module type of Tau

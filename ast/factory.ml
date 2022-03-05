@@ -1,7 +1,7 @@
 open Core
 open Abstract
 
-module Make (Ex : Node.S) (St : Node.S) = struct
+module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
   type id = string
 
   module Expr = struct
@@ -54,32 +54,39 @@ module Make (Ex : Node.S) (St : Node.S) = struct
 
   type stmt = Stmt.t
 
-  type signature = {
-    id : id;
-    params : Stmt.decl list;
-    types : Type.tau list;
-  }
+  module Toplevel = struct
+    module Node = Tp
 
-  type fn = signature * Stmt.block
+    type signature = {
+      id : id;
+      params : Stmt.decl list;
+      types : Type.tau list;
+    }
 
-  type definition =
-    | FnDefn of fn
-    | GlobalDecl of Stmt.decl
-    | GlobalInit of id * Type.tau * Expr.primitive
+    type fn = signature * Stmt.block
 
-  type source = {
-    uses : id list;
-    definitions : definition list;
-  }
+    type definition =
+      | FnDefn of fn
+      | GlobalDecl of Stmt.decl
+      | GlobalInit of id * Type.tau * Expr.primitive
 
-  type interface = signature list
+    type node = definition Node.t
+
+    type source = {
+      uses : id list;
+      definitions : node list;
+    }
+
+    type interface = signature Node.t list
+  end
 
   type t =
-    | Source of source
-    | Interface of interface
+    | Source of Toplevel.source
+    | Interface of Toplevel.interface
 
   open Expr
   open Stmt
+  open Toplevel
 
   (** [string_of_unop unop] is the string representation of [unop]. *)
   let string_of_unop = function
@@ -145,7 +152,7 @@ module Make (Ex : Node.S) (St : Node.S) = struct
 
   (** [sexp_of_enode node] is the s-expression serialization of the
       expression wrapped in node [node] *)
-  and sexp_of_enode node = node |> Expr.Node.get |> sexp_of_expr
+  and sexp_of_enode node = node |> Ex.get |> sexp_of_expr
 
   (** [sexp_of_array arr] is the s-expression serialization of the Xi
       array [arr] *)
@@ -189,11 +196,12 @@ module Make (Ex : Node.S) (St : Node.S) = struct
   let sexp_of_prim_type = function
     | `Int -> Sexp.Atom "int"
     | `Bool -> Sexp.Atom "bool"
+    | `Poly -> Sexp.Atom "<poly>"
 
   (** [sexp_of_type t] is the s-expression serialization of type [t] *)
   let rec sexp_of_type = function
     | `Array t -> Sexp.List [ Sexp.Atom "[]"; sexp_of_type t ]
-    | (`Int | `Bool) as prim -> sexp_of_prim_type prim
+    | (`Int | `Bool | `Poly) as prim -> sexp_of_prim_type prim
 
   (** [hd_tl_exn lst] is [h :: t] if [lst] is [h :: t]. Raises:
       [Failure] if [lst] is nil. *)
@@ -209,7 +217,7 @@ module Make (Ex : Node.S) (St : Node.S) = struct
         let e, es = hd_tl_exn lengths in
         let lst = Option.to_list (Option.map e ~f:sexp_of_enode) in
         Sexp.List (Sexp.Atom "[]" :: sexp_of_decl_type t es :: lst)
-    | (`Int | `Bool) as prim -> sexp_of_prim_type prim
+    | (`Int | `Bool | `Poly) as prim -> sexp_of_prim_type prim
 
   (** [sexp_of_decl id typ] is the s-expression serialization of the
       statement [id: typ]. *)
@@ -279,7 +287,7 @@ module Make (Ex : Node.S) (St : Node.S) = struct
 
   (** [sexp_of_snode node] is the s-expression serialization of the stmt
       wrapped in [mode]*)
-  and sexp_of_snode node = node |> Stmt.Node.get |> sexp_of_stmt
+  and sexp_of_snode node = node |> St.get |> sexp_of_stmt
 
   and sexp_of_cond e s lst =
     Sexp.List
@@ -335,19 +343,24 @@ module Make (Ex : Node.S) (St : Node.S) = struct
     | GlobalDecl (id, typ) -> sexp_of_global id typ
     | GlobalInit (id, typ, init) -> sexp_of_global id typ ~init
 
+  (** [sexp_of_tp_list f lst] is the s-expression serialization of
+      toplevel node list [lst] where each element is serialized using
+      [f] *)
+  let sexp_of_tp_list f = List.sexp_of_t (fun n -> f (Tp.get n))
+
   (** [sexp_of_source source] is the s-expression serialization of the
       AST [source] *)
   let sexp_of_source { uses; definitions } =
     Sexp.List
       [
         List.sexp_of_t sexp_of_use uses;
-        List.sexp_of_t sexp_of_definition definitions;
+        sexp_of_tp_list sexp_of_definition definitions;
       ]
 
   (** [sexp_of_interface interface] is the s-expression serialization of
       the AST [interface]. *)
   let sexp_of_interface sigs =
-    Sexp.List [ List.sexp_of_t sexp_of_fn sigs ]
+    Sexp.List [ sexp_of_tp_list sexp_of_fn sigs ]
 
   let sexp_of_t = function
     | Source s -> sexp_of_source s

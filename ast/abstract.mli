@@ -84,45 +84,54 @@ module type S = sig
   type stmt = Stmt.t
   (** [stmt] is an alias for [Stmt.t] *)
 
-  type signature = {
-    id : id;
-    params : Stmt.decl list;
-    types : Type.tau list;
-  }
-  (** A [signature] is a signature or interface for an individual method
-      where [types] is the list of (possibly none) return types. *)
+  (** [Toplevel] represents the toplevel definitions of the AST *)
+  module Toplevel : sig
+    module Node : Node.S
+    (** [Node] wraps a toplevel definition *)
 
-  type fn = signature * Stmt.block
-  (** A [fn] is a Xi function definition whose body is a block of
-      statements represented as a pair [(signature, body)] where
-      [signature] is the function's signature and [body] is its body. *)
+    type signature = {
+      id : id;
+      params : Stmt.decl list;
+      types : Type.tau list;
+    }
+    (** A [signature] is a signature or interface for an individual
+        method where [types] is the list of (possibly none) return
+        types. *)
 
-  (** A [definition] is the type of a top-level declaration in Xi:
-      either a function definition, or declaration or initialization of
-      a global variable. *)
-  type definition =
-    | FnDefn of fn
-    | GlobalDecl of Stmt.decl
-    | GlobalInit of id * Type.tau * Expr.primitive
+    type fn = signature * Stmt.block
+    (** A [fn] is a Xi function definition whose body is a block of
+        statements represented as a pair [(signature, body)] where
+        [signature] is the function's signature and [body] is its body. *)
 
-  type source = {
-    uses : id list;
-    definitions : definition list;
-  }
-  (** A [source] describes the structure of a source file in Xi; 0 or
-      more use statements followed by 1 or more top-level definitions,
-      at least one of which must be a function definition. *)
+    (** A [definition] is the type of a top-level declaration in Xi:
+        either a function definition, or declaration or initialization
+        of a global variable. *)
+    type definition =
+      | FnDefn of fn
+      | GlobalDecl of Stmt.decl
+      | GlobalInit of id * Type.tau * Expr.primitive
 
-  type interface = signature list
-  (** An [interface] is a Xi interface, represented as a non-empty list
-      of function signatures. *)
+    type node = definition Node.t
+
+    type source = {
+      uses : id list;
+      definitions : node list;
+    }
+    (** A [source] describes the structure of a source file in Xi; 0 or
+        more use statements followed by 1 or more top-level definitions,
+        at least one of which must be a function definition. *)
+
+    type interface = signature Node.t list
+    (** An [interface] is a Xi interface, represented as a non-empty
+        list of function signatures. *)
+  end
 
   (** An expression of type [t] is an expression representing a node of
       the Abstract Syntax Tree of a Xi program, described either by a
       source or interface file. *)
   type t =
-    | Source of source
-    | Interface of interface
+    | Source of Toplevel.source
+    | Interface of Toplevel.interface
 
   val sexp_of_t : t -> Sexp.t
   (** [sexp_of_t ast] is the s-expression serialization of [ast]. *)

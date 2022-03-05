@@ -3,12 +3,15 @@ open Result.Monad_infix
 open Result.Let_syntax
 open Util.Result
 module Node = Node.Position
-include Factory.Make (Node) (Node)
+include Factory.Make (Node) (Node) (Node)
 module PosNode = Node
 open Expr
 open Stmt
+open Toplevel
 open Primitive
 open Type
+
+let dummy_pos : Position.t = { line = 0; column = 0 }
 
 (** [map_error ~pos result] decorates the error variant of [result] with
     the position [pos] at which it occurs *)
@@ -21,21 +24,9 @@ let ( >>? ) r pos = map_error ~pos r
     [f (... (f (f a b1 c1) b2 c2) ...) bn cn], short circuiting on
     return of [Error _]. If the lengths of [l1] and [l2] are not equal,
     [Error CountMismatch] is returned. *)
-let rec fold2_result ~pos ~f ~init l1 l2 =
-  match (l1, l2) with
-  | h1 :: t1, h2 :: t2 ->
-      let%bind init = f init h1 h2 in
-      fold2_result ~pos ~f ~init t1 t2
-  | [], [] -> Ok init
-  | _ -> Error (Positioned.count_mismatch pos)
-
-let type_check_function signature = failwith "unimplemented"
-let type_check_source source = failwith "unimplemented"
-let type_check_interface interface = failwith "unimplemented"
-
-let type_check = function
-  | Source source -> type_check_source source
-  | Interface interface -> type_check_interface interface
+let fold2_result ~pos =
+  let unequal_lengths = Positioned.count_mismatch pos in
+  Util.List.fold2_result ~unequal_lengths
 
 (** [type_of_primitive p] is [`Int] if [p] is [Int] or [Char] and
     [`Bool] if [p] is [Bool] *)
@@ -90,7 +81,10 @@ and type_check_exprs ~ctx ~pos ~types es =
   fold2_result ~f ~pos ~init:[] types es >>| List.rev
 
 and type_check_array ~ctx ~pos arr =
-  if Array.is_empty arr then failwith "any array"
+  if Array.is_empty arr then
+    let empty_array = Decorated.Expr.Array [||] in
+    let typ = `Array `Poly in
+    Ok (Node.Expr.make ~ctx ~typ ~pos empty_array)
   else
     let%bind dec = type_check_expr ~ctx (Array.get arr 0) in
     let%bind lst =
@@ -116,6 +110,10 @@ and type_check_bop ~ctx ~pos op e1 e2 =
   match (op, Node.Expr.typ dec1, Node.Expr.typ dec2) with
   | (Plus | Minus | Mult | HighMult | Div | Mod), `Int, `Int ->
       Ok (Node.Expr.make ~ctx ~typ:`Int ~pos e)
+  | Plus, `Array t1, `Array t2 ->
+      if Tau.equal t1 t2 then
+        Ok (Node.Expr.make ~ctx ~typ:(`Array t1) ~pos e)
+      else Error (Positioned.make ~pos OpMismatch)
   | (Lt | Leq | Gt | Geq), `Int, `Int
   | (And | Or), `Bool, `Bool ->
       Ok (Node.Expr.make ~ctx ~typ:`Bool ~pos e)
@@ -134,7 +132,7 @@ and type_check_uop ~ctx ~pos op e =
 (* TODO add op + type to opmismatch *)
 
 and type_check_call ~ctx ~pos id es =
-  Context.find_fun ~id ctx >>? pos >>= fun (t1, t2) ->
+  Context.find_fn ~id ctx >>? pos >>= fun (t1, t2) ->
   let types = tau_list_of_term t1 in
   let%map es = type_check_exprs ~ctx ~pos ~types es in
   (es, t2)
@@ -160,17 +158,14 @@ and type_check_index ~ctx ~pos e1 e2 =
   | `Array t, `Int -> Ok (Node.Expr.make ~ctx ~typ:(t :> expr) ~pos e)
   | _ -> Error (Positioned.mismatch pos ~expect:dec1_typ dec2_typ)
 
-let type_check_expr_fn_ctx ~ctx =
-  type_check_expr ~ctx:(Context.Fn.context ctx)
-
 (** [bool_or_error_stmt ctx e] is [Ok e] if [e] is [Ok e] and [e] has
     bool type in function context [ctx] and [Error Mismatch] otherwise *)
 let bool_or_error ~ctx e =
-  let%bind e = type_check_expr_fn_ctx ~ctx e in
+  let%bind e = type_check_expr ~ctx e in
   Node.Expr.assert_bool e >>| fun () -> e
 
 let type_check_var_decl ~ctx ~pos id typ =
-  Context.Fn.add_var ~id ~typ ctx >>? pos >>| fun ctx ->
+  Context.add_var ~id ~typ ctx >>? pos >>| fun ctx ->
   let s = Decorated.Stmt.VarDecl (id, typ) in
   Node.Stmt.make_unit s ~ctx ~pos
 
@@ -194,36 +189,35 @@ let rec type_check_sizes ~ctx = function
   | None :: es -> type_check_empty es
 
 let type_check_array_decl ~ctx ~pos id typ es =
-  Context.Fn.add_var ~id ~typ ctx >>? pos >>= fun ctx ->
-  let%map es = type_check_sizes ~ctx:(Context.Fn.context ctx) es in
+  Context.add_var ~id ~typ ctx >>? pos >>= fun ctx ->
+  let%map es = type_check_sizes ~ctx es in
   let es = List.map ~f:Option.some es in
   let s = Decorated.Stmt.ArrayDecl (id, typ, es) in
   Node.Stmt.make_unit ~ctx ~pos s
 
 let type_check_assign ~ctx ~pos id e =
-  Context.Fn.find_var ~id ctx >>? pos >>= fun typ ->
-  let%bind dec = type_check_expr_fn_ctx ~ctx e in
+  Context.find_var ~id ctx >>? pos >>= fun typ ->
+  let%bind dec = type_check_expr ~ctx e in
   let%map () = Node.Expr.assert_eq_sub ~expect:typ dec in
   let s = Decorated.Stmt.Assign (id, dec) in
   Node.Stmt.make_unit ~ctx ~pos s
 
-let type_check_expr_stmt ~ctx:fn_ctx ~pos id es =
-  let ctx = Context.Fn.context fn_ctx in
+let type_check_expr_stmt ~ctx ~pos id es =
   let%map es, _ = type_check_call ~ctx ~pos id es in
   let s = Decorated.Stmt.ExprStmt (id, es) in
-  Node.Stmt.make_unit ~ctx:fn_ctx ~pos s
+  Node.Stmt.make_unit ~ctx ~pos s
 
 let type_check_var_init ~ctx ~pos id typ e =
-  Context.Fn.add_var ~id ~typ ctx >>? pos >>= fun ctx ->
-  let%bind dec = type_check_expr_fn_ctx ~ctx e in
+  Context.add_var ~id ~typ ctx >>? pos >>= fun ctx ->
+  let%bind dec = type_check_expr ~ctx e in
   let%map () = Node.Expr.assert_eq_sub ~expect:typ dec in
   let s = Decorated.Stmt.VarInit (id, typ, dec) in
   Node.Stmt.make_unit ~ctx ~pos s
 
 let type_check_arr_assign ~ctx ~pos e1 e2 e3 =
-  let%bind dec1 = type_check_expr_fn_ctx ~ctx e1 in
-  let%bind dec2 = type_check_expr_fn_ctx ~ctx e2 in
-  let%bind dec3 = type_check_expr_fn_ctx ~ctx e3 in
+  let%bind dec1 = type_check_expr ~ctx e1 in
+  let%bind dec2 = type_check_expr ~ctx e2 in
+  let%bind dec3 = type_check_expr ~ctx e3 in
   let pos1 = Node.Expr.position dec1 in
   let pos2 = Node.Expr.position dec2 in
   let s = Decorated.Stmt.ArrAssign (dec1, dec2, dec3) in
@@ -242,26 +236,24 @@ let check_decls ~ctx ~pos ds ts =
     | Some (id, tau) ->
         let error () = Positioned.mismatch pos ~expect:typ tau in
         ok_if_true_lazy (Tau.equal typ tau) ~error >>= fun () ->
-        Context.Fn.add_var ~id ~typ ctx >>? pos
+        Context.add_var ~id ~typ ctx >>? pos
     | None -> Ok ctx
   in
   fold2_result ~pos ~f ~init:ctx ds ts
 
-let type_check_multi_assign ~ctx:fn_ctx ~pos ds id es =
-  let ctx = Context.Fn.context fn_ctx in
+let type_check_multi_assign ~ctx ~pos ds id es =
   let%bind es, t2 = type_check_call ~ctx ~pos id es in
   let s = Decorated.Stmt.MultiAssign (ds, id, es) in
   let ts = tau_list_of_term t2 in
-  let%map fn_ctx = check_decls ~ctx:fn_ctx ~pos ds ts in
-  Node.Stmt.make_unit ~ctx:fn_ctx ~pos s
+  let%map ctx = check_decls ~ctx ~pos ds ts in
+  Node.Stmt.make_unit ~ctx ~pos s
 
-let type_check_return ~ctx:fn_ctx ~pos es =
-  let rho = Context.Fn.ret fn_ctx in
-  let ctx = Context.Fn.context fn_ctx in
+let type_check_return ~ctx ~pos es =
+  let rho = Context.ret ctx in
   let types = tau_list_of_term rho in
-  let%bind s_lst = type_check_exprs ~ctx ~pos ~types es in
+  let%map s_lst = type_check_exprs ~ctx ~pos ~types es in
   let s = Decorated.Stmt.Return s_lst in
-  Ok (Node.Stmt.make_void s ~ctx:fn_ctx ~pos)
+  Node.Stmt.make_void s ~ctx ~pos
 
 (** [type_check_stmt ctx snode] is [Ok stmt] where [stmt] is [snode]
     decorated within function context [ctx] or [Error type_error] where
@@ -306,19 +298,19 @@ and type_check_if_else ~ctx ~pos e s1 s2 =
 and type_check_while ~ctx ~pos e s =
   make_cond ~f:(fun e s -> Decorated.Stmt.While (e, s)) ~ctx ~pos e s
 
-and type_check_pr_call ~ctx:fn_ctx ~pos id es =
-  let ctx = Context.Fn.context fn_ctx in
+and type_check_pr_call ~ctx ~pos id es =
   let%bind es, t2 = type_check_call ~ctx ~pos id es in
   let s = Decorated.Stmt.PrCall (id, es) in
-  assert_unit t2 >>? pos >>| fun () ->
-  Node.Stmt.make_unit ~ctx:fn_ctx ~pos s
+  assert_unit t2 >>? pos >>| fun () -> Node.Stmt.make_unit ~ctx ~pos s
 
 and type_check_block ~ctx ~pos stmts =
-  let%map stmts, typ = type_check_stmts ~ctx [] stmts in
+  let%map stmts, typ = type_check_stmts ~ctx stmts in
   let s = Decorated.Stmt.Block stmts in
   Node.Stmt.make ~ctx ~pos ~typ s
 
-and type_check_stmts ~ctx acc = function
+and type_check_stmts ~ctx = type_check_stmts_acc ~ctx []
+
+and type_check_stmts_acc ~ctx acc = function
   | [] -> Ok ([], `Unit)
   | s :: stmts ->
       let%bind s = type_check_stmt ~ctx s in
@@ -326,4 +318,66 @@ and type_check_stmts ~ctx acc = function
       if List.is_empty stmts then Ok (List.rev acc, Node.Stmt.typ s)
       else
         let%bind () = Node.Stmt.assert_unit s in
-        type_check_stmts ~ctx:(Node.Stmt.context s) acc stmts
+        type_check_stmts_acc ~ctx:(Node.Stmt.context s) acc stmts
+
+let type_check_file = failwith "unimplemented"
+
+(** [fold_decls ~ctx ds] is [Ok ctx'] where [ctx'] is [ctx] extended
+    with every binding in [ds] if [ds] and [ctx] are disjoint, or
+    [Error] otherwise *)
+let fold_decls ~ctx =
+  let f ctx (id, typ) = Context.add_var ~id ~typ ctx >>? dummy_pos in
+  List.fold_result ~init:ctx ~f
+
+let check_signature ~ctx { id; params; types } =
+  let arg = term_of_tau_list (List.map ~f:snd params) in
+  let ret = term_of_tau_list types in
+  Context.add_fn ~id ~arg ~ret ctx >>? dummy_pos >>| fun ctx ->
+  let%map fn_ctx = fold_decls ~ctx params in
+  (ctx, Context.with_ret ~ret fn_ctx)
+
+let type_check_function ~ctx signature block =
+  let%bind _, ctx = check_signature ~ctx signature in
+  let ctx = Context.with_ret ~ret ctx in
+  let%map block, typ = type_check_stmts ~ctx:fn_ctx block in
+  Decorated.FnDefn (signature, block)
+
+let rec check_uses ~ctx =
+  let f ctx file = type_check_file ~ctx ~pos:dummy_pos file in
+  List.fold_result ~init:ctx ~f
+
+let check_global_decl ~ctx (id, typ) =
+  Context.add_var ~id ~typ ctx >>? dummy_pos >>| fun ctx ->
+  failwith "globaldecl"
+
+let check_global_init ~ctx id tau primitive =
+  Context.add_var ~id ~tau ctx >>? dummy_pos >>= fun ctx ->
+  let%map () = Node.Expr.assert_eq_sub ~expect:typ primitive in
+  failwith "globalinit"
+
+let check_def ~ctx ~pos = function
+  | FnDefn (signature, block) ->
+      type_check_function ~ctx signature block
+  | GlobalDecl decl -> check_global_decl ~ctx decl
+  | GlobalInit (id, tau, primitive) ->
+      check_global_init ~ctx id tau primitive
+
+let check_defs ~ctx defs = failwith "unimplemented"
+
+let type_check_source ~ctx { uses; definitions } =
+  let%bind ctx = check_uses ~ctx uses in
+  let%map definitions = check_defs ~ctx definitions in
+  { uses; definitions }
+
+let rec type_check_interface ~ctx = function
+  | s :: sigs ->
+      let%map ctx = check_signature ~ctx s in
+      type_check_interface ~ctx sigs
+  | [] -> Ok ctx
+
+(* TODO toplevel position *)
+let type_check prog =
+  let ctx = Context.empty in
+  match prog with
+  | Source source -> type_check_source ~ctx source
+  | Interface interface -> type_check_interface ~ctx interface

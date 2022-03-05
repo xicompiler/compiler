@@ -4,6 +4,7 @@
   open Ast
   open Expr
   open Stmt
+  open Toplevel
   open Position
 %}
 
