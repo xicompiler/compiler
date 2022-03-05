@@ -127,7 +127,7 @@ module Make (Ex : Node.S) (St : Node.S) = struct
       value [v] *)
   let sexp_of_primitive = function
     | Char c -> sexp_of_char c
-    | Int i -> Sexp.Atom i
+    | Int i -> Sexp.Atom (Int64.to_string i)
     | Bool b -> Bool.sexp_of_t b
 
   (** [sexp_of_expr e] is the s-expression serialization of expression

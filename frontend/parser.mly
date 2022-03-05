@@ -5,6 +5,10 @@
   open Expr
   open Stmt
   open Position
+
+  let int_of_string s =
+    try Int64.of_string s
+    with e -> raise e
 %}
 
 (* Keywords *)
@@ -274,12 +278,12 @@ call_expr:
 
 primitive:
   | i = INT
-    { Int i }
+    { Int (int_of_string i) }
   | b = BOOL
     { Bool b }
   | c = CHAR
     { Char c }
-  ; 
+  ;
 
 array:
   | e = enode?; RBRACE
