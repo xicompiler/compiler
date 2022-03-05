@@ -7,6 +7,13 @@
   open Position
 
   let int_err pos = raise (Exception.InvalidIntLiteral (get_position pos))
+
+  let parse_int ~pos ~neg s =
+    try
+      let s = if neg then "-" ^ s else s in
+      Int (Int64.of_string s)
+    with _ ->
+      int_err pos
 %}
 
 (* Keywords *)
@@ -216,6 +223,12 @@ global:
     { GlobalDecl decl }
   | decl = decl; GETS; v = primitive
     { let (id, typ) = decl in GlobalInit (id, typ, v) }
+  | decl = decl; GETS; neg = MINUS; i = INT
+    {
+      let (id, typ) = decl in 
+      let v = parse_int ~pos:$startpos(neg) ~neg:true i in
+      GlobalInit (id, typ, v)
+    }
   ;
 
 decl:
@@ -287,15 +300,12 @@ call_expr:
 primitive:
   | i = INT
     {
+      let pos = $startpos in
       try
-        Int (Int64.of_string i)
-      with _ -> begin
-        try
-          let _ = Int64.of_string ("-" ^ i) in
-          IntBound
-        with e ->
-          int_err $startpos
-      end
+        parse_int ~pos ~neg:false i
+      with _ ->
+        let _ = parse_int ~pos ~neg:true i in
+        IntBound
     }
   | b = BOOL
     { Bool b }
