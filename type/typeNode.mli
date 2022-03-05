@@ -16,11 +16,9 @@ end
 
 (** [S] represents an abstract node *)
 module type S = sig
-  include Node.S
   include Params
 
-  val context : 'a t -> Context.t
-  (** [context node] is the context of node *)
+  include ContextNode.S
 
   val typ : 'a t -> typ
   (** [typ v] is the type of the value wrapped in [v] *)
@@ -29,18 +27,23 @@ module type S = sig
   (** [make v ~ctx ~typ] is a node wrapping value [v] with context [ctx]
       and type [typ] *)
 
-  val position : 'a t -> Position.t
-  (** [position node] is the position corresponding to [node] *)
+  val assert_eq : expect:typ -> 'a t -> unit TypeError.Positioned.result
+  (** [assert_eq ~expect v] is [Ok ()] if [expect] and the type of [v],
+      [got] represent the same type and [Error (mismatch expect got)]
+      otherwise. *)
 
   val positioned :
     error:TypeError.error -> 'a t -> TypeError.Positioned.error
   (** [positioned ~error node] is an [error] occuring at position
       [position node]*)
+end
 
-  val assert_eq : expect:typ -> 'a t -> unit TypeError.Positioned.result
-  (** [assert_eq ~expect v] is [Ok ()] if [expect] and the type of [v],
-      [got] represent the same type and [Error (mismatch expect got)]
-      otherwise. *)
+(** [Toplevel] represents a node at the Toplevel *)
+module TopLevel : sig
+  include ContextNode.S
+
+  (** [make ~ctx ~pos v] is a toplevel node wrapping value [v], context [ctx] and position [pos] *)
+  val make : ctx:Context.t -> pos:Position.t -> 'a -> 'a t
 end
 
 (** [Expr] is a module wrapping an expression node *)

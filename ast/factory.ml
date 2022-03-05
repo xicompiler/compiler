@@ -2,8 +2,6 @@ open Core
 open Abstract
 
 module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
-  type id = string
-
   module Expr = struct
     include Op
     include Primitive
@@ -21,16 +19,17 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
       | Index of index
 
     and node = t Node.t
+
     and nodes = node list
+
     and call = id * nodes
+
     and index = node * node
   end
 
   type expr = Expr.t
 
   module Stmt = struct
-    type decl = id * Type.tau
-
     module Node = St
 
     type t =
@@ -49,6 +48,7 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
       | Block of block
 
     and node = t Node.t
+
     and block = node list
   end
 
@@ -57,17 +57,11 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
   module Toplevel = struct
     module Node = Tp
 
-    type signature = {
-      id : id;
-      params : Stmt.decl list;
-      types : Type.tau list;
-    }
-
     type fn = signature * Stmt.block
 
     type definition =
       | FnDefn of fn
-      | GlobalDecl of Stmt.decl
+      | GlobalDecl of decl
       | GlobalInit of id * Type.tau * Expr.primitive
 
     type node = definition Node.t

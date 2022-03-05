@@ -5,6 +5,7 @@ open Util.Result
 module Node = Node.Position
 include Factory.Make (Node) (Node) (Node)
 module PosNode = Node
+open Abstract
 open Expr
 open Stmt
 open Toplevel
@@ -329,18 +330,22 @@ let fold_decls ~ctx =
   let f ctx (id, typ) = Context.add_var ~id ~typ ctx >>? dummy_pos in
   List.fold_result ~init:ctx ~f
 
-let check_signature ~ctx { id; params; types } =
+let signature_contexts ~ctx { id; params; types } =
   let arg = term_of_tau_list (List.map ~f:snd params) in
   let ret = term_of_tau_list types in
-  Context.add_fn ~id ~arg ~ret ctx >>? dummy_pos >>| fun ctx ->
+  Context.add_fn ~id ~arg ~ret ctx >>? dummy_pos >>= fun ctx ->
   let%map fn_ctx = fold_decls ~ctx params in
   (ctx, Context.with_ret ~ret fn_ctx)
 
+let type_check_signature ~ctx signature =
+  let%map ctx, _ = signature_contexts ~ctx signature in
+  Node.Toplevel.make ~ctx ~pos:dummy_pos signature
+
 let type_check_function ~ctx signature block =
-  let%bind _, ctx = check_signature ~ctx signature in
-  let ctx = Context.with_ret ~ret ctx in
+  let%bind ctx, fn_ctx = signature_contexts ~ctx signature in
   let%map block, typ = type_check_stmts ~ctx:fn_ctx block in
-  Decorated.FnDefn (signature, block)
+  Node.TopLevel.make ~ctx ~pos:dummy_pos
+    (Decorated.Toplevel.FnDefn (signature, block))
 
 let rec check_uses ~ctx =
   let f ctx file = type_check_file ~ctx ~pos:dummy_pos file in
@@ -348,32 +353,39 @@ let rec check_uses ~ctx =
 
 let check_global_decl ~ctx (id, typ) =
   Context.add_var ~id ~typ ctx >>? dummy_pos >>| fun ctx ->
-  failwith "globaldecl"
+  Node.TopLevel.make ~ctx ~pos:dummy_pos
+    (Decorated.Toplevel.GlobalDecl (id, typ))
 
 let check_global_init ~ctx id tau primitive =
-  Context.add_var ~id ~tau ctx >>? dummy_pos >>= fun ctx ->
-  let%map () = Node.Expr.assert_eq_sub ~expect:typ primitive in
-  failwith "globalinit"
+  Context.add_var ~id ~typ:tau ctx >>? dummy_pos >>= fun ctx ->
+  let p_type = type_of_primitive primitive in
+  let tau_type = (tau :> expr) in
+  if Node.Expr.typ_equal tau_type p_type then
+    Ok
+      (Node.TopLevel.make ~ctx ~pos:dummy_pos
+         (Decorated.Toplevel.GlobalInit (id, tau, primitive)))
+  else Error (Positioned.mismatch dummy_pos ~expect:tau_type p_type)
 
-let check_def ~ctx ~pos = function
+let check_def ~ctx = function
   | FnDefn (signature, block) ->
       type_check_function ~ctx signature block
   | GlobalDecl decl -> check_global_decl ~ctx decl
   | GlobalInit (id, tau, primitive) ->
       check_global_init ~ctx id tau primitive
 
-let check_defs ~ctx defs = failwith "unimplemented"
+let check_defs ~ctx defs =
+  let f acc def = check_def ~ctx def :: acc in
+  (* TODO should thread context *)
+  List.fold_result ~init:[] ~f defs >>| List.rev
 
 let type_check_source ~ctx { uses; definitions } =
   let%bind ctx = check_uses ~ctx uses in
   let%map definitions = check_defs ~ctx definitions in
   { uses; definitions }
 
-let rec type_check_interface ~ctx = function
-  | s :: sigs ->
-      let%map ctx = check_signature ~ctx s in
-      type_check_interface ~ctx sigs
-  | [] -> Ok ctx
+let rec type_check_interface ~ctx sigs =
+  let f ctx s = check_signature ~ctx s >>| fst in
+  List.fold_result ~init:[] ~f sigs >>| List.rev
 
 (* TODO toplevel position *)
 let type_check prog =

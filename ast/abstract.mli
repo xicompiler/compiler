@@ -1,13 +1,26 @@
 open Core
 
-(** [S] is the signature of a generic AST *)
-module type S = sig
-  type id = string
-  (** An [id] is the type of a Xi identifier *)
+type id = string
+(** An [id] is the type of a Xi identifier *)
 
+type decl = id * Type.tau
+(** A [decl] is the type of a Xi declaration represented as a pair
+    [(id, t)] where [id] is the name of the identifier and [t] is its
+    type. *)
+
+type signature = {
+  id : id;
+  params : decl list;
+  types : Type.tau list;
+}
+(** A [signature] is a signature or interface for an individual method
+    where [types] is the list of (possibly none) return types. *)
+
+module type S = sig
   (** An [Expr] represents an expression in the Xi langauge *)
   module Expr : sig
     include module type of Op
+
     include module type of Primitive
 
     module Node : Node.S
@@ -48,11 +61,6 @@ module type S = sig
     (** A [typ] is a Xi type whose arrays are optionally initialized
         with an expression of type [expr] *)
 
-    type decl = id * Type.tau
-    (** A [decl] is the type of a Xi declaration represented as a pair
-        [(id, t)] where [id] is the name of the identifier and [t] is
-        its type. *)
-
     module Node : Node.S
     (** A [Node] is a statement node in the ast *)
 
@@ -89,15 +97,6 @@ module type S = sig
     module Node : Node.S
     (** [Node] wraps a toplevel definition *)
 
-    type signature = {
-      id : id;
-      params : Stmt.decl list;
-      types : Type.tau list;
-    }
-    (** A [signature] is a signature or interface for an individual
-        method where [types] is the list of (possibly none) return
-        types. *)
-
     type fn = signature * Stmt.block
     (** A [fn] is a Xi function definition whose body is a block of
         statements represented as a pair [(signature, body)] where
@@ -108,7 +107,7 @@ module type S = sig
         of a global variable. *)
     type definition =
       | FnDefn of fn
-      | GlobalDecl of Stmt.decl
+      | GlobalDecl of decl
       | GlobalInit of id * Type.tau * Expr.primitive
 
     type node = definition Node.t

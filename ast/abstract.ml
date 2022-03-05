@@ -1,11 +1,21 @@
 open Core
 
-module type S = sig
-  type id = string
+type id = string
 
+type decl = id * Type.tau
+
+type signature = {
+  id : id;
+  params : decl list;
+  types : Type.tau list;
+}
+
+module type S = sig
   module Expr : sig
     include module type of Op
+
     include module type of Primitive
+
     module Node : Node.S
 
     type t =
@@ -20,16 +30,17 @@ module type S = sig
       | Index of index
 
     and node = t Node.t
+
     and nodes = node list
+
     and call = id * nodes
+
     and index = node * node
   end
 
   type expr = Expr.t
 
   module Stmt : sig
-    type decl = id * Type.tau
-
     module Node : Node.S
 
     type t =
@@ -48,6 +59,7 @@ module type S = sig
       | Block of block
 
     and node = t Node.t
+
     and block = node list
   end
 
@@ -56,17 +68,11 @@ module type S = sig
   module Toplevel : sig
     module Node : Node.S
 
-    type signature = {
-      id : id;
-      params : Stmt.decl list;
-      types : Type.tau list;
-    }
-
     type fn = signature * Stmt.block
 
     type definition =
       | FnDefn of fn
-      | GlobalDecl of Stmt.decl
+      | GlobalDecl of decl
       | GlobalInit of id * Type.tau * Expr.primitive
 
     type node = definition Node.t
