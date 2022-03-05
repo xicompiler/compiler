@@ -5,6 +5,8 @@
   open Expr
   open Stmt
   open Position
+
+  let int_err pos = raise (Exception.InvalidIntLiteral (get_position pos))
 %}
 
 (* Keywords *)
@@ -250,7 +252,17 @@ expr:
 
 uop_expr:
   | uop = unop; e = node(uop_expr)
-    { Uop (uop, e) }
+    {
+      match uop, Pos.get e with
+      | IntNeg, Primitive (Int i) ->
+        if Int64.is_negative i then
+          Uop (uop, e)
+        else
+          Primitive (Int (Int64.neg i))
+      | IntNeg, Primitive IntBound ->
+          Primitive (Int (Int64.min_value))
+      | _ -> Uop (uop, e) 
+    }
   | e = call_expr
     { e }
   ;
@@ -273,13 +285,17 @@ call_expr:
   ;
 
 primitive:
-  | neg = boption(MINUS); i = INT
+  | i = INT
     {
       try
-        let i = if neg then "-" ^ i else i in
         Int (Int64.of_string i)
-      with _ ->
-        raise (Exception.InvalidIntLiteral (get_position $symbolstartpos))
+      with _ -> begin
+        try
+          let _ = Int64.of_string ("-" ^ i) in
+          IntBound
+        with e ->
+          int_err $startpos
+      end
     }
   | b = BOOL
     { Bool b }
