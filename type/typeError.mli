@@ -20,7 +20,9 @@ type error =
 
 (** [Positioned] represents an error with a position *)
 module Positioned : sig
-  include module type of Position.Error
+  include module type of struct
+    include Position.Error
+  end
 
   type nonrec error = error t
   (** an [error] represents a type error with an associated position *)

@@ -1,6 +1,6 @@
 open Core
 
-type id = string
+type id = string Node.Position.t
 (** An [id] is the type of a Xi identifier *)
 
 type decl = id * Type.tau
@@ -20,7 +20,6 @@ module type S = sig
   (** An [Expr] represents an expression in the Xi langauge *)
   module Expr : sig
     include module type of Op
-
     include module type of Primitive
 
     module Node : Node.S
@@ -113,7 +112,7 @@ module type S = sig
     type node = definition Node.t
 
     type source = {
-      uses : id list;
+      uses : id Node.t list;
       definitions : node list;
     }
     (** A [source] describes the structure of a source file in Xi; 0 or

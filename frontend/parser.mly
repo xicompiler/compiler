@@ -169,7 +169,7 @@ source:
 
 (** An [interface] derives an interface file in Xi, followed by EOF  *)
 interface:
-  | signatures = signature+; EOF
+  | signatures = node(signature)+; EOF
     { Interface signatures }
   ;
 
@@ -177,20 +177,25 @@ interface:
 source_file:
   | definitions = definitions
     { { uses = []; definitions } }
-  | uses = use+; definitions = definitions
+  | uses = node(use)+; definitions = definitions
     { { uses; definitions } }
+  ;
+
+id:
+  | id = node(ID)
+    { id }
   ;
 
 (** [use] derives the top level statement [use id] *)
 use:
-  | USE; id = semi(ID)
+  | USE; id = semi(id)
     { id }
   ;
 
 definitions:
-  | global = global_semi; definitions = definitions
+  | global = node(global_semi); definitions = definitions
     { global :: definitions }
-  | fn_defn = fn_defn; definitions = definition*
+  | fn_defn = node(fn_defn); definitions = node(definition)*
     { fn_defn :: definitions }
   ;
 
@@ -218,7 +223,7 @@ global:
   ;
 
 decl:
-  | id = ID; COLON; typ = typ
+  | id = id; COLON; typ = typ
     { (id, typ) }
   ;
 
@@ -290,7 +295,7 @@ array:
   ;
 
 call:
-  | id = ID; args = parens(enodes);
+  | id = id; args = parens(enodes);
     { (id, args) }
   ;
 
@@ -299,7 +304,7 @@ call:
 array_assign_expr:
   | call = call
     { FnCall call }
-  | id = ID
+  | id = id
     { Id id }
   ;
 
@@ -317,7 +322,7 @@ fn:
   ;
 
 signature:
-  | id = ID; LPAREN; params = params; RPAREN; types = loption(types)
+  | id = id; LPAREN; params = params; RPAREN; types = loption(types)
     { { id; params; types } }
   ;
 
@@ -373,9 +378,9 @@ semicolon_terminated:
     { VarDecl decl }
   | decl = decl; GETS; e = enode
     { let (id, typ) = decl in VarInit (id, typ, e) }
-  | id = ID; COLON; init = array_init
+  | id = id; COLON; init = array_init
     { let (typ, es) = init in ArrayDecl (id, typ, es) }
-  | id = ID; GETS; e = enode
+  | id = id; GETS; e = enode
     { Assign (id, e) }
   | index = index(array_assign_lhs); GETS; e3 = enode
     { let (e1, e2) = index in ArrAssign (e1, e2, e3) }

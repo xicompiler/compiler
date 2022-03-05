@@ -5,7 +5,7 @@ open Definitions
 open TypeError
 module Map = Map.Make (String)
 
-type context = id Map.t
+type key = string Node.Position.t
 
 type t = {
   context : id Map.t;
@@ -17,22 +17,25 @@ let ret { ret } = ret
 let with_ret ~ret ctx = { ctx with ret }
 
 let find ~id { context } =
-  Result.of_option (Map.find context id) ~error:(Unbound id)
+  let key = Node.Position.get id in
+  let error = Node.Position.error ~cause:(Unbound key) id in
+  key |> Map.find context |> Result.of_option ~error
 
 let find_var ~id ctx =
   match%bind find ~id ctx with
   | Var typ -> Ok typ
-  | Fn _ -> Error ExpectedTau
+  | Fn _ -> Error (Node.Position.error ~cause:ExpectedTau id)
 
 let find_fn ~id ctx =
   match%bind find ~id ctx with
-  | Var _ -> Error ExpectedFn
+  | Var _ -> Error (Node.Position.error ~cause:ExpectedFn id)
   | Fn (t1, t2) -> Ok (t1, t2)
 
 let add ~id ~typ ctx =
-  match Map.add ~key:id ~data:typ ctx.context with
+  let key = Node.Position.get id in
+  match Map.add ~key ~data:typ ctx.context with
   | `Ok context -> Ok { ctx with context }
-  | `Duplicate -> Error (Bound id)
+  | `Duplicate -> Error (Node.Position.error ~cause:(Bound key) id)
 
 let add_var ~id ~typ = add ~id ~typ:(Var typ)
 

@@ -2,7 +2,7 @@ open Core
 
 include
   Abstract.S
-    with module Toplevel.Node := Type.Node.TopLevel
+    with module Toplevel.Node := Type.Node.Toplevel
      and module Expr.Node := Type.Node.Expr
      and module Stmt.Node := Type.Node.Stmt
 

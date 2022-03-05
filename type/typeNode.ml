@@ -8,19 +8,15 @@ module type Params = sig
   type typ
 
   val typ_equal : typ -> typ -> bool
-
   val mismatch : expect:typ -> typ -> error
 end
 
 module type S = sig
   include Params
-
   include ContextNode.S
 
   val typ : 'a t -> typ
-
   val make : 'a -> ctx:Context.t -> typ:typ -> pos:Position.t -> 'a t
-
   val assert_eq : expect:typ -> 'a t -> unit TypeError.Positioned.result
 
   val positioned :
@@ -40,9 +36,7 @@ module Make (Args : Params) = struct
   }
 
   let context { context } = context
-
   let typ { typ } = typ
-
   let get { value } = value
 
   let make value ~ctx ~typ ~pos =
@@ -68,7 +62,6 @@ module Expr = struct
     type typ = expr
 
     let typ_equal = Poly.equal
-
     let mismatch ~expect got = Mismatch (expect, got)
   end)
 
@@ -76,9 +69,7 @@ module Expr = struct
     mismatch ~expect:(expect :> typ) (got :> typ)
 
   let assert_eq_sub ~expect = assert_eq ~expect:(expect :> typ)
-
   let assert_int expr = assert_eq_sub ~expect:`Int expr
-
   let assert_bool expr = assert_eq_sub ~expect:`Bool expr
 
   let assert_eq_tau e1 e2 =
@@ -93,21 +84,16 @@ module Stmt = struct
     type typ = stmt
 
     let typ_equal = Poly.equal
-
     let mismatch ~expect got = StmtMismatch (expect, got)
   end)
 
   let make_unit = make ~typ:`Unit
-
   let make_void = make ~typ:`Void
-
   let assert_unit stmt = assert_eq ~expect:`Unit stmt
-
   let lub s1 s2 = lub (typ s1) (typ s2)
 end
 
-
-module TopLevel = struct
+module Toplevel = struct
   type 'a t = {
     value : 'a;
     context : Context.t;
@@ -115,11 +101,8 @@ module TopLevel = struct
   }
 
   let get { value } = value
-
   let context { context } = context
-
   let position { position } = position
-
   let make ~ctx ~pos value = { value; context = ctx; position = pos }
 end
 

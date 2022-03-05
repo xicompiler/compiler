@@ -17,7 +17,6 @@ end
 (** [S] represents an abstract node *)
 module type S = sig
   include Params
-
   include ContextNode.S
 
   val typ : 'a t -> typ
@@ -39,11 +38,12 @@ module type S = sig
 end
 
 (** [Toplevel] represents a node at the Toplevel *)
-module TopLevel : sig
+module Toplevel : sig
   include ContextNode.S
 
-  (** [make ~ctx ~pos v] is a toplevel node wrapping value [v], context [ctx] and position [pos] *)
   val make : ctx:Context.t -> pos:Position.t -> 'a -> 'a t
+  (** [make ~ctx ~pos v] is a toplevel node wrapping value [v], context
+      [ctx] and position [pos] *)
 end
 
 (** [Expr] is a module wrapping an expression node *)

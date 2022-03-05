@@ -1,7 +1,6 @@
 open Core
 
-type id = string
-
+type id = string Node.Position.t
 type decl = id * Type.tau
 
 type signature = {
@@ -13,9 +12,7 @@ type signature = {
 module type S = sig
   module Expr : sig
     include module type of Op
-
     include module type of Primitive
-
     module Node : Node.S
 
     type t =
@@ -30,11 +27,8 @@ module type S = sig
       | Index of index
 
     and node = t Node.t
-
     and nodes = node list
-
     and call = id * nodes
-
     and index = node * node
   end
 
@@ -59,7 +53,6 @@ module type S = sig
       | Block of block
 
     and node = t Node.t
-
     and block = node list
   end
 
@@ -78,7 +71,7 @@ module type S = sig
     type node = definition Node.t
 
     type source = {
-      uses : id list;
+      uses : id Node.t list;
       definitions : node list;
     }
 

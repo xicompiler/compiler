@@ -3,8 +3,10 @@ module Node : module type of struct
   include Node.Position
 end
 
+include module type of Abstract
+
 include
-  Abstract.S
+  S
     with module Expr.Node := Node
      and module Stmt.Node := Node
      and module Toplevel.Node := Node

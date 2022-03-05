@@ -4,15 +4,13 @@ open Result.Let_syntax
 open Util.Result
 module Node = Node.Position
 include Factory.Make (Node) (Node) (Node)
+include Abstract
 module PosNode = Node
-open Abstract
 open Expr
 open Stmt
 open Toplevel
 open Primitive
 open Type
-
-let dummy_pos : Position.t = { line = 0; column = 0 }
 
 (** [map_error ~pos result] decorates the error variant of [result] with
     the position [pos] at which it occurs *)
@@ -32,9 +30,7 @@ let fold2_result ~pos =
 (** [type_of_primitive p] is [`Int] if [p] is [Int] or [Char] and
     [`Bool] if [p] is [Bool] *)
 let type_of_primitive = function
-  | Int _
-  | Char _ ->
-      `Int
+  | Int _ | Char _ -> `Int
   | Bool _ -> `Bool
 
 (** [type_check_primitive ctx p] is [Ok expr] where [expr] is a
@@ -47,7 +43,7 @@ let type_check_primitive ~ctx ~pos p =
 (** [type_check_id ctx i] is [Ok expr] where [expr] is a decorated
     expression node for [i] if [i] is in [ctx], or [Error err] otherwise *)
 let type_check_id ~ctx ~pos id =
-  Context.find_var ~id ctx >>? pos >>| fun typ ->
+  let%map typ = Context.find_var ~id ctx in
   let e = Decorated.Expr.Id id in
   Node.Expr.make ~ctx ~typ:(typ :> expr) ~pos e
 
@@ -115,8 +111,7 @@ and type_check_bop ~ctx ~pos op e1 e2 =
       if Tau.equal t1 t2 then
         Ok (Node.Expr.make ~ctx ~typ:(`Array t1) ~pos e)
       else Error (Positioned.make ~pos OpMismatch)
-  | (Lt | Leq | Gt | Geq), `Int, `Int
-  | (And | Or), `Bool, `Bool ->
+  | (Lt | Leq | Gt | Geq), `Int, `Int | (And | Or), `Bool, `Bool ->
       Ok (Node.Expr.make ~ctx ~typ:`Bool ~pos e)
   | (Eq | Neq), _, _ ->
       Node.Expr.assert_eq_tau dec1 dec2 >>| fun () ->
@@ -133,7 +128,7 @@ and type_check_uop ~ctx ~pos op e =
 (* TODO add op + type to opmismatch *)
 
 and type_check_call ~ctx ~pos id es =
-  Context.find_fn ~id ctx >>? pos >>= fun (t1, t2) ->
+  let%bind t1, t2 = Context.find_fn ~id ctx in
   let types = tau_list_of_term t1 in
   let%map es = type_check_exprs ~ctx ~pos ~types es in
   (es, t2)
@@ -166,7 +161,7 @@ let bool_or_error ~ctx e =
   Node.Expr.assert_bool e >>| fun () -> e
 
 let type_check_var_decl ~ctx ~pos id typ =
-  Context.add_var ~id ~typ ctx >>? pos >>| fun ctx ->
+  let%map ctx = Context.add_var ~id ~typ ctx in
   let s = Decorated.Stmt.VarDecl (id, typ) in
   Node.Stmt.make_unit s ~ctx ~pos
 
@@ -190,14 +185,14 @@ let rec type_check_sizes ~ctx = function
   | None :: es -> type_check_empty es
 
 let type_check_array_decl ~ctx ~pos id typ es =
-  Context.add_var ~id ~typ ctx >>? pos >>= fun ctx ->
+  let%bind ctx = Context.add_var ~id ~typ ctx in
   let%map es = type_check_sizes ~ctx es in
   let es = List.map ~f:Option.some es in
   let s = Decorated.Stmt.ArrayDecl (id, typ, es) in
   Node.Stmt.make_unit ~ctx ~pos s
 
 let type_check_assign ~ctx ~pos id e =
-  Context.find_var ~id ctx >>? pos >>= fun typ ->
+  let%bind typ = Context.find_var ~id ctx in
   let%bind dec = type_check_expr ~ctx e in
   let%map () = Node.Expr.assert_eq_sub ~expect:typ dec in
   let s = Decorated.Stmt.Assign (id, dec) in
@@ -209,7 +204,7 @@ let type_check_expr_stmt ~ctx ~pos id es =
   Node.Stmt.make_unit ~ctx ~pos s
 
 let type_check_var_init ~ctx ~pos id typ e =
-  Context.add_var ~id ~typ ctx >>? pos >>= fun ctx ->
+  let%bind ctx = Context.add_var ~id ~typ ctx in
   let%bind dec = type_check_expr ~ctx e in
   let%map () = Node.Expr.assert_eq_sub ~expect:typ dec in
   let s = Decorated.Stmt.VarInit (id, typ, dec) in
@@ -236,8 +231,8 @@ let check_decls ~ctx ~pos ds ts =
     match d with
     | Some (id, tau) ->
         let error () = Positioned.mismatch pos ~expect:typ tau in
-        ok_if_true_lazy (Tau.equal typ tau) ~error >>= fun () ->
-        Context.add_var ~id ~typ ctx >>? pos
+        let%bind () = ok_if_true_lazy (Tau.equal typ tau) ~error in
+        Context.add_var ~id ~typ ctx
     | None -> Ok ctx
   in
   fold2_result ~pos ~f ~init:ctx ds ts
@@ -321,75 +316,98 @@ and type_check_stmts_acc ~ctx acc = function
         let%bind () = Node.Stmt.assert_unit s in
         type_check_stmts_acc ~ctx:(Node.Stmt.context s) acc stmts
 
-let type_check_file = failwith "unimplemented"
+let type_check_file ~ctx file = failwith "unimplemented"
 
 (** [fold_decls ~ctx ds] is [Ok ctx'] where [ctx'] is [ctx] extended
     with every binding in [ds] if [ds] and [ctx] are disjoint, or
     [Error] otherwise *)
-let fold_decls ~ctx =
-  let f ctx (id, typ) = Context.add_var ~id ~typ ctx >>? dummy_pos in
+let fold_decls ~ctx ~pos =
+  let f ctx (id, typ) = Context.add_var ~id ~typ ctx in
   List.fold_result ~init:ctx ~f
 
-let signature_contexts ~ctx { id; params; types } =
+let signature_contexts ~ctx ~pos { id; params; types } =
   let arg = term_of_tau_list (List.map ~f:snd params) in
   let ret = term_of_tau_list types in
-  Context.add_fn ~id ~arg ~ret ctx >>? dummy_pos >>= fun ctx ->
-  let%map fn_ctx = fold_decls ~ctx params in
+  let%bind ctx = Context.add_fn ~id ~arg ~ret ctx in
+  let%map fn_ctx = fold_decls ~ctx ~pos params in
   (ctx, Context.with_ret ~ret fn_ctx)
 
-let type_check_signature ~ctx signature =
-  let%map ctx, _ = signature_contexts ~ctx signature in
-  Node.Toplevel.make ~ctx ~pos:dummy_pos signature
-
-let type_check_function ~ctx signature block =
-  let%bind ctx, fn_ctx = signature_contexts ~ctx signature in
+let type_check_function ~ctx ~pos signature block =
+  let%bind ctx, fn_ctx = signature_contexts ~ctx ~pos signature in
   let%map block, typ = type_check_stmts ~ctx:fn_ctx block in
-  Node.TopLevel.make ~ctx ~pos:dummy_pos
-    (Decorated.Toplevel.FnDefn (signature, block))
+  let fn_defn = Decorated.Toplevel.FnDefn (signature, block) in
+  Node.Toplevel.make ~ctx ~pos fn_defn
 
-let rec check_uses ~ctx =
-  let f ctx file = type_check_file ~ctx ~pos:dummy_pos file in
-  List.fold_result ~init:ctx ~f
+let check_use ~ctx use =
+  let intf = PosNode.get use in
+  let pos = PosNode.position use in
+  Ok (Node.Toplevel.make ~ctx ~pos intf)
 
-let check_global_decl ~ctx (id, typ) =
-  Context.add_var ~id ~typ ctx >>? dummy_pos >>| fun ctx ->
-  Node.TopLevel.make ~ctx ~pos:dummy_pos
-    (Decorated.Toplevel.GlobalDecl (id, typ))
+let check_uses ~ctx uses =
+  let f (ctx, uses) use =
+    let%map use = check_use ~ctx use in
+    (Node.Toplevel.context use, use :: uses)
+  in
+  let%map ctx, uses = List.fold_result ~init:(ctx, []) ~f uses in
+  (ctx, List.rev uses)
 
-let check_global_init ~ctx id tau primitive =
-  Context.add_var ~id ~typ:tau ctx >>? dummy_pos >>= fun ctx ->
+let check_global_decl ~ctx ~pos id typ =
+  let%map ctx = Context.add_var ~id ~typ ctx in
+  let globdecl = Decorated.Toplevel.GlobalDecl (id, typ) in
+  Node.Toplevel.make ~ctx ~pos globdecl
+
+let check_global_init ~ctx ~pos id tau primitive =
+  let%bind ctx = Context.add_var ~id ~typ:tau ctx in
   let p_type = type_of_primitive primitive in
   let tau_type = (tau :> expr) in
   if Node.Expr.typ_equal tau_type p_type then
     Ok
-      (Node.TopLevel.make ~ctx ~pos:dummy_pos
+      (Node.Toplevel.make ~ctx ~pos
          (Decorated.Toplevel.GlobalInit (id, tau, primitive)))
-  else Error (Positioned.mismatch dummy_pos ~expect:tau_type p_type)
+  else Error (Positioned.mismatch pos ~expect:tau_type p_type)
 
-let check_def ~ctx = function
+let check_defn ~ctx node =
+  let pos = PosNode.position node in
+  match PosNode.get node with
   | FnDefn (signature, block) ->
-      type_check_function ~ctx signature block
-  | GlobalDecl decl -> check_global_decl ~ctx decl
+      type_check_function ~ctx ~pos signature block
+  | GlobalDecl (id, typ) -> check_global_decl ~ctx ~pos id typ
   | GlobalInit (id, tau, primitive) ->
-      check_global_init ~ctx id tau primitive
+      check_global_init ~ctx ~pos id tau primitive
 
 let check_defs ~ctx defs =
-  let f acc def = check_def ~ctx def :: acc in
-  (* TODO should thread context *)
-  List.fold_result ~init:[] ~f defs >>| List.rev
+  let f (ctx, defs) def =
+    let%map def = check_defn ~ctx def in
+    (Node.Toplevel.context def, def :: defs)
+  in
+  List.fold_result ~init:(ctx, []) ~f defs >>| snd >>| List.rev
+
+let type_check_signature ~ctx signode =
+  let signature = PosNode.get signode in
+  let pos = PosNode.position signode in
+  let%map ctx, _ = signature_contexts ~pos ~ctx signature in
+  Node.Toplevel.make ~ctx ~pos signature
 
 let type_check_source ~ctx { uses; definitions } =
-  let%bind ctx = check_uses ~ctx uses in
+  let%bind ctx, uses = check_uses ~ctx uses in
   let%map definitions = check_defs ~ctx definitions in
-  { uses; definitions }
+  let source : Decorated.Toplevel.source = { uses; definitions } in
+  source
 
 let rec type_check_interface ~ctx sigs =
-  let f ctx s = check_signature ~ctx s >>| fst in
-  List.fold_result ~init:[] ~f sigs >>| List.rev
+  let f (ctx, sigs) s =
+    let%map sig_node = type_check_signature ~ctx s in
+    (Node.Toplevel.context sig_node, sig_node :: sigs)
+  in
+  List.fold_result ~init:(ctx, []) ~f sigs >>| snd >>| List.rev
 
 (* TODO toplevel position *)
 let type_check prog =
   let ctx = Context.empty in
   match prog with
-  | Source source -> type_check_source ~ctx source
-  | Interface interface -> type_check_interface ~ctx interface
+  | Source source ->
+      let%map source = type_check_source ~ctx source in
+      Decorated.Source source
+  | Interface interface ->
+      let%map interface = type_check_interface ~ctx interface in
+      Decorated.Interface interface

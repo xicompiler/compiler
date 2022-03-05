@@ -19,11 +19,8 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
       | Index of index
 
     and node = t Node.t
-
     and nodes = node list
-
     and call = id * nodes
-
     and index = node * node
   end
 
@@ -48,7 +45,6 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
       | Block of block
 
     and node = t Node.t
-
     and block = node list
   end
 
@@ -67,7 +63,7 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
     type node = definition Node.t
 
     type source = {
-      uses : id list;
+      uses : id Node.t list;
       definitions : node list;
     }
 
@@ -77,6 +73,9 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
   type t =
     | Source of Toplevel.source
     | Interface of Toplevel.interface
+
+  (** [sexp_of_id id] is [Sexp.Atom id]*)
+  let sexp_of_id id = Sexp.Atom (Node.Position.get id)
 
   open Expr
   open Stmt
@@ -102,9 +101,6 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
     | Neq -> "!="
     | And -> "&"
     | Or -> "|"
-
-  (** [sexp_of_id id] is [Sexp.Atom id]*)
-  let sexp_of_id id = Sexp.Atom id
 
   (** [sexp_of_gets lhs rhs] is the s-expression serialization of the
       statement [lhs = rhs] *)
@@ -177,9 +173,10 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
     Sexp.List
       (args |> List.map ~f:sexp_of_enode |> List.cons (sexp_of_id id))
 
-  (** [sexo_of_length e] is the s-expression serialization of the
+  (** [sexp_of_length e] is the s-expression serialization of the
       expression [length(e)] *)
-  and sexp_of_length e = sexp_of_call "length" [ e ]
+  and sexp_of_length e =
+    Sexp.List [ Sexp.Atom "length"; sexp_of_enode e ]
 
   (** [sexp_of_index e1 e2] is the s-expression serialization of the
       indexing of array [e1] at index [e2]. *)
@@ -347,7 +344,7 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
   let sexp_of_source { uses; definitions } =
     Sexp.List
       [
-        List.sexp_of_t sexp_of_use uses;
+        sexp_of_tp_list sexp_of_use uses;
         sexp_of_tp_list sexp_of_definition definitions;
       ]
 
