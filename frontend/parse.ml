@@ -13,6 +13,8 @@ let parse ~start lexbuf =
   | Parser.Error ->
       let pos = Position.get_position_lb lexbuf in
       Error (SyntaxError pos)
+  | Exception.InvalidIntLiteral pos ->
+      Error (SyntaxError pos)
 
 let syntax_error_msg = "error:Syntax Error"
 let ext_error_msg = "error:Invalid Extension"
