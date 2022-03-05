@@ -14,6 +14,10 @@
       Int (Int64.of_string s)
     with _ ->
       int_err pos
+  
+  let assert_valid_primitive ~pos = function
+    | IntBound -> int_err pos
+    | _ -> ()
 %}
 
 (* Keywords *)
@@ -222,7 +226,11 @@ global:
   | decl = decl
     { GlobalDecl decl }
   | decl = decl; GETS; v = primitive
-    { let (id, typ) = decl in GlobalInit (id, typ, v) }
+    { 
+      let (id, typ) = decl in
+      let () = assert_valid_primitive ~pos:$startpos(v) v in
+      GlobalInit (id, typ, v)
+    }
   | decl = decl; GETS; neg = MINUS; i = INT
     {
       let (id, typ) = decl in 
@@ -257,6 +265,15 @@ index(lhs):
   ;
 
 expr:
+  | e = bop_expr
+    { 
+      match e with
+      | Primitive p -> assert_valid_primitive $startpos p; e
+      | _ -> e
+    }
+  ;
+
+bop_expr:
   | e1 = enode; bop = binop; e2 = enode
     { Bop (bop, e1, e2) }
   | e = uop_expr
