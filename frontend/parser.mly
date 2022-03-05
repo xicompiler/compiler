@@ -273,12 +273,13 @@ call_expr:
   ;
 
 primitive:
-  | i = INT
+  | neg = boption(MINUS); i = INT
     {
       try
+        let i = if neg then "-" ^ i else i in
         Int (Int64.of_string i)
       with _ ->
-        raise (Exception.InvalidIntLiteral (get_position $startpos))
+        raise (Exception.InvalidIntLiteral (get_position $symbolstartpos))
     }
   | b = BOOL
     { Bool b }
