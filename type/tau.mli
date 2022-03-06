@@ -17,6 +17,9 @@ type t =
 (** A type in Xi is either a primitive type or an array of a type, where
     an Array is represented by a pair (contents, length) *)
 
+val int_array : t
+(** [int_array] is [`Array `Int]*)
+
 val is_array : t -> bool
 (** [is_array t] is [true] iff [t] is an array type. *)
 

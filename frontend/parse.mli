@@ -1,11 +1,14 @@
 open Core
 include module type of Parser
 
+type syntax_error = string Position.error
+(** A [syntax_error] is an error resulting from an unsuccessful parse. *)
+
 (** An [error] is either a lexical error or a syntax error. Both
     variants carry the position at which they occur. *)
 type error =
   | LexicalError of Lex.error
-  | SyntaxError of Position.t
+  | SyntaxError of syntax_error
 
 type start = (Lexing.lexbuf -> Parser.token) -> Lexing.lexbuf -> Ast.t
 (** [start] is the type of a parsing function that consumes a lexeme and

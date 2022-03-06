@@ -328,7 +328,7 @@ let fold_decls ~ctx ~pos =
 let signature_contexts ~ctx ~pos { id; params; types } =
   let arg = term_of_tau_list (List.map ~f:snd params) in
   let ret = term_of_tau_list types in
-  let%bind ctx = Context.add_fn ~id ~arg ~ret ctx in
+  let%bind ctx = Context.add_fn_defn ~id ~arg ~ret ctx in
   let%map fn_ctx = fold_decls ~ctx ~pos params in
   (ctx, Context.with_ret ~ret fn_ctx)
 
@@ -397,6 +397,13 @@ let type_check_source ~ctx { uses; definitions } =
 
 let rec type_check_interface ~ctx sigs =
   fold_context ~f:type_check_signature ~ctx sigs >>| snd
+
+(** [first_pass prog] returns an updated context with the function names
+    in [prog] *)
+let first_pass prog =
+  let ctx = Context.empty in
+
+  failwith "unimplemented"
 
 (* TODO toplevel position *)
 let type_check prog =

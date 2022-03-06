@@ -3,17 +3,12 @@ open Compiler
 open Args
 
 let usage_msg = "Usage: xic [options] <source files>"
-
 let files = ref default.files
-
 let out_dir = ref ""
-
 let src_dir = ref ""
-
 let lex = ref default.lex
-
 let parse = ref default.parse
-
+let type_check = ref default.type_check
 let help = ref default.help
 
 let speclist =
@@ -50,6 +45,7 @@ let parse_args () =
         src_dir = none_if_empty !src_dir;
         lex = !lex;
         parse = !parse;
+        type_check = !type_check;
         help = !help;
       })
 

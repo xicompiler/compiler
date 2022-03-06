@@ -61,12 +61,7 @@ module Expr = struct
   include Make (struct
     type typ = expr
 
-    let typ_equal t1 t2 =
-      match (t1, t2) with
-      | `Tuple ts1, `Tuple ts2 -> List.equal Tau.equal ts1 ts2
-      | `Tuple _, _ | _, `Tuple _ -> false
-      | (#tau as t1), (#tau as t2) -> Tau.equal t1 t2
-
+    let typ_equal = Expr.equal
     let mismatch ~expect got = Mismatch (expect, got)
   end)
 
@@ -95,7 +90,7 @@ module Stmt = struct
   let make_unit = make ~typ:`Unit
   let make_void = make ~typ:`Void
   let assert_unit stmt = assert_eq ~expect:`Unit stmt
-  let lub s1 s2 = lub (typ s1) (typ s2)
+  let lub s1 s2 = Stmt.lub (typ s1) (typ s2)
 end
 
 module Toplevel = struct

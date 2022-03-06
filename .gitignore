@@ -24,7 +24,7 @@ bisect*.coverage
 
 # compiler output
 output
-*.output
+# *.output
 *.lexed
 *.parsed
 

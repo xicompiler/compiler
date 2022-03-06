@@ -3,11 +3,14 @@ open Parser
 open Position
 include Lexer
 
+let error_description = function
+  | InvalidChar -> "Invalid character constant"
+  | InvalidString -> "Invalid string constant"
+  | InvalidSource -> "Illegal character in source file"
+
 (** [string_of_error_cause e] is the error message corresponding to [e] *)
-let string_of_error_cause = function
-  | InvalidChar -> "error:Invalid character constant"
-  | InvalidString -> "error:Invalid string constant"
-  | InvalidSource -> "error:Illegal character in source file"
+let string_of_error_cause cause =
+  cause |> error_description |> Printf.sprintf "error:%s"
 
 let format_position { line; column } =
   Printf.sprintf "%d:%d %s" line column
@@ -15,6 +18,12 @@ let format_position { line; column } =
 let string_of_error error =
   let pos = Error.position error in
   error |> Error.cause |> string_of_error_cause |> format_position pos
+
+let cli_string_of_error filename error =
+  let { line; column } = Error.position error in
+  error |> Error.cause |> string_of_error_cause
+  |> Printf.sprintf "Lexical error beginning at %s:%d:%d: %s" filename
+       line column
 
 module Diagnostic = struct
   type nonrec result = (Parser.token, error) result
@@ -81,8 +90,7 @@ module Diagnostic = struct
     | TYPE `Bool -> "bool"
 
   let read_result lexbuf =
-    try Ok (read lexbuf) with
-    | Error e -> Result.Error e
+    try Ok (read lexbuf) with Error e -> Result.Error e
 
   (** [lex_pos_rev lexbuf] is a reversed list of [(result, position)]
       pairs of all tokens lexed from lexbuf *)
@@ -99,32 +107,25 @@ module Diagnostic = struct
 
   (** [lex_tok_pos buf] consumes all tokens in [buf] and returns them as
       a list with their positions. *)
-  let lex_pos lexbuf =
-    let flatten (res, pos) =
-      let res' = Result.map_error ~f:Error.cause res in
-      (res', pos)
-    in
-    lexbuf |> lex_pos_rev |> List.rev_map ~f:flatten
+  let lex_pos lexbuf = lexbuf |> lex_pos_rev |> List.rev
 
   let lex lexbuf = lexbuf |> lex_pos_rev |> List.rev_map ~f:fst
-
-  let print_position out { line; column } =
-    Printf.fprintf out "%d:%d %s\n" line column
-
   let lex_string s = s |> Lexing.from_string |> lex
 
-  (** [string_of_result r] is the string representation of [r] *)
-  let string_of_result = function
-    | Ok tok -> string_of_token tok
-    | Result.Error e -> string_of_error_cause e
+  (** [print_result out] prints the valid token or an error message into
+      the [out] out channel. *)
+  let print_result out res =
+    let s =
+      match res with
+      | Ok tok, pos -> tok |> string_of_token |> format_position pos
+      | Error e, _ -> string_of_error e
+    in
+    Printf.fprintf out "%s\n" s
 
   (** [to_channel lexbuf out] lexes [lexbuf] and writes the results to
       [out] *)
   let to_channel lexbuf out =
-    let print_result (res, pos) =
-      res |> string_of_result |> print_position out pos
-    in
-    lexbuf |> lex_pos |> List.iter ~f:print_result
+    lexbuf |> lex_pos |> List.iter ~f:(print_result out)
 
   let to_file lexbuf out =
     Out_channel.with_file ~f:(to_channel lexbuf) out

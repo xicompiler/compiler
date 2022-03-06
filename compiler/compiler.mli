@@ -1,21 +1,7 @@
-open! Core
+open Core
 
+module Args : module type of Args
 (** [Args] represents the command line arguments to the compiler *)
-module Args : sig
-  type t = {
-    files : string list;
-    out_dir : string option;
-    src_dir : string option;
-    lex : bool;
-    parse : bool;
-    help : bool;
-  }
-  (** [t] is the type of arguments passed to the compiler *)
-
-  val default : t
-  (** [default] contains the default command line arguments to the
-      compiler *)
-end
 
 type nonrec result = (unit, string list) result
 (** A [result] is either [Ok ()] or [Error es], where [es] is the list
@@ -24,6 +10,7 @@ type nonrec result = (unit, string list) result
 val with_options :
   ?lex:bool ->
   ?parse:bool ->
+  ?type_check:bool ->
   ?src_dir:string ->
   ?out_dir:string ->
   string list ->

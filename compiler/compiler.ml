@@ -1,26 +1,6 @@
 open Core
 open Frontend
-
-module Args = struct
-  type t = {
-    files : string list;
-    out_dir : string option;
-    src_dir : string option;
-    lex : bool;
-    parse : bool;
-    help : bool;
-  }
-
-  let default =
-    {
-      files = [];
-      out_dir = None;
-      src_dir = None;
-      lex = false;
-      parse = false;
-      help = false;
-    }
-end
+module Args = Args
 
 type nonrec result = (unit, string list) result
 
@@ -105,7 +85,9 @@ let compile args =
 let with_options
     ?(lex = default.lex)
     ?(parse = default.parse)
+    ?(type_check = default.type_check)
     ?src_dir
     ?out_dir
     files =
-  compile { default with lex; parse; src_dir; out_dir; files }
+  compile
+    { default with lex; parse; type_check; src_dir; out_dir; files }

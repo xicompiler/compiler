@@ -11,7 +11,13 @@ type t [@@deriving sexp_of]
 val empty : t
 (** [empty] is an empty typing context having return type [`Unit] *)
 
-val with_ret : ret:term -> t -> t
+val io : t
+(** [io] is a context corresponding to the [io] module in Xi *)
+
+val conv : t
+(** [conv] is a context corresponding to the [conv] module in Xi *)
+
+val with_ret : ret:[< term ] -> t -> t
 (** [with_ret ~ret ctx] is [ctx] requiring that any return statement
     return type [ret] *)
 
@@ -42,11 +48,12 @@ val add_var : id:key -> typ:tau -> t -> t Positioned.result
     [ctx :: (id, Var typ)] if [id] is unbound in [ctx], or
     [Error (Bound id)] otherwise *)
 
-val add_fn : id:key -> arg:term -> ret:term -> t -> t Positioned.result
+val add_fn_defn :
+  id:key -> arg:[< term ] -> ret:[< term ] -> t -> t Positioned.result
 (** [add ~id ~arg ~ret ctx] is [Ok ctx'] where [ctx'] is
     [ctx :: (id, Fn (arg, ret))] if [id] is unbound in [ctx], or
     [Error (Bound id)] otherwise *)
 
-val add_fn_list :
+val add_fn_defn_list :
   id:key -> arg:tau list -> ret:tau list -> t -> t Positioned.result
-(** Same as [add_fn] but takes list of argument and return types *)
+(** Same as [add_fn_defn] but takes list of argument and return types *)

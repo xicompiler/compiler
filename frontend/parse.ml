@@ -1,8 +1,11 @@
 open Core
+open Position
+
+type syntax_error = string Position.error
 
 type error =
   | LexicalError of Lex.error
-  | SyntaxError of Position.t
+  | SyntaxError of syntax_error
 
 type start = (Lexing.lexbuf -> Parser.token) -> Lexing.lexbuf -> Ast.t
 type nonrec result = (Ast.t, error) result
@@ -12,15 +15,30 @@ let parse ~start lexbuf =
   | Lex.Error err -> Error (LexicalError err)
   | Parser.Error ->
       let pos = Position.get_position_lb lexbuf in
-      Error (SyntaxError pos)
+      let cause = Lexing.lexeme lexbuf in
+      Error (SyntaxError (Error.make ~pos cause))
 
-let syntax_error_msg = "error:Syntax Error"
-let ext_error_msg = "error:Invalid Extension"
+let error_description cause =
+  if String.is_empty cause then "Reached EOF but expected token"
+  else Printf.sprintf "Unexpected token %s" cause
+
+let string_of_error_cause cause =
+  Printf.sprintf "error:%s" (error_description cause)
 
 (** [string_of_error e] is the string representing error [e] *)
 let string_of_error = function
   | LexicalError e -> Lex.string_of_error e
-  | SyntaxError pos -> Lex.format_position pos syntax_error_msg
+  | SyntaxError e ->
+      let pos = Error.position e in
+      e |> Error.cause |> string_of_error_cause
+      |> Lex.format_position pos
+
+let cli_string_of_error filename = function
+  | LexicalError e -> Lex.cli_string_of_error filename e
+  | SyntaxError e ->
+      let { line; column } = Error.position e in
+      Printf.sprintf "Syntax error beginning at %s:%d:%d: Syntax Error"
+        filename line column
 
 let bind ~f =
   XiFile.bind ~source:(f Parser.source) ~interface:(f Parser.interface)
