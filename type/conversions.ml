@@ -1,7 +1,7 @@
 open Core
-include Util.Result
-include Definitions
-include TypeError
+open Util.Result
+open Definitions
+open TypeError
 
 let tau_of_expr = function
   | (`Int | `Bool | `Poly | `Array _) as t -> Some t

@@ -1,7 +1,9 @@
 open Core
+open Context
+open Node
 
 include
-  Factory.Make (Type.Node.Expr) (Type.Node.Stmt) (Type.Node.Toplevel)
+  Factory.Make (Decorated.Expr) (Decorated.Stmt) (Decorated.Toplevel)
 
 module Error = Type.Error.Positioned
 

@@ -1,7 +1,7 @@
 open Core
 open Result.Let_syntax
-open Definitions
-open TypeError
+open Type
+open Error
 open Util.Result
 
 module type Params = sig
@@ -16,11 +16,9 @@ module type S = sig
   include ContextNode.S
 
   val typ : 'a t -> typ
-  val make : 'a -> ctx:Context.t -> typ:typ -> pos:Position.t -> 'a t
-  val assert_eq : expect:typ -> 'a t -> unit TypeError.Positioned.result
-
-  val positioned :
-    error:TypeError.error -> 'a t -> TypeError.Positioned.error
+  val make : 'a -> ctx:Ctx.t -> typ:typ -> pos:Position.t -> 'a t
+  val assert_eq : expect:typ -> 'a t -> unit Positioned.result
+  val positioned : error:error -> 'a t -> Positioned.error
 end
 
 (** [Make (Args)] is a concrete Node with concrete types wrapped in
@@ -30,7 +28,7 @@ module Make (Args : Params) = struct
 
   type 'a t = {
     value : 'a;
-    context : Context.t;
+    context : Ctx.t;
     typ : typ;
     position : Position.t;
   }
@@ -54,7 +52,7 @@ module Make (Args : Params) = struct
       let cause = mismatch ~expect got in
       Positioned.make ~pos cause
     in
-    expect |> typ_equal got |> ok_if_true_lazy ~error
+    expect |> typ_equal got |> Lazy.ok_if_true ~error
 end
 
 module Expr = struct
@@ -73,7 +71,7 @@ module Expr = struct
   let assert_bool expr = assert_eq_sub ~expect:`Bool expr
 
   let assert_eq_tau e1 e2 =
-    let%bind t = Conversions.tau_of_expr_res (typ e1) (position e1) in
+    let%bind t = tau_of_expr_res (typ e1) (position e1) in
     assert_eq_sub ~expect:t e2
 end
 
@@ -96,7 +94,7 @@ end
 module Toplevel = struct
   type 'a t = {
     value : 'a;
-    context : Context.t;
+    context : Ctx.t;
     position : Position.t;
   }
 

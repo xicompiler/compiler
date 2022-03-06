@@ -1,4 +1,5 @@
-open Definitions
+open Type
+open Error
 
 (** [Params] wraps the types [S] is parameterized on *)
 module type Params = sig
@@ -9,7 +10,7 @@ module type Params = sig
   (** [typ_equal t1 t2] is [true] iff [t1] and [t2] represent equivalent
       types *)
 
-  val mismatch : expect:typ -> typ -> TypeError.error
+  val mismatch : expect:typ -> typ -> Type.Error.error
   (** [mismatch ~expect got] is an error representing a type mismatch
       between [t1] and [t2] *)
 end
@@ -22,17 +23,16 @@ module type S = sig
   val typ : 'a t -> typ
   (** [typ v] is the type of the value wrapped in [v] *)
 
-  val make : 'a -> ctx:Context.t -> typ:typ -> pos:Position.t -> 'a t
+  val make : 'a -> ctx:Ctx.t -> typ:typ -> pos:Position.t -> 'a t
   (** [make v ~ctx ~typ] is a node wrapping value [v] with context [ctx]
       and type [typ] *)
 
-  val assert_eq : expect:typ -> 'a t -> unit TypeError.Positioned.result
+  val assert_eq : expect:typ -> 'a t -> unit Positioned.result
   (** [assert_eq ~expect v] is [Ok ()] if [expect] and the type of [v],
       [got] represent the same type and [Error (mismatch expect got)]
       otherwise. *)
 
-  val positioned :
-    error:TypeError.error -> 'a t -> TypeError.Positioned.error
+  val positioned : error:error -> 'a t -> Positioned.error
   (** [positioned ~error node] is an [error] occuring at position
       [position node]*)
 end
@@ -41,7 +41,7 @@ end
 module Toplevel : sig
   include ContextNode.S
 
-  val make : ctx:Context.t -> pos:Position.t -> 'a -> 'a t
+  val make : ctx:Ctx.t -> pos:Position.t -> 'a -> 'a t
   (** [make ~ctx ~pos v] is a toplevel node wrapping value [v], context
       [ctx] and position [pos] *)
 end
@@ -50,22 +50,21 @@ end
 module Expr : sig
   include S with type typ = expr
 
-  val mismatch_sub : expect:[< typ ] -> [< typ ] -> TypeError.error
+  val mismatch_sub : expect:[< typ ] -> [< typ ] -> error
   (** Same as [mismatch] but accepts subtypes of [typ] *)
 
-  val assert_eq_sub :
-    expect:[< typ ] -> 'a t -> unit TypeError.Positioned.result
+  val assert_eq_sub : expect:[< typ ] -> 'a t -> unit Positioned.result
   (** Same as [assert_eq] but accepts a subtype of [typ] *)
 
-  val assert_int : 'a t -> unit TypeError.Positioned.result
+  val assert_int : 'a t -> unit Positioned.result
   (** [assert_int expr] is [Ok ()] if [expr] has the int type and
       [Error Mismatch] otherwise *)
 
-  val assert_bool : 'a t -> unit TypeError.Positioned.result
+  val assert_bool : 'a t -> unit Positioned.result
   (** [assert_bool expr] is [Ok ()] if [expr] has the boolean type and
       [Error Mismatch] otherwise *)
 
-  val assert_eq_tau : 'a t -> 'a t -> unit TypeError.Positioned.result
+  val assert_eq_tau : 'a t -> 'a t -> unit Positioned.result
   (** [assert_eq_tau e1 e2] is [Ok ()] if [e1] and [e2] have the same
       tau type and [Error Mismatch] otherwise *)
 end
@@ -77,14 +76,14 @@ type 'a expr = 'a Expr.t
 module Stmt : sig
   include S with type typ = stmt
 
-  val assert_unit : 'a t -> unit TypeError.Positioned.result
+  val assert_unit : 'a t -> unit Positioned.result
   (** [assert_unit stmt] is [Ok ()] if [expr] has the unit type and
       [Error StmtMismatch] otherwise *)
 
-  val make_unit : 'a -> ctx:Context.t -> pos:Position.t -> 'a t
+  val make_unit : 'a -> ctx:Ctx.t -> pos:Position.t -> 'a t
   (** [make_unit v ~ctx ~pos] is [make v ~ctx ~typ:`Unit ~pos] *)
 
-  val make_void : 'a -> ctx:Context.t -> pos:Position.t -> 'a t
+  val make_void : 'a -> ctx:Ctx.t -> pos:Position.t -> 'a t
   (** [make_void v ~ctx ~pos] is [make v ~ctx ~typ:`Void ~pos] *)
 
   val lub : 'a t -> 'a t -> typ

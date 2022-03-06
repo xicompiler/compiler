@@ -1,5 +1,5 @@
 open Core
-include module type of Definitions
+open Definitions
 
 val tau_of_expr : expr -> tau option
 (** [tau_of_expr e] is [Some t] if [e] is tau type [t] and [None]

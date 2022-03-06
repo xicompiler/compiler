@@ -2,10 +2,10 @@ open Core
 open Result.Monad_infix
 open Result.Let_syntax
 open Util.Result
-module Node = Node.Position
-include Factory.Make (Node) (Node) (Node)
+module PosNode = Node.Position
+module DecNode = Context.Node.Decorated
+include Factory.Make (PosNode) (PosNode) (PosNode)
 include Abstract
-module PosNode = Node
 open Expr
 open Stmt
 open Toplevel
@@ -38,21 +38,21 @@ let type_of_primitive = function
 let type_check_primitive ~ctx ~pos p =
   let e = Decorated.Expr.Primitive p in
   let typ = type_of_primitive p in
-  Node.Expr.make ~ctx ~typ ~pos e
+  DecNode.Expr.make ~ctx ~typ ~pos e
 
 (** [type_check_id ctx i] is [Ok expr] where [expr] is a decorated
     expression node for [i] if [i] is in [ctx], or [Error err] otherwise *)
 let type_check_id ~ctx ~pos id =
   let%map typ = Context.find_var ~id ctx in
   let e = Decorated.Expr.Id id in
-  Node.Expr.make ~ctx ~typ:(typ :> expr) ~pos e
+  DecNode.Expr.make ~ctx ~typ:(typ :> expr) ~pos e
 
 (** [type_check_expr ctx enode] is [Ok expr] where [expr] is [enode]
     decorated within context [ctx] or [Error type_error] where
     [type_error] describes a semantic error of [enode] *)
 let rec type_check_expr ~ctx enode =
   let pos = PosNode.position enode in
-  match Expr.Node.get enode with
+  match PosNode.get enode with
   | Primitive p -> Ok (type_check_primitive ~ctx ~pos p)
   | Id id -> type_check_id ~ctx ~pos id
   | Array arr -> type_check_array ~ctx ~pos arr
@@ -72,7 +72,7 @@ let rec type_check_expr ~ctx enode =
 and type_check_exprs ~ctx ~pos ~types es =
   let f acc typ e =
     let%bind e = type_check_expr ~ctx e in
-    let%map () = Node.Expr.assert_eq_sub ~expect:typ e in
+    let%map () = DecNode.Expr.assert_eq_sub ~expect:typ e in
     e :: acc
   in
   fold2_result ~f ~pos ~init:[] types es >>| List.rev
@@ -81,7 +81,7 @@ and type_check_array ~ctx ~pos arr =
   if Array.is_empty arr then
     let empty_array = Decorated.Expr.Array [||] in
     let typ = `Array `Poly in
-    Ok (Node.Expr.make ~ctx ~typ ~pos empty_array)
+    Ok (DecNode.Expr.make ~ctx ~typ ~pos empty_array)
   else
     let%bind dec = type_check_expr ~ctx (Array.get arr 0) in
     let%bind lst =
@@ -89,41 +89,41 @@ and type_check_array ~ctx ~pos arr =
     in
     let dec_array = lst |> List.rev |> Array.of_list in
     let e = Decorated.Expr.Array dec_array in
-    let%map typ = tau_of_expr_res (Node.Expr.typ dec) pos in
-    Node.Expr.make ~ctx ~typ:(`Array typ) ~pos e
+    let%map typ = tau_of_expr_res (DecNode.Expr.typ dec) pos in
+    DecNode.Expr.make ~ctx ~typ:(`Array typ) ~pos e
 
 and fold_array ctx fst acc elt =
   let%bind dec = type_check_expr ~ctx elt in
-  Node.Expr.assert_eq_tau fst dec >>| fun () -> dec :: acc
+  DecNode.Expr.assert_eq_tau fst dec >>| fun () -> dec :: acc
 
 and type_check_string ~ctx ~pos str =
   let e = Decorated.Expr.String str in
-  Node.Expr.make ~ctx ~typ:(`Array `Int) ~pos e
+  DecNode.Expr.make ~ctx ~typ:(`Array `Int) ~pos e
 
 and type_check_bop ~ctx ~pos op e1 e2 =
   let%bind dec1 = type_check_expr ~ctx e1 in
   let%bind dec2 = type_check_expr ~ctx e2 in
   let e = Decorated.Expr.Bop (op, dec1, dec2) in
-  match (op, Node.Expr.typ dec1, Node.Expr.typ dec2) with
+  match (op, DecNode.Expr.typ dec1, DecNode.Expr.typ dec2) with
   | (Plus | Minus | Mult | HighMult | Div | Mod), `Int, `Int ->
-      Ok (Node.Expr.make ~ctx ~typ:`Int ~pos e)
+      Ok (DecNode.Expr.make ~ctx ~typ:`Int ~pos e)
   | Plus, `Array t1, `Array t2 ->
       if Tau.equal t1 t2 then
-        Ok (Node.Expr.make ~ctx ~typ:(`Array t1) ~pos e)
+        Ok (DecNode.Expr.make ~ctx ~typ:(`Array t1) ~pos e)
       else Error (Positioned.make ~pos OpMismatch)
   | (Lt | Leq | Gt | Geq), `Int, `Int | (And | Or), `Bool, `Bool ->
-      Ok (Node.Expr.make ~ctx ~typ:`Bool ~pos e)
+      Ok (DecNode.Expr.make ~ctx ~typ:`Bool ~pos e)
   | (Eq | Neq), _, _ ->
-      Node.Expr.assert_eq_tau dec1 dec2 >>| fun () ->
-      Node.Expr.make ~ctx ~typ:`Bool ~pos e
+      DecNode.Expr.assert_eq_tau dec1 dec2 >>| fun () ->
+      DecNode.Expr.make ~ctx ~typ:`Bool ~pos e
   | _ -> Error (Positioned.make ~pos OpMismatch)
 
 and type_check_uop ~ctx ~pos op e =
   let%bind dec = type_check_expr ctx e in
   let e = Decorated.Expr.Uop (op, dec) in
-  match (op, Node.Expr.typ dec) with
-  | IntNeg, `Int -> Ok (Node.Expr.make ~ctx ~typ:`Int ~pos e)
-  | LogicalNeg, `Bool -> Ok (Node.Expr.make ~ctx ~typ:`Bool ~pos e)
+  match (op, DecNode.Expr.typ dec) with
+  | IntNeg, `Int -> Ok (DecNode.Expr.make ~ctx ~typ:`Int ~pos e)
+  | LogicalNeg, `Bool -> Ok (DecNode.Expr.make ~ctx ~typ:`Bool ~pos e)
   | _ -> Error (Positioned.make ~pos OpMismatch)
 (* TODO add op + type to opmismatch *)
 
@@ -136,34 +136,36 @@ and type_check_call ~ctx ~pos id es =
 and type_check_fn_call ~ctx ~pos id es =
   let%map es, t2 = type_check_call ~ctx ~pos id es in
   let e = Decorated.Expr.FnCall (id, es) in
-  Node.Expr.make ~ctx ~typ:(expr_of_term t2) ~pos e
+  DecNode.Expr.make ~ctx ~typ:(expr_of_term t2) ~pos e
 
 and type_check_length ~ctx ~pos node =
   let%bind dec = type_check_expr ctx node in
-  let typ = Node.Expr.typ dec in
+  let typ = DecNode.Expr.typ dec in
   let e = Decorated.Expr.Length dec in
-  assert_array typ >>? pos >>| fun () -> Node.Expr.make ~ctx ~typ ~pos e
+  assert_array typ >>? pos >>| fun () ->
+  DecNode.Expr.make ~ctx ~typ ~pos e
 
 and type_check_index ~ctx ~pos e1 e2 =
   let%bind dec1 = type_check_expr ctx e1 in
   let%bind dec2 = type_check_expr ctx e2 in
   let e = Decorated.Expr.Index (dec1, dec2) in
-  let dec1_typ = Node.Expr.typ dec1 in
-  let dec2_typ = Node.Expr.typ dec2 in
+  let dec1_typ = DecNode.Expr.typ dec1 in
+  let dec2_typ = DecNode.Expr.typ dec2 in
   match (dec1_typ, dec2_typ) with
-  | `Array t, `Int -> Ok (Node.Expr.make ~ctx ~typ:(t :> expr) ~pos e)
+  | `Array t, `Int ->
+      Ok (DecNode.Expr.make ~ctx ~typ:(t :> expr) ~pos e)
   | _ -> Error (Positioned.mismatch pos ~expect:dec1_typ dec2_typ)
 
 (** [bool_or_error_stmt ctx e] is [Ok e] if [e] is [Ok e] and [e] has
     bool type in function context [ctx] and [Error Mismatch] otherwise *)
 let bool_or_error ~ctx e =
   let%bind e = type_check_expr ~ctx e in
-  Node.Expr.assert_bool e >>| fun () -> e
+  DecNode.Expr.assert_bool e >>| fun () -> e
 
 let type_check_var_decl ~ctx ~pos id typ =
   let%map ctx = Context.add_var ~id ~typ ctx in
   let s = Decorated.Stmt.VarDecl (id, typ) in
-  Node.Stmt.make_unit s ~ctx ~pos
+  DecNode.Stmt.make_unit s ~ctx ~pos
 
 (** [type_check_empty es] is [Ok \[\]] if each of [es] is [None], or
     [Error err] if any of [es] are [Some _]*)
@@ -181,7 +183,7 @@ let rec type_check_sizes ~ctx = function
   | None :: es -> type_check_empty es
   | Some e :: es ->
       let%bind e = type_check_expr ~ctx e in
-      let%bind () = Node.Expr.assert_int e in
+      let%bind () = DecNode.Expr.assert_int e in
       type_check_sizes ~ctx es >>| List.cons e
 
 let type_check_array_decl ~ctx ~pos id typ es =
@@ -189,40 +191,40 @@ let type_check_array_decl ~ctx ~pos id typ es =
   let%map es = type_check_sizes ~ctx es in
   let es = List.map ~f:Option.some es in
   let s = Decorated.Stmt.ArrayDecl (id, typ, es) in
-  Node.Stmt.make_unit ~ctx ~pos s
+  DecNode.Stmt.make_unit ~ctx ~pos s
 
 let type_check_assign ~ctx ~pos id e =
   let%bind typ = Context.find_var ~id ctx in
   let%bind dec = type_check_expr ~ctx e in
-  let%map () = Node.Expr.assert_eq_sub ~expect:typ dec in
+  let%map () = DecNode.Expr.assert_eq_sub ~expect:typ dec in
   let s = Decorated.Stmt.Assign (id, dec) in
-  Node.Stmt.make_unit ~ctx ~pos s
+  DecNode.Stmt.make_unit ~ctx ~pos s
 
 let type_check_expr_stmt ~ctx ~pos id es =
   let%map es, _ = type_check_call ~ctx ~pos id es in
   let s = Decorated.Stmt.ExprStmt (id, es) in
-  Node.Stmt.make_unit ~ctx ~pos s
+  DecNode.Stmt.make_unit ~ctx ~pos s
 
 let type_check_var_init ~ctx ~pos id typ e =
   let%bind ctx = Context.add_var ~id ~typ ctx in
   let%bind dec = type_check_expr ~ctx e in
-  let%map () = Node.Expr.assert_eq_sub ~expect:typ dec in
+  let%map () = DecNode.Expr.assert_eq_sub ~expect:typ dec in
   let s = Decorated.Stmt.VarInit (id, typ, dec) in
-  Node.Stmt.make_unit ~ctx ~pos s
+  DecNode.Stmt.make_unit ~ctx ~pos s
 
 let type_check_arr_assign ~ctx ~pos e1 e2 e3 =
   let%bind dec1 = type_check_expr ~ctx e1 in
   let%bind dec2 = type_check_expr ~ctx e2 in
   let%bind dec3 = type_check_expr ~ctx e3 in
-  let pos1 = Node.Expr.position dec1 in
-  let pos2 = Node.Expr.position dec2 in
+  let pos1 = DecNode.Expr.position dec1 in
+  let pos2 = DecNode.Expr.position dec2 in
   let s = Decorated.Stmt.ArrAssign (dec1, dec2, dec3) in
   match
-    (Node.Expr.typ dec1, Node.Expr.typ dec2, Node.Expr.typ dec3)
+    (DecNode.Expr.typ dec1, DecNode.Expr.typ dec2, DecNode.Expr.typ dec3)
   with
   | `Array t, `Int, _ ->
-      Node.Expr.assert_eq_sub ~expect:t dec2 >>| fun () ->
-      Node.Stmt.make_unit s ~ctx ~pos
+      DecNode.Expr.assert_eq_sub ~expect:t dec2 >>| fun () ->
+      DecNode.Stmt.make_unit s ~ctx ~pos
   | _, `Int, _ -> Error (Positioned.expected_array pos1)
   | _, t, _ -> Error (Positioned.mismatch pos2 ~expect:`Int t)
 
@@ -231,7 +233,7 @@ let check_decls ~ctx ~pos ds ts =
     match d with
     | Some (id, tau) ->
         let error () = Positioned.mismatch pos ~expect:typ tau in
-        let%bind () = ok_if_true_lazy (Tau.equal typ tau) ~error in
+        let%bind () = Lazy.ok_if_true (Tau.equal typ tau) ~error in
         Context.add_var ~id ~typ ctx
     | None -> Ok ctx
   in
@@ -242,21 +244,21 @@ let type_check_multi_assign ~ctx ~pos ds id es =
   let s = Decorated.Stmt.MultiAssign (ds, id, es) in
   let ts = tau_list_of_term t2 in
   let%map ctx = check_decls ~ctx ~pos ds ts in
-  Node.Stmt.make_unit ~ctx ~pos s
+  DecNode.Stmt.make_unit ~ctx ~pos s
 
 let type_check_return ~ctx ~pos es =
   let rho = Context.ret ctx in
   let types = tau_list_of_term rho in
   let%map s_lst = type_check_exprs ~ctx ~pos ~types es in
   let s = Decorated.Stmt.Return s_lst in
-  Node.Stmt.make_void s ~ctx ~pos
+  DecNode.Stmt.make_void s ~ctx ~pos
 
 (** [type_check_stmt ctx snode] is [Ok stmt] where [stmt] is [snode]
     decorated within function context [ctx] or [Error type_error] where
     [type_error] describes a semantic error of [snode] *)
 let rec type_check_stmt ~ctx snode =
   let pos = PosNode.position snode in
-  match Stmt.Node.get snode with
+  match PosNode.get snode with
   | If (e, s) -> type_check_if ~ctx ~pos e s
   | IfElse (e, s1, s2) -> type_check_if_else ~ctx ~pos e s1 s2
   | While (e, s) -> type_check_while ~ctx ~pos e s
@@ -279,7 +281,7 @@ and type_check_cond ~ctx e s =
 
 and make_cond ~f ~ctx ~pos e s =
   let%map e, s = type_check_cond ctx e s in
-  Node.Stmt.make_unit ~ctx ~pos (f e s)
+  DecNode.Stmt.make_unit ~ctx ~pos (f e s)
 
 and type_check_if ~ctx ~pos e s =
   make_cond ~f:(fun e s -> Decorated.Stmt.If (e, s)) ~ctx ~pos e s
@@ -287,9 +289,9 @@ and type_check_if ~ctx ~pos e s =
 and type_check_if_else ~ctx ~pos e s1 s2 =
   let%bind e, s1 = type_check_cond ctx e s1 in
   let%map s2 = type_check_stmt ctx s2 in
-  let typ = Node.Stmt.lub s1 s2 in
+  let typ = DecNode.Stmt.lub s1 s2 in
   let s = Decorated.Stmt.IfElse (e, s1, s2) in
-  Node.Stmt.make ~ctx ~pos ~typ s
+  DecNode.Stmt.make ~ctx ~pos ~typ s
 
 and type_check_while ~ctx ~pos e s =
   make_cond ~f:(fun e s -> Decorated.Stmt.While (e, s)) ~ctx ~pos e s
@@ -297,12 +299,13 @@ and type_check_while ~ctx ~pos e s =
 and type_check_pr_call ~ctx ~pos id es =
   let%bind es, t2 = type_check_call ~ctx ~pos id es in
   let s = Decorated.Stmt.PrCall (id, es) in
-  assert_unit t2 >>? pos >>| fun () -> Node.Stmt.make_unit ~ctx ~pos s
+  assert_unit t2 >>? pos >>| fun () ->
+  DecNode.Stmt.make_unit ~ctx ~pos s
 
 and type_check_block ~ctx ~pos stmts =
   let%map stmts, typ = type_check_stmts ~ctx stmts in
   let s = Decorated.Stmt.Block stmts in
-  Node.Stmt.make ~ctx ~pos ~typ s
+  DecNode.Stmt.make ~ctx ~pos ~typ s
 
 and type_check_stmts ~ctx = type_check_stmts_acc ~ctx []
 
@@ -311,10 +314,10 @@ and type_check_stmts_acc ~ctx acc = function
   | s :: stmts ->
       let%bind s = type_check_stmt ~ctx s in
       let acc = s :: acc in
-      if List.is_empty stmts then Ok (List.rev acc, Node.Stmt.typ s)
+      if List.is_empty stmts then Ok (List.rev acc, DecNode.Stmt.typ s)
       else
-        let%bind () = Node.Stmt.assert_unit s in
-        type_check_stmts_acc ~ctx:(Node.Stmt.context s) acc stmts
+        let%bind () = DecNode.Stmt.assert_unit s in
+        type_check_stmts_acc ~ctx:(DecNode.Stmt.context s) acc stmts
 
 let type_check_file ~ctx file = failwith "unimplemented"
 
@@ -336,12 +339,12 @@ let type_check_function ~ctx ~pos signature block =
   let%bind ctx, fn_ctx = signature_contexts ~ctx ~pos signature in
   let%map block, typ = type_check_stmts ~ctx:fn_ctx block in
   let fn_defn = Decorated.Toplevel.FnDefn (signature, block) in
-  Node.Toplevel.make ~ctx ~pos fn_defn
+  DecNode.Toplevel.make ~ctx ~pos fn_defn
 
 let check_use ~ctx use =
   let intf = PosNode.get use in
   let pos = PosNode.position use in
-  Ok (Node.Toplevel.make ~ctx ~pos intf)
+  Ok (DecNode.Toplevel.make ~ctx ~pos intf)
 
 (** [fold_context ~f ~ctx nodes] folds [f] over each node of [nodes],
     returning a pair [(ctx', nodes')] where [ctx'] is the decorated
@@ -349,7 +352,7 @@ let check_use ~ctx use =
 let fold_context ~f ~ctx nodes =
   let fold (ctx, acc) node =
     let%map node = f ~ctx node in
-    (Node.Toplevel.context node, node :: acc)
+    (DecNode.Toplevel.context node, node :: acc)
   in
   let init = (ctx, []) in
   let%map ctx, nodes = List.fold_result ~init ~f:fold nodes in
@@ -360,15 +363,15 @@ let check_uses = fold_context ~f:check_use
 let check_global_decl ~ctx ~pos id typ =
   let%map ctx = Context.add_var ~id ~typ ctx in
   let globdecl = Decorated.Toplevel.GlobalDecl (id, typ) in
-  Node.Toplevel.make ~ctx ~pos globdecl
+  DecNode.Toplevel.make ~ctx ~pos globdecl
 
 let check_global_init ~ctx ~pos id tau primitive =
   let%bind ctx = Context.add_var ~id ~typ:tau ctx in
   let p_type = type_of_primitive primitive in
   let tau_type = (tau :> expr) in
-  if Node.Expr.typ_equal tau_type p_type then
+  if DecNode.Expr.typ_equal tau_type p_type then
     Ok
-      (Node.Toplevel.make ~ctx ~pos
+      (DecNode.Toplevel.make ~ctx ~pos
          (Decorated.Toplevel.GlobalInit (id, tau, primitive)))
   else Error (Positioned.mismatch pos ~expect:tau_type p_type)
 
@@ -387,7 +390,7 @@ let type_check_signature ~ctx signode =
   let signature = PosNode.get signode in
   let pos = PosNode.position signode in
   let%map ctx, _ = signature_contexts ~pos ~ctx signature in
-  Node.Toplevel.make ~ctx ~pos signature
+  DecNode.Toplevel.make ~ctx ~pos signature
 
 let type_check_source ~ctx { uses; definitions } =
   let%bind ctx, uses = check_uses ~ctx uses in
@@ -402,8 +405,9 @@ let rec type_check_interface ~ctx sigs =
     in [prog] *)
 let first_pass prog =
   let ctx = Context.empty in
-
-  failwith "unimplemented"
+  match prog with
+  | Source source -> failwith "unimplemented"
+  | Interface interface -> failwith "unimplemented"
 
 (* TODO toplevel position *)
 let type_check prog =
