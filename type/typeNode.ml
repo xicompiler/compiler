@@ -65,7 +65,7 @@ module Expr = struct
       match (t1, t2) with
       | `Tuple ts1, `Tuple ts2 -> List.equal Tau.equal ts1 ts2
       | `Tuple _, _ | _, `Tuple _ -> false
-      | _, _ -> Tau.equal (t1 : expr :> tau) (t2 : expr :> tau)
+      | (#tau as t1), (#tau as t2) -> Tau.equal t1 t2
 
     let mismatch ~expect got = Mismatch (expect, got)
   end)
