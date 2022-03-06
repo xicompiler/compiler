@@ -89,8 +89,8 @@ and type_check_array ~ctx ~pos arr =
     in
     let dec_array = lst |> List.rev |> Array.of_list in
     let e = Decorated.Expr.Array dec_array in
-    let typ = Node.Expr.typ dec in
-    Ok (Node.Expr.make ~ctx ~typ ~pos e)
+    let%map typ = tau_of_expr_res (Node.Expr.typ dec) pos in
+    Node.Expr.make ~ctx ~typ:(`Array typ) ~pos e
 
 and fold_array ctx fst acc elt =
   let%bind dec = type_check_expr ~ctx elt in
@@ -178,11 +178,11 @@ let rec type_check_empty = function
     [None] in [es] *)
 let rec type_check_sizes ~ctx = function
   | [] -> Ok []
+  | None :: es -> type_check_empty es
   | Some e :: es ->
       let%bind e = type_check_expr ~ctx e in
       let%bind () = Node.Expr.assert_int e in
       type_check_sizes ~ctx es >>| List.cons e
-  | None :: es -> type_check_empty es
 
 let type_check_array_decl ~ctx ~pos id typ es =
   let%bind ctx = Context.add_var ~id ~typ ctx in
@@ -343,13 +343,16 @@ let check_use ~ctx use =
   let pos = PosNode.position use in
   Ok (Node.Toplevel.make ~ctx ~pos intf)
 
-let check_uses ~ctx uses =
-  let f (ctx, uses) use =
-    let%map use = check_use ~ctx use in
-    (Node.Toplevel.context use, use :: uses)
+let fold_context ~f ~ctx nodes =
+  let fold (ctx, acc) node =
+    let%map node = f ~ctx node in
+    (Node.Toplevel.context node, node :: acc)
   in
-  let%map ctx, uses = List.fold_result ~init:(ctx, []) ~f uses in
-  (ctx, List.rev uses)
+  let init = (ctx, []) in
+  let%map ctx, nodes = List.fold_result ~init ~f:fold nodes in
+  (ctx, List.rev nodes)
+
+let check_uses = fold_context ~f:check_use
 
 let check_global_decl ~ctx ~pos id typ =
   let%map ctx = Context.add_var ~id ~typ ctx in
@@ -375,12 +378,7 @@ let check_defn ~ctx node =
   | GlobalInit (id, tau, primitive) ->
       check_global_init ~ctx ~pos id tau primitive
 
-let check_defs ~ctx defs =
-  let f (ctx, defs) def =
-    let%map def = check_defn ~ctx def in
-    (Node.Toplevel.context def, def :: defs)
-  in
-  List.fold_result ~init:(ctx, []) ~f defs >>| snd >>| List.rev
+let check_defs ~ctx defs = fold_context ~f:check_defn ~ctx defs >>| snd
 
 let type_check_signature ~ctx signode =
   let signature = PosNode.get signode in
@@ -395,11 +393,7 @@ let type_check_source ~ctx { uses; definitions } =
   source
 
 let rec type_check_interface ~ctx sigs =
-  let f (ctx, sigs) s =
-    let%map sig_node = type_check_signature ~ctx s in
-    (Node.Toplevel.context sig_node, sig_node :: sigs)
-  in
-  List.fold_result ~init:(ctx, []) ~f sigs >>| snd >>| List.rev
+  fold_context ~f:type_check_signature ~ctx sigs >>| snd
 
 (* TODO toplevel position *)
 let type_check prog =
