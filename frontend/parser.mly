@@ -6,18 +6,42 @@
   open Stmt
   open Position
 
+  let node ~pos t = Pos.make ~pos:(get_position pos) t
+
   let int_err pos = raise (Exception.InvalidIntLiteral (get_position pos))
+
+  type unsafe_int =
+    | SafeInt of Int64.t
+    | IntBound
+
+  type unsafe_primitive =
+    | SafePrimitive of primitive
+    | UnsafeInt of unsafe_int
+  
+  type unsafe_expr =
+    | SafeExpr of expr
+    | UnsafePrimitive of unsafe_primitive
+  
+  let int_of_unsafe ~pos = function
+    | SafeInt i -> i
+    | IntBound -> int_err pos
+
+  let primitive_of_unsafe ~pos = function
+    | SafePrimitive p -> p
+    | UnsafeInt i -> Int (int_of_unsafe ~pos i)
+
+  let expr_of_unsafe ~pos = function
+    | SafeExpr p -> p
+    | UnsafePrimitive p -> Primitive (primitive_of_unsafe ~pos p)
+  
+  let enode_of_unsafe ~pos e = node ~pos (expr_of_unsafe ~pos e)
 
   let parse_int ~pos ~neg s =
     try
       let s = if neg then "-" ^ s else s in
-      Int (Int64.of_string s)
+      SafeInt (Int64.of_string s)
     with _ ->
       int_err pos
-  
-  let assert_valid_primitive ~pos = function
-    | IntBound -> int_err pos
-    | _ -> ()
 %}
 
 (* Keywords *)
@@ -98,8 +122,8 @@
 (** [node(TERM)] is the pair [(e, start)] where [TERM] produces [e] and 
     [startpos] is the start position of [TERM] *)
 node(TERM):
-  | e = TERM
-    { Pos.make ~pos:(get_position $startpos) e }
+  | t = TERM
+    { node $startpos t }
   ;
 
 (** [enode] produces a node wrapping an [expr] *)
@@ -228,13 +252,15 @@ global:
   | decl = decl; GETS; v = primitive
     { 
       let (id, typ) = decl in
-      let () = assert_valid_primitive ~pos:$startpos(v) v in
+      let v = primitive_of_unsafe ~pos:$startpos(v) v in
       GlobalInit (id, typ, v)
     }
   | decl = decl; GETS; neg = MINUS; i = INT
     {
       let (id, typ) = decl in 
-      let v = parse_int ~pos:$startpos(neg) ~neg:true i in
+      let pos = $startpos(neg) in
+      let i = parse_int ~pos ~neg:true i in
+      let v = Int (int_of_unsafe ~pos i) in
       GlobalInit (id, typ, v)
     }
   ;
@@ -260,38 +286,36 @@ array_init:
   ;
 
 index(lhs):
-  | e1 = node(lhs); e2 = bracketed(enode)
-    { (e1, e2) }
+  | e1 = lhs; e2 = bracketed(enode)
+    { (enode_of_unsafe ~pos:$startpos e1, e2) }
   ;
 
 expr:
   | e = bop_expr
-    { 
-      match e with
-      | Primitive p -> assert_valid_primitive $startpos p; e
-      | _ -> e
-    }
+    { expr_of_unsafe ~pos:$startpos(e) e }
   ;
 
 bop_expr:
   | e1 = enode; bop = binop; e2 = enode
-    { Bop (bop, e1, e2) }
+    { SafeExpr (Bop (bop, e1, e2)) }
   | e = uop_expr
     { e }
   ;
 
 uop_expr:
-  | uop = unop; e = node(uop_expr)
+  | uop = unop; e = uop_expr
     {
-      match uop, Pos.get e with
-      | IntNeg, Primitive (Int i) ->
+      let pos = $startpos(e) in
+      match uop, e with
+      | IntNeg, SafeExpr (Primitive (Int i)) ->
         if Int64.is_negative i then
-          Uop (uop, e)
+         SafeExpr (Uop (uop, (enode_of_unsafe ~pos e)))
         else
-          Primitive (Int (Int64.neg i))
-      | IntNeg, Primitive IntBound ->
-          Primitive (Int (Int64.min_value))
-      | _ -> Uop (uop, e) 
+          UnsafePrimitive (UnsafeInt (SafeInt (Int64.neg i)))
+      | IntNeg, UnsafePrimitive (UnsafeInt IntBound) ->
+          UnsafePrimitive (UnsafeInt (SafeInt (Int64.min_value)))
+      | _ -> 
+         SafeExpr (Uop (uop, (enode_of_unsafe ~pos e)))
     }
   | e = call_expr
     { e }
@@ -299,22 +323,31 @@ uop_expr:
 
 call_expr:
   | index = index(call_expr)
-    { Index index }
+    { SafeExpr (Index index) }
   | e = parens(expr)
-    { e }
+    { SafeExpr e }
   | v = primitive
-    { Primitive v }
+    { UnsafePrimitive v }
   | LBRACE; array = array
-    { Array (Array.of_list array) }
+    { SafeExpr (Array (Array.of_list array)) }
   | s = STRING
-    { String s }
+    { SafeExpr (String s) }
   | LENGTH; e = parens(enode)
-    { Length e }
+    { SafeExpr (Length e) }
   | e = array_assign_expr
-    { e }
+    { SafeExpr e }
   ;
 
 primitive:
+  | i = unsafe_int
+    { UnsafeInt i }
+  | b = BOOL
+    { SafePrimitive (Bool b) }
+  | c = CHAR
+    { SafePrimitive (Char c) }
+  ;
+
+unsafe_int:
   | i = INT
     {
       let pos = $startpos in
@@ -324,10 +357,6 @@ primitive:
         let _ = parse_int ~pos ~neg:true i in
         IntBound
     }
-  | b = BOOL
-    { Bool b }
-  | c = CHAR
-    { Char c }
   ;
 
 array:
@@ -355,9 +384,9 @@ array_assign_expr:
     [e1[e2] = e3] *)
 array_assign_lhs:
   | index = index(array_assign_lhs)
-    { Index index }
+    { SafeExpr (Index index) }
   | e = array_assign_expr
-    { e }
+    { SafeExpr e }
 
 fn:
   | signature = signature; body = block

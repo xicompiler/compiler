@@ -126,7 +126,6 @@ module Make (Ex : Node.S) (St : Node.S) = struct
   (** [sexp_of_primitive v] is the s-expression serialization of literal
       value [v] *)
   and sexp_of_primitive = function
-    | IntBound -> Sexp.Atom int_bound
     | Char c -> sexp_of_char c
     | Int i ->
         if Int64.is_negative i then
