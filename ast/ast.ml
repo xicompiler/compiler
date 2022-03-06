@@ -343,6 +343,9 @@ let check_use ~ctx use =
   let pos = PosNode.position use in
   Ok (Node.Toplevel.make ~ctx ~pos intf)
 
+(** [fold_context ~f ~ctx nodes] folds [f] over each node of [nodes],
+    returning a pair [(ctx', nodes')] where [ctx'] is the decorated
+    context and [nodes'] are the decorated nodes *)
 let fold_context ~f ~ctx nodes =
   let fold (ctx, acc) node =
     let%map node = f ~ctx node in
