@@ -8,11 +8,12 @@ type nonrec result = (unit, string list) result
     of error message detailing the compilation failure. *)
 
 val with_options :
-  ?lex:bool ->
-  ?parse:bool ->
-  ?type_check:bool ->
   ?src_dir:string ->
   ?out_dir:string ->
+  ?lib_dir:string ->
+  ?lex:bool ->
+  ?parse:bool ->
+  ?typecheck:bool ->
   string list ->
   result
 (** [with_options ~lex ~parse ~src_dir ~out_dir files] compiles each of

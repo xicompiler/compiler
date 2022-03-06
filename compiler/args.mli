@@ -2,9 +2,10 @@ type t = {
   files : string list;
   out_dir : string option;
   src_dir : string option;
+  lib_dir : string option;
   lex : bool;
   parse : bool;
-  type_check : bool;
+  typecheck : bool;
   help : bool;
 }
 (** [t] is the type of arguments passed to the compiler *)

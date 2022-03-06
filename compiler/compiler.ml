@@ -83,11 +83,12 @@ let compile args =
   |> Result.combine_errors_unit
 
 let with_options
-    ?(lex = default.lex)
-    ?(parse = default.parse)
-    ?(type_check = default.type_check)
     ?src_dir
     ?out_dir
+    ?lib_dir
+    ?(lex = default.lex)
+    ?(parse = default.parse)
+    ?(typecheck = default.typecheck)
     files =
   compile
-    { default with lex; parse; type_check; src_dir; out_dir; files }
+    { default with src_dir; out_dir; lib_dir; lex; parse; typecheck; files }

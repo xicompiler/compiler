@@ -6,9 +6,10 @@ let usage_msg = "Usage: xic [options] <source files>"
 let files = ref default.files
 let out_dir = ref ""
 let src_dir = ref ""
+let lib_dir = ref ""
 let lex = ref default.lex
 let parse = ref default.parse
-let type_check = ref default.type_check
+let typecheck = ref default.typecheck
 let help = ref default.help
 
 let speclist =
@@ -20,34 +21,14 @@ let speclist =
       Arg.Set_string src_dir,
       "Specify where to find input source files." );
     ("--lex", Arg.Set lex, "Generate output from lexical analysis.");
-    ( "--parse",
-      Arg.Set parse,
-      "Generate output from syntactic analysis." );
+    ("--parse", Arg.Set parse, "Generate output from syntactic analysis.");
+    ("--typecheck", Arg.Set parse, "Generate output from semantic analysis.");
     ("--help", Arg.Set help, "Print a synopsis of options.");
     ("-help", Arg.Set help, "Print a synopsis of options.");
   ]
 
 (** [print_help ()] prints the help message. *)
 let print_help () = print_string (Arg.usage_string speclist usage_msg)
-
-(** [none_if_empty s] is [None] iff [s] is [""] and [Some s] otherwise*)
-let none_if_empty s = if String.is_empty s then None else Some s
-
-(** [parse_args ()] is [Some args] if [args] were succesfully parsed
-    from the command line and [None] otherwise. *)
-let parse_args () =
-  let file_acc f = files := f :: !files in
-  Option.try_with (fun () ->
-      Arg.parse speclist file_acc usage_msg;
-      {
-        files = !files;
-        out_dir = none_if_empty !out_dir;
-        src_dir = none_if_empty !src_dir;
-        lex = !lex;
-        parse = !parse;
-        type_check = !type_check;
-        help = !help;
-      })
 
 (** [try_compile args] attempts to compile a program described by
     arguments [args], exiting with code 1 on error. *)
@@ -59,7 +40,39 @@ let try_compile ({ files; lex; parse; help; _ } as args) =
   in
   args |> compile |> Result.iter_error ~f:iter_errors
 
-let () =
-  match parse_args () with
-  | Some args -> try_compile args
-  | None -> print_help ()
+let command =
+  Command.basic ~summary:usage_msg
+    Command.Let_syntax.(
+      let%map_open files = anon (sequence ("filename" %: Filename.arg_type))
+      and out_dir =
+        flag "-D" (optional string)
+          ~doc:"Specify where to place generated diagnostic files."
+      and src_dir =
+        flag "-sourcepath" (optional string)
+          ~doc:"Specify where to find input source files."
+      and lib_dir =
+        flag "-libpath" (optional string)
+          ~doc:" Specify where to find library interface files."
+      and lex =
+        flag "--lex" no_arg ~doc:" Generate output from lexical analysis."
+      and parse =
+        flag "--parse" no_arg ~doc:" Generate output from syntactic analysis."
+      and typecheck =
+        flag "--typecheck" no_arg
+          ~doc:" Generate output from semantic analysis."
+      in
+      let args =
+        {
+          files;
+          out_dir;
+          src_dir;
+          lib_dir;
+          lex;
+          parse;
+          typecheck;
+          help = false;
+        }
+      in
+      fun () -> try_compile args)
+
+let () = Command.run ~version:"1.0" ~build_info:"bfs45_dc854_vmj5_zak33" command
