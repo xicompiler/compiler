@@ -3,7 +3,7 @@ open Core
 (** [Lazy] contains functions from [Result] that take a thunk as
     argument *)
 module Lazy : sig
-  val ok_if_true : error:(unit -> 'a) -> bool -> (unit, 'a) result
+  val ok_if_true : error:(unit -> 'err) -> bool -> (unit, 'err) result
   (** [Lazy.ok_if_true ~error b] is [Ok ()] if [b] is [true] and
       [Error (error ())] if [b] is false *)
 
