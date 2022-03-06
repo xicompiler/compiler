@@ -61,7 +61,12 @@ module Expr = struct
   include Make (struct
     type typ = expr
 
-    let typ_equal = Poly.equal
+    let typ_equal t1 t2 =
+      match (t1, t2) with
+      | `Tuple ts1, `Tuple ts2 -> List.equal Tau.equal ts1 ts2
+      | `Tuple _, _ | _, `Tuple _ -> false
+      | _, _ -> Tau.equal (t1 : expr :> tau) (t2 : expr :> tau)
+
     let mismatch ~expect got = Mismatch (expect, got)
   end)
 

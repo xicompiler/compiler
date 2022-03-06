@@ -334,6 +334,7 @@ let signature_contexts ~ctx ~pos { id; params; types } =
 
 let type_check_function ~ctx ~pos signature block =
   let%bind ctx, fn_ctx = signature_contexts ~ctx ~pos signature in
+  fn_ctx |> Context.sexp_of_t |> Sexp.to_string |> print_endline;
   let%map block, typ = type_check_stmts ~ctx:fn_ctx block in
   let fn_defn = Decorated.Toplevel.FnDefn (signature, block) in
   Node.Toplevel.make ~ctx ~pos fn_defn
@@ -411,3 +412,5 @@ let type_check prog =
   | Interface interface ->
       let%map interface = type_check_interface ~ctx interface in
       Decorated.Interface interface
+
+module Decorated = Decorated

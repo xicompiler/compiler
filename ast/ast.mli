@@ -30,3 +30,7 @@ val type_check_stmt :
     decorated if [stmt] represents a semantically valid Xi expression in
     context [ctx], or [Error type_error] where [type_error] describes
     the type error, otherwise. *)
+
+module Decorated : module type of struct
+  include Decorated
+end

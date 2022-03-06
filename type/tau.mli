@@ -4,6 +4,7 @@ type nonrec primitive =
   [ `Int
   | `Bool
   ]
+[@@deriving sexp_of]
 (** A [primitive] is the type of a primitive value in Xi: either an
     integer or a boolean *)
 
@@ -12,6 +13,7 @@ type t =
   | `Poly
   | `Array of t
   ]
+[@@deriving sexp_of]
 (** A type in Xi is either a primitive type or an array of a type, where
     an Array is represented by a pair (contents, length) *)
 

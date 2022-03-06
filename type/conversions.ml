@@ -18,6 +18,7 @@ let tau_list_of_term = function
 
 let term_of_tau_list = function
   | [] -> `Unit
+  | [ t ] -> (t :> term)
   | lst -> `Tuple lst
 
 let expr_of_term = function

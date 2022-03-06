@@ -5,7 +5,7 @@ open TypeError
 type key = string Node.Position.t
 (** [id] is the type of an identifier with an associated position *)
 
-type t
+type t [@@deriving sexp_of]
 (** [t] is the type of a static typing context *)
 
 val empty : t

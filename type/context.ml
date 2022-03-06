@@ -11,6 +11,7 @@ type t = {
   context : id Map.t;
   ret : term;
 }
+[@@deriving sexp_of]
 
 let empty = { context = Map.empty; ret = `Unit }
 let ret { ret } = ret
