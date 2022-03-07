@@ -1,19 +1,22 @@
 open Core
 include module type of Parser
 
-type syntax_error = string Position.error
-(** A [syntax_error] is an error resulting from an unsuccessful parse. *)
-
 module Error : sig
+  type syntax_error = string Position.error
+  (** A [syntax_error] is an error resulting from an unsuccessful parse. *)
+
   (** A [t] is either a lexical error or a syntax error. Both variants
       carry the position at which they occur. *)
   type t =
     | LexicalError of Lex.error
     | SyntaxError of syntax_error
 
+  val string_of_cause : string -> string
+  (** [string_of_cause e] is the error message corresponding to [e] *)
+
   val to_string : string -> t -> string
-  (** [string_of_error filename e] is the cli error message for the
-      parsing error [e] in [filename] *)
+  (** [to_string filename e] is the cli error message for the parsing
+      error [e] in [filename] *)
 end
 
 type error = Error.t
@@ -66,8 +69,11 @@ val map :
 (** The [Diagnostic] module cotains functions for generating diagnostic
     parsing output. *)
 module Diagnostic : sig
-  val string_of_error : error -> string
-  (** [string_of_error e] is the diagnostic error message for [e] *)
+  (** [Error] represents a lexical or syntax diagnostic error *)
+  module Error : sig
+    val to_string : error -> string
+    (** [to_string e] is the diagnostic error message for [e] *)
+  end
 
   val to_file : start:Ast.t start -> Lexing.lexbuf -> string -> unit
   (** [to_file ~start lexbuf out] parses lexer buffer [lexbuf] from

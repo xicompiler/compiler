@@ -18,6 +18,7 @@ type error =
   | UnboundIntf of string
 
 val to_string : error -> string
+(** [to_string error] is the string describing [error] *)
 
 (** [Positioned] represents an error with a position *)
 module Positioned : sig

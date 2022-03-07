@@ -1,16 +1,33 @@
 open Core
 open Position
 
-type syntax_error = string Position.error
-
 module Error = struct
-  type error =
+  type syntax_error = string Position.error
+
+  type t =
     | LexicalError of Lex.error
     | SyntaxError of syntax_error
+
+  (** [desc e] is the error description corresponding to [e] *)
+  let desc cause =
+    if String.is_empty cause then "Unable to parse program"
+    else Printf.sprintf "Unexpected token %s" cause
+
+  let string_of_cause cause = Printf.sprintf "error:%s" (desc cause)
+
+  let to_string filename = function
+    | LexicalError e -> Lex.Error.to_string filename e
+    | SyntaxError e ->
+        let pos = Error.position e in
+        e |> Error.cause |> desc |> Error.format pos
+        |> Printf.sprintf "Syntax error beginning at %s:%s" filename
 end
 
+type error = Error.t
 type 'a start = (Lexing.lexbuf -> Parser.token) -> Lexing.lexbuf -> 'a
 type nonrec 'a result = ('a, error) result
+
+open Error
 
 let parse ~start lexbuf =
   try Ok (start Lex.read lexbuf) with
@@ -18,28 +35,11 @@ let parse ~start lexbuf =
   | Parser.Error ->
       let pos = Position.get_position_lb lexbuf in
       let cause = Lexing.lexeme lexbuf in
-      Error (SyntaxError (Error.make ~pos cause))
+      Error (SyntaxError (Position.Error.make ~pos cause))
 
 let parse_prog = parse ~start:Parser.prog
 let parse_source = parse ~start:Parser.source
 let parse_intf = parse ~start:Parser.intf
-
-(** [error_description e] is the error description corresponding to [e] *)
-let error_description cause =
-  if String.is_empty cause then "Unable to parse program"
-  else Printf.sprintf "Unexpected token %s" cause
-
-(** [string_of_error_cause e] is the error message corresponding to [e] *)
-let string_of_error_cause cause =
-  Printf.sprintf "error:%s" (error_description cause)
-
-let string_of_error filename = function
-  | LexicalError e -> Lex.Error.to_string filename e
-  | SyntaxError e ->
-      let pos = Error.position e in
-      e |> Error.cause |> error_description
-      |> format_position_error pos
-      |> Printf.sprintf "Syntax error beginning at %s:%s" filename
 
 (** [ast_of_source read lexbuf] wraps [Parser.source read lexbuf] up as
     [Ast.t]*)
@@ -59,19 +59,20 @@ module Diagnostic = struct
       [out] out channel. *)
   let print_ast out ast = ast |> Ast.sexp_of_t |> SexpPrinter.print out
 
-  (** [string_of_error e] is the string representing error [e] *)
-  let string_of_error = function
-    | LexicalError e -> Lex.Diagnostic.Error.to_string e
-    | SyntaxError e ->
-        let pos = Error.position e in
-        e |> Error.cause |> string_of_error_cause
-        |> Position.Error.format pos
+  module Error = struct
+    let to_string = function
+      | LexicalError e -> Lex.Diagnostic.Error.to_string e
+      | SyntaxError e ->
+          let pos = Position.Error.position e in
+          e |> Position.Error.cause |> Error.string_of_cause
+          |> Position.Error.format pos
+  end
 
   (** [print_result out] prints the valid ast S-expression or an error
       message into the [out] out channel. *)
   let print_result out = function
     | Ok ast -> print_ast out ast
-    | Error e -> Printf.fprintf out "%s\n" (string_of_error e)
+    | Error e -> Printf.fprintf out "%s\n" (Error.to_string e)
 
   (** [to_channel ~start lexbuf out] parses lexer buffer [lexbuf] from
       start symbol [start] and writes the diagnostic output to [out] *)

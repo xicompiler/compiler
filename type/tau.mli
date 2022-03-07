@@ -18,6 +18,7 @@ type t =
     an Array is represented by a pair (contents, length) *)
 
 val to_string : t -> string
+(** [to_string t] is the string representing [t] *)
 
 val int_array : t
 (** [int_array] is [`Array `Int]*)

@@ -9,3 +9,4 @@ val map_file_tests :
   string ->
   string ->
   test list
+(** [map_file_tests f ref_ext dir] *)

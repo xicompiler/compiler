@@ -61,7 +61,7 @@ let lex_diagnostic_file ~dir ~file =
 let compile_file src_path =
   let f start lexbuf =
     lexbuf |> Parse.parse ~start
-    |> Result.map_error ~f:(Parse.string_of_error src_path)
+    |> Result.map_error ~f:(Parse.Error.to_string src_path)
     |> Result.ignore_m
   in
   Parse.bind ~f src_path

@@ -19,8 +19,8 @@ module Error = struct
   let fmt = format_of_string "Lexical error beginning at %s:%s"
 
   let to_string filename error =
-    let pos = Error.position error in
-    error |> Error.cause |> error_description
+    let pos = Position.Error.position error in
+    error |> Position.Error.cause |> string_of_cause
     |> Position.Error.format pos
     |> Printf.sprintf fmt filename
 end
