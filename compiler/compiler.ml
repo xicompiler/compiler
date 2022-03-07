@@ -13,7 +13,7 @@ let replace_ext ~ext ~file = Filename.chop_extension file ^ ext
     file ending in [ext] in directory [dir] for file [file] *)
 let make_out_path ~dir ~file ext =
   let file = replace_ext ~file ~ext in
-  concat ~dir file
+  Filename.concat dir file
 
 (** [create_out_path ~dir ~file ext] creates the directory of
     [make_out_path ~dir ~file ext] if absent and returns the result. *)
@@ -22,74 +22,84 @@ let create_out_path ~dir ~file ext =
   Core.Unix.mkdir_p (Filename.dirname path);
   path
 
-(** [diagnostic ext ~f ~dir ~file lexbuf] applies diagnostic function
+open Args
+
+(** [diagnostic ext ~f ~args ~file lexbuf] applies diagnostic function
     [f] to lexbuf [lexbuf], writing the results to output file [file]
-    with extension [ext] in output directory [dir] *)
-let diagnostic ext ~f ~dir ~file lexbuf =
-  ext |> create_out_path ~dir ~file |> f lexbuf
+    with extension [ext] in output directory [args.out_dir] *)
+let diagnostic ext ~f ~args ~file lexbuf =
+  ext |> create_out_path ~dir:args.out_dir ~file |> f lexbuf
 
-(** [lex_diagnostic ~dir ~file lexbuf] applies lexing diagnostic
-    function lexbuf [lexbuf], writing the results to output file [file]
-    in output directory [dir] *)
-let lex_diagnostic = diagnostic ".lexed" ~f:Lex.Diagnostic.to_file
+(** [lex ~dir ~file lexbuf] applies lexing diagnostic function lexbuf
+    [lexbuf], writing the results to output file [file] in output
+    directory [dir] *)
+let lex = diagnostic ".lexed" ~f:Lex.Diagnostic.to_file
 
-(** [parse_diagnostic start ~dir ~file lexbuf] applies the parsing
-    diagnostic function tp lexbuf [lexbuf] from start symbol [start],
-    writing the results to output file [file] in output directory [dir] *)
-let parse_diagnostic start =
+(** [parse start ~dir ~file lexbuf] applies the parsing diagnostic
+    function tp lexbuf [lexbuf] from start symbol [start], writing the
+    results to output file [file] in output directory [dir] *)
+let parse start =
   diagnostic ".parsed" ~f:(Parse.Diagnostic.to_file ~start)
 
-(** [typecheck_diagnostic start ~dir ~file lexbuf] applies the parsing
-    diagnostic function tp lexbuf [lexbuf] from start symbol [start],
-    writing the results to output file [file] in output directory [dir] *)
-let typecheck_diagnostic ~lib_dir =
-  diagnostic ".typed" ~f:(Check.Diagnostic.to_file ~lib_dir)
+(** [deps_of_args args] are the semantic dependecies corresponding to
+    [args] *)
+let deps_of_args { lib_dir; std_dir; _ } : Check.dependencies =
+  { lib_dir; std_dir }
 
-(** [lex_diagnostic_file ~dir ~file src_path] applies the lexing
-    diagnostic function to file at [src_path], writing the results to
+(** [typecheck deps lexbuf] applies the parsing diagnostic function tp
+    lexbuf [lexbuf] from start symbol [start], writing the results to
     output file [file] in output directory [dir] *)
-let lex_diagnostic_file ~dir ~file =
-  File.Xi.map_same ~f:(lex_diagnostic ~dir ~file)
+let typecheck ?cache ~args =
+  let deps = deps_of_args args in
+  diagnostic ".typed" ~f:(Check.Diagnostic.to_file ?cache ~deps) ~args
 
-(** [parse_diagnostic_file ~dir ~file src_path] applies the parsing
-    diagnostic function to file at [src_path], writing the results to
-    output file [file] in output directory [dir] *)
-let parse_diagnostic_file ~dir ~file =
-  Parse.map ~f:(parse_diagnostic ~dir ~file)
+(** [src_path_of_args ~args file] is the concatenation of [args.src_dir]
+    and [file] *)
+let src_path_of_args ~args = Filename.concat args.src_dir
 
-(** [typecheck_diagnostic_file ~dir ~file src_path] applies the
-    typecheck diagnostic function to file at [src_path], writing the
-    results to output file [file] in output directory [dir] *)
-let typecheck_diagnostic_file ~lib_dir ~dir ~file =
-  File.Xi.map_same ~f:(typecheck_diagnostic ~lib_dir ~dir ~file)
+(** [map_file ~args f] composes [f] with [src_path_of_args args] *)
+let map_file ~args f = Fn.compose f (src_path_of_args ~args)
 
-(** [compile_file file] compiles file at path [file] and is [Ok ()] on
-    success or [Error e] on failure, where [e] is an error message. *)
-let compile_file ?cache src_path lib_dir =
+(** [lex_file ~args file] applies the lexing diagnostic function to file
+    at [args.src_path], writing the results to output file [file] in
+    output directory [args.out_dir] *)
+let lex_file ~args file =
+  map_file ~args (File.Xi.map_same ~f:(lex ~args ~file)) file
+
+(** [parse_file ~args file] applies the parsing diagnostic function to
+    file at [args.src_path], writing the results to output file [file]
+    in output directory [args.out_dir] *)
+let parse_file ~args file =
+  map_file ~args (Parse.map ~f:(parse ~args ~file)) file
+
+(** [typecheck_file ?cache ~args file] applies the typecheck diagnostic
+    function to file at [args.src_path], writing the results to output
+    file [file] in output directory [args.out_dir] *)
+let typecheck_file ?cache ~args file =
+  map_file ~args
+    (File.Xi.map_same ~f:(typecheck ?cache ~args ~file))
+    file
+
+(** [compile_file ~args file] compiles file at path [file] and is
+    [Ok ()] on success or [Error e] on failure, where [e] is an error
+    message. *)
+let compile_file ?cache ~args file =
+  let src_path = src_path_of_args ~args file in
   let f lexbuf =
     lexbuf
-    |> Check.type_check ?cache ~lib_dir
+    |> Check.type_check ?cache ~deps:(deps_of_args args)
     |> Result.map_error ~f:(Check.Error.to_string src_path)
     |> Result.ignore_m
   in
   File.Xi.map_same ~f src_path
 
-open Args
-
 (** [compile_file_options args file] compiles file [file] with command
     line arguments [args] *)
-let compile_file_options
-    ?cache
-    { lex; parse; typecheck; src_dir; out_dir; lib_dir; _ }
-    file =
-  let src_path = concat ~dir:src_dir file in
-  if parse then
-    ignore (parse_diagnostic_file ~dir:out_dir ~file src_path);
-  if lex then ignore (lex_diagnostic_file ~dir:out_dir ~file src_path);
-  if typecheck then
-    ignore
-      (typecheck_diagnostic_file ~lib_dir ~dir:out_dir ~file src_path);
-  compile_file ?cache src_path lib_dir
+let compile_file_options ?cache ~args file =
+  if args.parse then ignore (parse_file ~args file);
+  if args.lex then ignore (lex_file ~args file);
+  if args.typecheck then ignore (typecheck_file ?cache ~args file);
+  compile_file ?cache ~args file
 
 (** [stringify res] is an error message string if [res] is an error *)
 let stringify = function
@@ -98,6 +108,7 @@ let stringify = function
 
 let compile args =
   let cache = String.Table.create () in
+  let invoke = compile_file_options ~cache ~args in
   args.files
-  |> List.map ~f:(compile_file_options ~cache args)
-  |> List.map ~f:stringify |> Result.combine_errors_unit
+  |> List.map ~f:(Fn.compose stringify invoke)
+  |> Result.combine_errors_unit

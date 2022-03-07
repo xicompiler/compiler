@@ -3,7 +3,7 @@ open Frontend
 open Lex
 open Error
 open Parse
-open Util
+open Util.Test
 
 (** [char_token_of_int i] is a [CHAR] token carrying a utf8 codepoint
     with code [i]. *)

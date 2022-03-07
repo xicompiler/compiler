@@ -28,15 +28,24 @@ end
 type error = Error.t
 type cache = Ast.Toplevel.intf option String.Table.t
 
-let parse_intf ~lib_dir intf =
-  let path = Filename.concat lib_dir (Util.File.ixi intf) in
-  match Parse.parse_intf_file path with
+type dependencies = {
+  lib_dir : string;
+  std_dir : string;
+}
+
+let get_path { lib_dir; std_dir } intf =
+  let lib_path = Util.File.ixi_of_dir ~dir:lib_dir intf in
+  if Util.File.accessible lib_path then lib_path
+  else Util.File.ixi_of_dir ~dir:std_dir intf
+
+let parse_intf ~deps intf =
+  match Parse.parse_intf_file (get_path deps intf) with
   | Ok (Ok sigs) -> Some sigs
   | Ok (Error e) -> raise (Parse.Exn e)
   | Error _ -> None
 
-let find_intf ?cache ~lib_dir intf =
-  let default = parse_intf ~lib_dir in
+let find_intf ?cache ~deps intf =
+  let default = parse_intf ~deps in
   match cache with
   | Some cache -> Hashtbl.findi_or_add cache intf ~default
   | None -> default intf
@@ -46,14 +55,35 @@ let coerce e = (e :> error)
 let parse_prog =
   Fn.compose (Result.map_error ~f:coerce) Parse.parse_prog
 
-let semantic_error e = `SemanticError e
-let default_lib_dir = "."
+let parse_source =
+  Fn.compose (Result.map_error ~f:coerce) Parse.parse_source
 
-let type_check ?cache ?(lib_dir = default_lib_dir) lexbuf =
+let parse_intf =
+  Fn.compose (Result.map_error ~f:coerce) Parse.parse_intf
+
+let semantic_error e = `SemanticError e
+
+let type_check ?cache ~deps lexbuf =
   let%bind prog = parse_prog lexbuf in
   try
     prog
-    |> type_check ~find_intf:(find_intf ?cache ~lib_dir)
+    |> type_check ~find_intf:(find_intf ?cache ~deps)
+    |> Result.map_error ~f:semantic_error
+  with Parse.Exn e -> Error (coerce e)
+
+let type_check_source ?cache ~deps lexbuf =
+  let%bind source = parse_source lexbuf in
+  try
+    source
+    |> type_check_source ~find_intf:(find_intf ?cache ~deps)
+    |> Result.map_error ~f:semantic_error
+  with Parse.Exn e -> Error (coerce e)
+
+let type_check_intf lexbuf =
+  let%bind intf = parse_intf lexbuf in
+  try
+    intf
+    |> type_check_intf ~ctx:Context.empty
     |> Result.map_error ~f:semantic_error
   with Parse.Exn e -> Error (coerce e)
 
@@ -75,12 +105,12 @@ module Diagnostic = struct
     | Ok _ -> Printf.fprintf out "%s\n" valid_xi_program
     | Error e -> e |> Error.to_string |> Printf.fprintf out "%s\n"
 
-  let to_channel lexbuf ?cache ?(lib_dir = default_lib_dir) out =
-    lexbuf |> type_check ?cache ~lib_dir |> print_res out
+  let to_channel ?cache ~deps lexbuf out =
+    lexbuf |> type_check ?cache ~deps |> print_res out
 
-  let to_file ?cache ?(lib_dir = default_lib_dir) lexbuf out =
-    Out_channel.with_file ~f:(to_channel lexbuf ?cache ~lib_dir) out
+  let to_file ?cache ~deps lexbuf out =
+    Out_channel.with_file ~f:(to_channel ?cache ~deps lexbuf) out
 
-  let file_to_file ?cache ?(lib_dir = default_lib_dir) ~src ~out () =
-    File.Xi.map_same ~f:(fun buf -> to_file ?cache ~lib_dir buf out) src
+  let file_to_file ?cache ~src ~out ~deps () =
+    File.Xi.map_same ~f:(fun buf -> to_file ?cache ~deps buf out) src
 end

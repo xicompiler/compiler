@@ -482,15 +482,16 @@ let get_sig_context ~pos ~ctx ~f { id; params; types } =
   let ret = term_of_tau_list types in
   f ~id ~arg ~ret ctx
 
-(** [type_check_signature ~ctx signode] is [Ok sign] where [sign] is the
-    [signode] decorated, or [Error type_error] where [type_error]
-    describes the type error otherwise *)
+(** [type_check_signature_no_params ~ctx signode] is [Ok sign] where
+    [sign] is the [signode] decorated, or [Error type_error] where
+    [type_error] describes the type error otherwise *)
 let type_check_signature ~ctx signode =
   let signature = PosNode.get signode in
   let pos = PosNode.position signode in
-  let%map ctx =
+  let%bind ctx =
     get_sig_context ~pos ~ctx ~f:Context.add_fn_decl signature
   in
+  let%map fn_ctx = fold_decls ~ctx ~pos signature.params in
   DecNode.Toplevel.make ~ctx ~pos signature
 
 (** [fold_intf ctx sigs] is [Ok (ctx', sigs')] where [ctx'] is the
@@ -509,11 +510,6 @@ let fold_intf_map ~f ~ctx sigs = fold_intf ~ctx sigs >>| f
     after adding signatures in [sigs], or [Error type_error] where
     [type_error] describes the type error otherwise *)
 let intf_context = fold_intf_map ~f:fst
-
-(** [type_check_intf ctx sigs] is [Ok lst] where [lst] is a list of
-    decorated nodes of [sigs], or [Error type_error] where [type_error]
-    describes the type error otherwise *)
-let type_check_intf = fold_intf_map ~f:snd
 
 (** [check_use ~find_intf ~ctx use] is [Ok use'] where [use'] is the
     decorated node of [use], or [Error type_error] where [type_error]
@@ -560,14 +556,32 @@ let first_pass_source ~find_intf { uses; definitions } =
 (** [find_intf_default _] is [None] *)
 let find_intf_default _ = None
 
-let type_check ?(find_intf = find_intf_default) prog =
-  let ctx = Context.empty in
-  match prog with
-  | Source source ->
-      let%bind uses, ctx = first_pass_source ~find_intf source in
-      let%map definitions = check_defs ~ctx source.definitions in
-      let source : Decorated.Toplevel.source = { uses; definitions } in
-      Decorated.Source source
-  | Intf sigs -> type_check_intf ~ctx sigs >>| Decorated.intf
+let type_check_source ?(find_intf = find_intf_default) source =
+  let%bind uses, ctx = first_pass_source ~find_intf source in
+  let%map definitions = check_defs ~ctx source.definitions in
+  let source : Decorated.Toplevel.source = { uses; definitions } in
+  Decorated.Source source
+
+let fold_sig ctx signode =
+  let signature = PosNode.get signode in
+  let pos = PosNode.position signode in
+  get_sig_context ~pos ~ctx ~f:Context.add_fn_defn signature
+
+(** [first_pass_sigs ~ctx sigs] is [Ok ctx'] where [ctx'] is [ctx]
+    updated with the signature in [sigs], or [Error type_error] where
+    [type_error] describes the type error, otherwise. *)
+let first_pass_intf ~ctx intf =
+  List.fold_result ~init:ctx ~f:fold_sig intf
+
+(** [type_check_intf ctx sigs] is [Ok lst] where [lst] is a list of
+    decorated nodes of [sigs], or [Error type_error] where [type_error]
+    describes the type error otherwise *)
+let type_check_intf ~ctx intf =
+  let%bind ctx = first_pass_intf ~ctx intf in
+  fold_intf_map ~f:snd ~ctx intf >>| Decorated.intf
+
+let type_check ?(find_intf = find_intf_default) = function
+  | Source source -> type_check_source ~find_intf source
+  | Intf intf -> type_check_intf Context.empty intf
 
 module Decorated = Decorated

@@ -14,6 +14,17 @@ val type_check :
     otherwise. References to intfs are resolved using [find_intf], which
     returns [None] on any argument by default. *)
 
+val type_check_source :
+  ?find_intf:(string -> Toplevel.intf option) ->
+  Toplevel.source ->
+  Decorated.result
+(** [type_check_source ?find_intf source] is [Ok source'] where
+    [source'] is [source] type checked. *)
+
+val type_check_intf : ctx:Context.t -> Toplevel.intf -> Decorated.result
+(** [type_check_intf ~ctx intf] is [Ok intf'] where [intf'] is [intf]
+    type checked. *)
+
 val type_check_expr :
   ctx:Context.t -> Expr.node -> Decorated.expr_result
 (** [type_check_expr ~ctx expr] is [Ok expr'] where [expr'] is [expr]

@@ -1,5 +1,5 @@
 (library
  (name util)
- (libraries core)
+ (libraries core ounit2)
  (preprocess
-  (pps ppx_let)))
+  (pps ppx_jane)))

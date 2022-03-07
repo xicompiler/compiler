@@ -6,7 +6,7 @@ let usage_msg = "Usage: xic [options] <source files>"
 
 (** [print_no_files ()] prints the warning message for no files. *)
 let print_no_files () =
-  print_string "Warning: no files were specified.\n"
+  print_endline "Warning: no files were specified."
 
 (** [try_compile args] attempts to compile a program described by
     arguments [args], exiting with code 1 on error. *)
@@ -46,7 +46,16 @@ let command =
           ~doc:" Generate output from semantic analysis."
       in
       let args =
-        { files; out_dir; src_dir; lib_dir; lex; parse; typecheck }
+        {
+          files;
+          out_dir;
+          src_dir;
+          lib_dir;
+          std_dir = Util.File.stdlib;
+          lex;
+          parse;
+          typecheck;
+        }
       in
       fun () -> try_compile args)
 

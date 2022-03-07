@@ -17,4 +17,4 @@ let map_file_tests f ref_ext dir =
       Some (f name ~src ~out ~reference)
     else None
   in
-  Sys.readdir dir |> Array.to_list |> List.filter_map make_test
+  Sys.readdir dir |> Array.to_list |> Stdlib.List.filter_map make_test
