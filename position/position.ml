@@ -16,7 +16,9 @@ module Error = struct
   }
 
   let make ~pos cause = { cause; position = pos }
+
   let cause { cause } = cause
+
   let position { position } = position
 end
 
@@ -27,3 +29,6 @@ let get_position (p : Lexing.position) =
 
 let get_position_lb ({ lex_start_p = p; _ } : Lexing.lexbuf) =
   get_position p
+
+let format_position_error { line; column } =
+  Printf.sprintf "%d:%d %s" line column

@@ -1,4 +1,5 @@
 open Core
+
 include module type of Parser
 
 type syntax_error = string Position.error
@@ -38,8 +39,9 @@ val parse_intf : Lexing.lexbuf -> Ast.Toplevel.intf result
     [Error SyntaxError] if [start lexbuf] raises a syntax error, and
     [Error LexicalError] if [start lexbuf] raises a lexical error. *)
 
-val string_of_error : error -> string
-(** [string_of_error e] is the string representing error [e] *)
+val string_of_error : string -> error -> string
+(** [string_of_error filename e] is the cli error message for the
+    parsing error [e] in [filename] *)
 
 val bind :
   f:(Ast.t start -> Lexing.lexbuf -> 'a XiFile.result) ->
@@ -60,6 +62,9 @@ val map :
 (** The [Diagnostic] module cotains functions for generating diagnostic
     parsing output. *)
 module Diagnostic : sig
+  val string_of_error : error -> string
+  (** [string_of_error e] is the string representing error [e] *)
+
   val to_file : start:Ast.t start -> Lexing.lexbuf -> string -> unit
   (** [to_file ~start lexbuf out] parses lexer buffer [lexbuf] from
       start symbol [start] and writes the diagnostic output to file at

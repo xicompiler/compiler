@@ -32,3 +32,7 @@ val get_position : Lexing.position -> t
 
 val get_position_lb : Lexing.lexbuf -> t
 (** [get_position_lb lexbuf] is the current position of [lexbuf] *)
+
+val format_position_error : position -> string -> string
+(** [format_position_error pos] is a function that formats an error
+    string with [pos] *)

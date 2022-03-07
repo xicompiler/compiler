@@ -1,16 +1,9 @@
 include module type of Lexer
+
 open Core
 
-val string_of_error : error -> string
-(** [string_of_error_cause e] is the error message corresponding to [e]
-    containing both its cause and position *)
-
-val format_position : Position.t -> string -> string
-(** [format_position pos s] is the message [line:col s] followed by a
-    newline where [line] and [col] are described by [pos] *)
-
-val cli_string_of_error : string -> error -> string
-(** [cli_string_of_error filename e] is the cli error message for the
+val string_of_error : string -> error -> string
+(** [string_of_error filename e] is the cli error message for the
     lexical error [e] in [filename] *)
 
 (** The [Diagnostic] module cotains functions for generating diagnostic
@@ -18,6 +11,10 @@ val cli_string_of_error : string -> error -> string
 module Diagnostic : sig
   type nonrec result = (Parser.token, error) result
   (** A [result] is either a token or a lexical error *)
+
+  val string_of_error : error -> string
+  (** [string_of_error_cause e] is the error message corresponding to
+      [e] containing both its cause and position *)
 
   val read_result : Lexing.lexbuf -> result
   (** [read lexbuf] consumes the next lexeme in [lexbuf] and returns the

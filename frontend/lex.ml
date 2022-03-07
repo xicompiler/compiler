@@ -12,14 +12,7 @@ let error_description = function
 let string_of_error_cause cause =
   cause |> error_description |> Printf.sprintf "error:%s"
 
-let format_position { line; column } =
-  Printf.sprintf "%d:%d %s" line column
-
-let string_of_error error =
-  let pos = Error.position error in
-  error |> Error.cause |> string_of_error_cause |> format_position pos
-
-let cli_string_of_error filename error =
+let string_of_error filename error =
   let { line; column } = Error.position error in
   error |> Error.cause |> string_of_error_cause
   |> Printf.sprintf "Lexical error beginning at %s:%d:%d: %s" filename
@@ -27,6 +20,11 @@ let cli_string_of_error filename error =
 
 module Diagnostic = struct
   type nonrec result = (Parser.token, error) result
+
+  let string_of_error error =
+    let pos = Error.position error in
+    error |> Error.cause |> string_of_error_cause
+    |> format_position_error pos
 
   (** [string_of_char_token c] is the string representing char token [c] *)
   let string_of_char_token u =
@@ -110,6 +108,7 @@ module Diagnostic = struct
   let lex_pos lexbuf = lexbuf |> lex_pos_rev |> List.rev
 
   let lex lexbuf = lexbuf |> lex_pos_rev |> List.rev_map ~f:fst
+
   let lex_string s = s |> Lexing.from_string |> lex
 
   (** [print_result out] prints the valid token or an error message into
@@ -117,7 +116,8 @@ module Diagnostic = struct
   let print_result out res =
     let s =
       match res with
-      | Ok tok, pos -> tok |> string_of_token |> format_position pos
+      | Ok tok, pos ->
+          tok |> string_of_token |> format_position_error pos
       | Error e, _ -> string_of_error e
     in
     Printf.fprintf out "%s\n" s
