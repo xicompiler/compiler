@@ -22,7 +22,9 @@ module Error = struct
     | #Parse.error as e -> Parse.Error.to_string filename e
     | `SemanticError e ->
         let pos = Position.Error.position e in
-        e |> Position.Error.cause |> desc |> Position.Error.format pos
+        e |> Position.Error.cause |> desc
+        |> Position.Error.format pos
+        |> Printf.sprintf fmt filename
 end
 
 type error = Error.t

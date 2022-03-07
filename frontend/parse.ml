@@ -1,5 +1,4 @@
 open Core
-open Position
 
 module Error = struct
   type syntax_error = string Position.error
@@ -22,8 +21,9 @@ module Error = struct
   let to_string filename = function
     | `LexicalError e -> Lex.Error.to_string filename e
     | `SyntaxError e ->
-        let pos = Error.position e in
-        e |> Error.cause |> desc |> Error.format pos
+        let pos = Position.Error.position e in
+        e |> Position.Error.cause |> desc
+        |> Position.Error.format pos
         |> Printf.sprintf fmt filename
 end
 
