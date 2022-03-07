@@ -1,0 +1,3 @@
+main() {
+    b : bool = eof()
+}
