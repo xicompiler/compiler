@@ -139,5 +139,5 @@ module Diagnostic = struct
     Out_channel.with_file ~f:(to_channel lexbuf) out
 
   let file_to_file ~src ~out =
-    XiFile.map_same ~f:(fun buf -> to_file buf out) src
+    File.Xi.map_same ~f:(fun buf -> to_file buf out) src
 end

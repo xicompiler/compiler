@@ -23,6 +23,9 @@ end
 type error = Error.t
 (** [error] is an alias for [Error.t]*)
 
+exception Exn of error
+(** [Exn e] is an exception raised during parsing *)
+
 type 'a start = (Lexing.lexbuf -> Parser.token) -> Lexing.lexbuf -> 'a
 (** [start] is the type of a parsing function that consumes a lexeme and
     returns a token. *)
@@ -51,17 +54,12 @@ val parse_intf : Lexing.lexbuf -> Ast.Toplevel.intf result
     [Error SyntaxError] if [start lexbuf] raises a syntax error, and
     [Error LexicalError] if [start lexbuf] raises a lexical error. *)
 
-val bind :
-  f:(Ast.t start -> Lexing.lexbuf -> 'a XiFile.result) ->
-  string ->
-  'a XiFile.result
-(** Let [lexbuf] be a lexer buffer created from [file]. Then
-    [bind ~f file] is [f Parse.source lexbuf] if [file] is a xi source
-    file, [f Parse.intf file] if [file] is a xi intf file, and [Error]
-    if [file] does not exist. *)
+val parse_intf_file : string -> Ast.Toplevel.intf result File.result
+(** [parse_intf_file src] is the result of parsing the file located at
+    [src] *)
 
 val map :
-  f:(Ast.t start -> Lexing.lexbuf -> 'a) -> string -> 'a XiFile.result
+  f:(Ast.t start -> Lexing.lexbuf -> 'a) -> string -> 'a File.Xi.result
 (** Let [lexbuf] be a lexer buffer created from [file]. Then
     [map ~f file] is [Ok (f Parse.start lexbuf)] if [file] is a xi
     source file, [f Parse.intf file] if [file] is a xi intf file, and
@@ -76,12 +74,15 @@ module Diagnostic : sig
     (** [to_string e] is the diagnostic error message for [e] *)
   end
 
+  val print_error : Out_channel.t -> error -> unit
+  (** [print_error out e] prints the error [e] to out channel [out] *)
+
   val to_file : start:Ast.t start -> Lexing.lexbuf -> string -> unit
   (** [to_file ~start lexbuf out] parses lexer buffer [lexbuf] from
       start symbol [start] and writes the diagnostic output to file at
       path [out] *)
 
-  val file_to_file : src:string -> out:string -> unit XiFile.result
+  val file_to_file : src:string -> out:string -> unit File.Xi.result
   (** [file_to_file ~src ~out] writes parsing diagnostic information to
       a file located at path [out], reading from file at path [src]. It
       yields [Ok ()] on success and [Error e] on failure, where [e] is a

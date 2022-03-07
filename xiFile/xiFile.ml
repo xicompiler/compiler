@@ -33,7 +33,6 @@ let bind_same ~f = bind ~source:f ~intf:f
 type 'a map = Lexing.lexbuf -> 'a
 
 let map ~source ~intf =
-  let lift f x = Ok (f x) in
-  bind ~source:(lift source) ~intf:(lift intf)
+  bind ~source:(compose_ok source) ~intf:(compose_ok intf)
 
 let map_same ~f = map ~source:f ~intf:f

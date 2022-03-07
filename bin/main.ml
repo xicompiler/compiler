@@ -20,25 +20,35 @@ let try_compile ({ files; lex; parse; typecheck; _ } as args) =
 let command =
   Command.basic ~summary:usage_msg
     Command.Let_syntax.(
-      let%map_open files = anon (sequence ("filename" %: Filename.arg_type))
+      let%map_open files =
+        anon (sequence ("filename" %: Filename.arg_type))
       and out_dir =
-        flag "-D" (optional string)
+        flag "-D"
+          (optional_with_default "." string)
           ~doc:" Specify where to place generated diagnostic files."
       and src_dir =
-        flag "-sourcepath" (optional string)
+        flag "-sourcepath"
+          (optional_with_default "." string)
           ~doc:" Specify where to find input source files."
       and lib_dir =
-        flag "-libpath" (optional string)
+        flag "-libpath"
+          (optional_with_default "." string)
           ~doc:" Specify where to find library interface files."
       and lex =
-        flag "--lex" no_arg ~doc:" Generate output from lexical analysis."
+        flag "--lex" no_arg
+          ~doc:" Generate output from lexical analysis."
       and parse =
-        flag "--parse" no_arg ~doc:" Generate output from syntactic analysis."
+        flag "--parse" no_arg
+          ~doc:" Generate output from syntactic analysis."
       and typecheck =
         flag "--typecheck" no_arg
           ~doc:" Generate output from semantic analysis."
       in
-      let args = { files; out_dir; src_dir; lib_dir; lex; parse; typecheck } in
+      let args =
+        { files; out_dir; src_dir; lib_dir; lex; parse; typecheck }
+      in
       fun () -> try_compile args)
 
-let () = Command.run ~version:"1.0" ~build_info:"bfs45_dc854_vmj5_zak33" command
+let () =
+  Command.run ~version:"1.0" ~build_info:"bfs45_dc854_vmj5_zak33"
+    command

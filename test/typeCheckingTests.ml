@@ -6,7 +6,7 @@ open Util
     [src], comparing the resulting file in [out] with [reference] *)
 let typing_file_test name ~src ~out ~reference =
   let expected = file_contents reference in
-  Result.get_ok (Check.Diagnostic.file_to_file ~src ~out);
+  Result.get_ok (Check.Diagnostic.file_to_file ~src ~out ~lib_dir:".");
   let actual = file_contents out in
   name >:: fun _ -> assert_equal expected actual
 

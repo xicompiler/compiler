@@ -40,7 +40,7 @@ module Diagnostic : sig
   (** [to_file lexbuf out] lexes [lexbuf] and writes the results to file
       at path [out] *)
 
-  val file_to_file : src:string -> out:string -> unit XiFile.result
+  val file_to_file : src:string -> out:string -> unit File.Xi.result
   (** [file_to_file ~src ~dst] lexes the file at [src] and writes the
       results to file at path [out]. It yields [Ok ()] on success and
       [Error msg] on failure. *)

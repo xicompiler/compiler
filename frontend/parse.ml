@@ -28,6 +28,9 @@ module Error = struct
 end
 
 type error = Error.t
+
+exception Exn of error
+
 type 'a start = (Lexing.lexbuf -> Parser.token) -> Lexing.lexbuf -> 'a
 type nonrec 'a result = ('a, error) result
 
@@ -53,10 +56,8 @@ let ast_of_source read lexbuf = Ast.Source (Parser.source read lexbuf)
     [Ast.t]*)
 let ast_of_intf read lexbuf = Ast.Intf (Parser.intf read lexbuf)
 
-let bind ~f =
-  XiFile.bind ~source:(f ast_of_source) ~intf:(f ast_of_intf)
-
-let map ~f = XiFile.map ~source:(f ast_of_source) ~intf:(f ast_of_intf)
+let map ~f = File.Xi.map ~source:(f ast_of_source) ~intf:(f ast_of_intf)
+let parse_intf_file = File.map ~f:parse_intf
 
 module Diagnostic = struct
   (** [print_ast out ast] prints the S-expression of [ast] into the
@@ -72,11 +73,13 @@ module Diagnostic = struct
           |> Position.Error.format pos
   end
 
+  let print_error out e = Printf.fprintf out "%s\n" (Error.to_string e)
+
   (** [print_result out] prints the valid ast S-expression or an error
       message into the [out] out channel. *)
   let print_result out = function
     | Ok ast -> print_ast out ast
-    | Error e -> Printf.fprintf out "%s\n" (Error.to_string e)
+    | Error e -> print_error out e
 
   (** [to_channel ~start lexbuf out] parses lexer buffer [lexbuf] from
       start symbol [start] and writes the diagnostic output to [out] *)
@@ -87,7 +90,7 @@ module Diagnostic = struct
     Out_channel.with_file ~f:(to_channel ~start lexbuf) out
 
   let file_to_file ~src ~out =
-    bind ~f:(fun start lexbuf -> Ok (to_file ~start lexbuf out)) src
+    map ~f:(fun start lexbuf -> to_file ~start lexbuf out) src
 end
 
 include Parser

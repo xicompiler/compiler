@@ -473,7 +473,7 @@ let fold_context ~f ~ctx nodes =
     nodes of [defs] *)
 let check_defs ~ctx defs = fold_context ~f:check_defn ~ctx defs >>| snd
 
-(** [get_sig_context ~pos ~ctx ~f sig] is [Ok ctx'] where [ctx'] is the
+(** [get_sig_context ~pos ~ctx ~f s] is [Ok ctx'] where [ctx'] is the
     context after applying [f] to add the signature to the context as
     either a function declaration or function definition. Otherwise, it
     is [Error] *)
@@ -482,7 +482,7 @@ let get_sig_context ~pos ~ctx ~f { id; params; types } =
   let ret = term_of_tau_list types in
   f ~id ~arg ~ret ctx
 
-(** [type_check_signature ~ctx signode] is [Ok sig] where [sig] is the
+(** [type_check_signature ~ctx signode] is [Ok sign] where [sign] is the
     [signode] decorated, or [Error type_error] where [type_error]
     describes the type error otherwise *)
 let type_check_signature ~ctx signode =
