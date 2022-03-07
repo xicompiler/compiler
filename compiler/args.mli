@@ -6,7 +6,6 @@ type t = {
   lex : bool;
   parse : bool;
   typecheck : bool;
-  help : bool;
 }
 (** [t] is the type of arguments passed to the compiler *)
 

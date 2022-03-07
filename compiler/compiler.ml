@@ -81,14 +81,3 @@ let compile args =
   args.files
   |> List.rev_map ~f:(compile_file_options args)
   |> Result.combine_errors_unit
-
-let with_options
-    ?src_dir
-    ?out_dir
-    ?lib_dir
-    ?(lex = default.lex)
-    ?(parse = default.parse)
-    ?(typecheck = default.typecheck)
-    files =
-  compile
-    { default with src_dir; out_dir; lib_dir; lex; parse; typecheck; files }

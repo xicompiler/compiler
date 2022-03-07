@@ -6,7 +6,6 @@ type t = {
   lex : bool;
   parse : bool;
   typecheck : bool;
-  help : bool;
 }
 
 let default =
@@ -18,5 +17,4 @@ let default =
     lex = false;
     parse = false;
     typecheck = false;
-    help = false;
   }
