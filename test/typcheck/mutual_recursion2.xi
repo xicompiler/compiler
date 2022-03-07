@@ -1,10 +1,10 @@
 foo(x : int) : bool {
-    return bar(1) > 0
+    return bar(false) > 0
 }
 
-bar(x : int) : int {
+bar(x : bool) : int {
     if (foo(1)) {
-        return true;
+        return 1;
     }
-    return false;
+    return 0;
 }
