@@ -19,7 +19,7 @@ let parse ~start lexbuf =
       Error (SyntaxError (Error.make ~pos cause))
 
 let error_description cause =
-  if String.is_empty cause then "Reached EOF but expected token"
+  if String.is_empty cause then "Unable to parse program"
   else Printf.sprintf "Unexpected token %s" cause
 
 let string_of_error_cause cause =

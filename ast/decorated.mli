@@ -1,10 +1,12 @@
 open Core
+open Context
+open Node
 
 include
   Abstract.S
-    with module Toplevel.Node := Type.Node.Toplevel
-     and module Expr.Node := Type.Node.Expr
-     and module Stmt.Node := Type.Node.Stmt
+    with module Toplevel.Node := Decorated.Toplevel
+     and module Expr.Node := Decorated.Expr
+     and module Stmt.Node := Decorated.Stmt
 
 (** [Error] represents a semantic error in the AST *)
 module Error : module type of struct

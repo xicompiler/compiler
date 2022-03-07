@@ -12,6 +12,7 @@ type error =
   | ExpectedTerm
   | ExpectedUnit
   | ArgMismatch
+  | FnMismatch of string
   | OpMismatch
   | Mismatch of expr * expr
   | StmtMismatch of stmt * stmt
