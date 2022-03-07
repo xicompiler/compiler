@@ -5,19 +5,19 @@ open Definitions
 type error =
   | Unbound of string
   | Bound of string
-  | IdMismatch of string
   | ExpectedTau
   | ExpectedArray
   | ExpectedFn
-  | ExpectedTerm
   | ExpectedUnit
-  | ArgMismatch
   | FnMismatch of string
   | OpMismatch
   | Mismatch of expr * expr
   | StmtMismatch of stmt * stmt
   | CountMismatch
   | IllegalArrayDecl
+  | UnboundIntf of string
+
+val to_string : error -> string
 
 (** [Positioned] represents an error with a position *)
 module Positioned : sig

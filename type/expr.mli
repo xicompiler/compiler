@@ -7,6 +7,8 @@ type t =
 [@@deriving sexp_of]
 (** [t] is the type of an expression node in Xi. *)
 
+val to_string : t -> string
+
 val equal : [< t ] -> [< t ] -> bool
 (** [equal t1 t2] is [true] iff [t1] and [t2] represent the same
     expression type. *)

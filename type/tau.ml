@@ -13,6 +13,12 @@ type t =
   ]
 [@@deriving sexp]
 
+let rec to_string = function
+  | `Int -> "Int"
+  | `Bool -> "Bool"
+  | `Poly -> "Poly"
+  | `Array t -> "Array " ^ to_string t
+
 let rec equal t1 t2 =
   match (t1, t2) with
   | `Poly, _ | _, `Poly | `Int, `Int | `Bool, `Bool -> true

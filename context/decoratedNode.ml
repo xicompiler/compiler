@@ -102,6 +102,9 @@ module Toplevel = struct
   let context { context } = context
   let position { position } = position
   let make ~ctx ~pos value = { value; context = ctx; position = pos }
+
+  let of_pos_node ~ctx ~node value =
+    { value; context = ctx; position = Node.Position.position node }
 end
 
 type 'a stmt = 'a Stmt.t

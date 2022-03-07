@@ -1,6 +1,6 @@
 source ::= use* definitions
 
-interface ::= signature+
+intf ::= signature+
 
 use ::= USE ID SEMICOLON?
 

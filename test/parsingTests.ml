@@ -1,13 +1,6 @@
 open OUnit2
 open Frontend
-
-(** [file_contents in_file] is a string containing the contents of
-    [in_file]. *)
-let file_contents in_file =
-  let ch = open_in in_file in
-  let s = really_input_string ch (in_channel_length ch) in
-  close_in ch;
-  s
+open TestUtils
 
 (** [parsing_file_test name ~src ~out ~reference] constructs an OUnit
     test with name [name] asserting that following
@@ -22,8 +15,7 @@ let parsing_file_test name ~src ~out ~reference =
     assert_equal
       (Parsexp.Single.parse_string_exn expected)
       (Parsexp.Single.parse_string_exn actual)
-  with
-  | _ -> assert_equal expected actual
+  with _ -> assert_equal expected actual
 
 (* Maps each file in [dir] using [parsing_file_test]. *)
 let parsing_file_tests dir =

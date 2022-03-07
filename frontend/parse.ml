@@ -7,8 +7,8 @@ type error =
   | LexicalError of Lex.error
   | SyntaxError of syntax_error
 
-type start = (Lexing.lexbuf -> Parser.token) -> Lexing.lexbuf -> Ast.t
-type nonrec result = (Ast.t, error) result
+type 'a start = (Lexing.lexbuf -> Parser.token) -> Lexing.lexbuf -> 'a
+type nonrec 'a result = ('a, error) result
 
 let parse ~start lexbuf =
   try Ok (start Lex.read lexbuf) with
@@ -17,6 +17,10 @@ let parse ~start lexbuf =
       let pos = Position.get_position_lb lexbuf in
       let cause = Lexing.lexeme lexbuf in
       Error (SyntaxError (Error.make ~pos cause))
+
+let parse_prog = parse ~start:Parser.prog
+let parse_source = parse ~start:Parser.source
+let parse_intf = parse ~start:Parser.intf
 
 let error_description cause =
   if String.is_empty cause then "Unable to parse program"
@@ -40,11 +44,18 @@ let cli_string_of_error filename = function
       Printf.sprintf "Syntax error beginning at %s:%d:%d: Syntax Error"
         filename line column
 
-let bind ~f =
-  XiFile.bind ~source:(f Parser.source) ~interface:(f Parser.interface)
+(** [ast_of_source read lexbuf] wraps [Parser.source read lexbuf] up as
+    [Ast.t]*)
+let ast_of_source read lexbuf = Ast.Source (Parser.source read lexbuf)
 
-let map ~f =
-  XiFile.map ~source:(f Parser.source) ~interface:(f Parser.interface)
+(** [ast_of_intf read lexbuf] wraps [Parser.intf read lexbuf] up as
+    [Ast.t]*)
+let ast_of_intf read lexbuf = Ast.Intf (Parser.intf read lexbuf)
+
+let bind ~f =
+  XiFile.bind ~source:(f ast_of_source) ~intf:(f ast_of_intf)
+
+let map ~f = XiFile.map ~source:(f ast_of_source) ~intf:(f ast_of_intf)
 
 module Diagnostic = struct
   (** [print_ast out ast] prints the S-expression of [ast] into the

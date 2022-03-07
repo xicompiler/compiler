@@ -13,8 +13,8 @@ type signature = {
   params : decl list;
   types : Type.tau list;
 }
-(** A [signature] is a signature or interface for an individual method
-    where [types] is the list of (possibly none) return types. *)
+(** A [signature] is a signature or intf for an individual method where
+    [types] is the list of (possibly none) return types. *)
 
 module type S = sig
   (** An [Expr] represents an expression in the Xi langauge *)
@@ -119,17 +119,18 @@ module type S = sig
         more use statements followed by 1 or more top-level definitions,
         at least one of which must be a function definition. *)
 
-    type interface = signature Node.t list
-    (** An [interface] is a Xi interface, represented as a non-empty
-        list of function signatures. *)
+    type intf = signature Node.t list
+    (** An [intf] is a Xi intf, represented as a non-empty list of
+        function signatures. *)
   end
 
   (** An expression of type [t] is an expression representing a node of
       the Abstract Syntax Tree of a Xi program, described either by a
-      source or interface file. *)
+      source or intf file. *)
   type t =
     | Source of Toplevel.source
-    | Interface of Toplevel.interface
+    | Intf of Toplevel.intf
+  [@@deriving variants]
 
   val sexp_of_t : t -> Sexp.t
   (** [sexp_of_t ast] is the s-expression serialization of [ast]. *)

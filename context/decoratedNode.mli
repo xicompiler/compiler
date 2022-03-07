@@ -44,6 +44,10 @@ module Toplevel : sig
   val make : ctx:Ctx.t -> pos:Position.t -> 'a -> 'a t
   (** [make ~ctx ~pos v] is a toplevel node wrapping value [v], context
       [ctx] and position [pos] *)
+
+  val of_pos_node : ctx:Ctx.t -> node:'a Node.Position.t -> 'b -> 'b t
+  (** [of_pos_node ~ctx ~node v] is a toplevel node wrapping value [v],
+      context [ctx] and position of node [node] *)
 end
 
 (** [Expr] is a module wrapping an expression node *)
