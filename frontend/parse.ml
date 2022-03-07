@@ -24,19 +24,22 @@ let parse_prog = parse ~start:Parser.prog
 let parse_source = parse ~start:Parser.source
 let parse_intf = parse ~start:Parser.intf
 
+(** [error_description e] is the error description corresponding to [e] *)
 let error_description cause =
   if String.is_empty cause then "Unable to parse program"
   else Printf.sprintf "Unexpected token %s" cause
 
+(** [string_of_error_cause e] is the error message corresponding to [e] *)
 let string_of_error_cause cause =
   Printf.sprintf "error:%s" (error_description cause)
 
 let string_of_error filename = function
   | LexicalError e -> Lex.Error.to_string filename e
   | SyntaxError e ->
-      let { line; column } = Error.position e in
-      Printf.sprintf "Syntax error beginning at %s:%d:%d: Syntax Error"
-        filename line column
+      let pos = Error.position e in
+      e |> Error.cause |> error_description
+      |> format_position_error pos
+      |> Printf.sprintf "Syntax error beginning at %s:%s" filename
 
 (** [ast_of_source read lexbuf] wraps [Parser.source read lexbuf] up as
     [Ast.t]*)

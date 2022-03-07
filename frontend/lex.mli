@@ -20,8 +20,7 @@ module Diagnostic : sig
 
   module Error : sig
     val to_string : error -> string
-    (** [to_string e] is the error message corresponding to [e]
-        containing both its cause and position *)
+    (** [to_string e] is the diagnostic error message for [e] *)
   end
 
   val read_result : Lexing.lexbuf -> result

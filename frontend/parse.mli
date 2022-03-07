@@ -67,7 +67,7 @@ val map :
     parsing output. *)
 module Diagnostic : sig
   val string_of_error : error -> string
-  (** [string_of_error e] is the string representing error [e] *)
+  (** [string_of_error e] is the diagnostic error message for [e] *)
 
   val to_file : start:Ast.t start -> Lexing.lexbuf -> string -> unit
   (** [to_file ~start lexbuf out] parses lexer buffer [lexbuf] from
