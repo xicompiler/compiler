@@ -27,6 +27,7 @@ output
 *.output
 *.lexed
 *.parsed
+*.typed
 
 # executable
 xic

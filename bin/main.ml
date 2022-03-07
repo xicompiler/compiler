@@ -5,7 +5,8 @@ open Args
 let usage_msg = "Usage: xic [options] <source files>"
 
 (** [print_no_files ()] prints the warning message for no files. *)
-let print_no_files () = print_string "Warning: no files were specified."
+let print_no_files () =
+  print_string "Warning: no files were specified.\n"
 
 (** [try_compile args] attempts to compile a program described by
     arguments [args], exiting with code 1 on error. *)
