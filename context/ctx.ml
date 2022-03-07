@@ -4,7 +4,7 @@ open Type
 open Type.Error
 open CtxError
 open Util.Result
-module Map = Map.Make (String)
+module Map = String.Map
 
 type key = id
 
