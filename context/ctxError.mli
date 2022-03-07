@@ -19,3 +19,7 @@ val bound : id -> error
 val fn_mismatch : id -> error
 (** [fn_mismatch id] is an [error] indicating that that declaration and
     implementation of function named [id] do not match *)
+
+val unbound_intf : id -> error
+(** [unbound_intf id] is an [error] indicating that interface with
+    identifier [id] is unbound *)

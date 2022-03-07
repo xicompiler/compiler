@@ -223,7 +223,7 @@ let type_check_arr_assign ~ctx ~pos e1 e2 e3 =
     (DecNode.Expr.typ dec1, DecNode.Expr.typ dec2, DecNode.Expr.typ dec3)
   with
   | `Array t, `Int, _ ->
-      DecNode.Expr.assert_eq_sub ~expect:t dec2 >>| fun () ->
+      DecNode.Expr.assert_eq_sub ~expect:t dec3 >>| fun () ->
       DecNode.Stmt.make_unit s ~ctx ~pos
   | _, `Int, _ -> Error (Positioned.expected_array pos1)
   | _, t, _ -> Error (Positioned.mismatch pos2 ~expect:`Int t)
@@ -319,8 +319,6 @@ and type_check_stmts_acc ~ctx acc = function
         let%bind () = DecNode.Stmt.assert_unit s in
         type_check_stmts_acc ~ctx:(DecNode.Stmt.context s) acc stmts
 
-let type_check_file ~ctx file = failwith "unimplemented"
-
 (** [fold_decls ~ctx ds] is [Ok ctx'] where [ctx'] is [ctx] extended
     with every binding in [ds] if [ds] and [ctx] are disjoint, or
     [Error] otherwise *)
@@ -328,37 +326,16 @@ let fold_decls ~ctx ~pos =
   let f ctx (id, typ) = Context.add_var ~id ~typ ctx in
   List.fold_result ~init:ctx ~f
 
-let signature_contexts ~ctx ~pos { id; params; types } =
-  let arg = term_of_tau_list (List.map ~f:snd params) in
+let get_fn_context ~ctx ~pos { id; params; types } =
   let ret = term_of_tau_list types in
-  let%bind ctx = Context.add_fn_defn ~id ~arg ~ret ctx in
   let%map fn_ctx = fold_decls ~ctx ~pos params in
-  (ctx, Context.with_ret ~ret fn_ctx)
+  Context.with_ret ~ret fn_ctx
 
 let type_check_function ~ctx ~pos signature block =
-  let%bind ctx, fn_ctx = signature_contexts ~ctx ~pos signature in
+  let%bind fn_ctx = get_fn_context ~ctx ~pos signature in
   let%map block, typ = type_check_stmts ~ctx:fn_ctx block in
   let fn_defn = Decorated.Toplevel.FnDefn (signature, block) in
   DecNode.Toplevel.make ~ctx ~pos fn_defn
-
-let check_use ~ctx use =
-  let intf = PosNode.get use in
-  let pos = PosNode.position use in
-  Ok (DecNode.Toplevel.make ~ctx ~pos intf)
-
-(** [fold_context ~f ~ctx nodes] folds [f] over each node of [nodes],
-    returning a pair [(ctx', nodes')] where [ctx'] is the decorated
-    context and [nodes'] are the decorated nodes *)
-let fold_context ~f ~ctx nodes =
-  let fold (ctx, acc) node =
-    let%map node = f ~ctx node in
-    (DecNode.Toplevel.context node, node :: acc)
-  in
-  let init = (ctx, []) in
-  let%map ctx, nodes = List.fold_result ~init ~f:fold nodes in
-  (ctx, List.rev nodes)
-
-let check_uses = fold_context ~f:check_use
 
 let check_global_decl ~ctx ~pos id typ =
   let%map ctx = Context.add_var ~id ~typ ctx in
@@ -369,11 +346,10 @@ let check_global_init ~ctx ~pos id tau primitive =
   let%bind ctx = Context.add_var ~id ~typ:tau ctx in
   let p_type = type_of_primitive primitive in
   let tau_type = (tau :> expr) in
-  if DecNode.Expr.typ_equal tau_type p_type then
-    Ok
-      (DecNode.Toplevel.make ~ctx ~pos
-         (Decorated.Toplevel.GlobalInit (id, tau, primitive)))
-  else Error (Positioned.mismatch pos ~expect:tau_type p_type)
+  let error () = Positioned.mismatch pos ~expect:tau_type p_type in
+  let%map () = Lazy.ok_if_true ~error (Expr.equal tau_type p_type) in
+  let globinit = Decorated.Toplevel.GlobalInit (id, tau, primitive) in
+  DecNode.Toplevel.make ~ctx ~pos globinit
 
 let check_defn ~ctx node =
   let pos = PosNode.position node in
@@ -384,40 +360,77 @@ let check_defn ~ctx node =
   | GlobalInit (id, tau, primitive) ->
       check_global_init ~ctx ~pos id tau primitive
 
+(** [fold_context ~f ~ctx nodes] folds [f] over each node of [nodes],
+    returning a pair [(ctx', nodes')] where [ctx'] is the decorated
+    context and [nodes'] are the decorated nodes *)
+let fold_context ~f ~ctx nodes =
+  let fold (ctx, acc) node =
+    let%map node = f ~ctx node in
+    (DecNode.Toplevel.context node, node :: acc)
+  in
+  let init = (ctx, []) in
+  List.fold_result ~init ~f:fold nodes >>| Tuple2.map_snd ~f:List.rev
+
 let check_defs ~ctx defs = fold_context ~f:check_defn ~ctx defs >>| snd
+
+let get_sig_context ~pos ~ctx ~f { id; params; types } =
+  let arg = term_of_tau_list (List.map ~f:snd params) in
+  let ret = term_of_tau_list types in
+  f ~id ~arg ~ret ctx
 
 let type_check_signature ~ctx signode =
   let signature = PosNode.get signode in
   let pos = PosNode.position signode in
-  let%map ctx, _ = signature_contexts ~pos ~ctx signature in
+  let%map ctx =
+    get_sig_context ~pos ~ctx ~f:Context.add_fn_decl signature
+  in
   DecNode.Toplevel.make ~ctx ~pos signature
 
-let type_check_source ~ctx { uses; definitions } =
-  let%bind ctx, uses = check_uses ~ctx uses in
-  let%map definitions = check_defs ~ctx definitions in
-  let source : Decorated.Toplevel.source = { uses; definitions } in
-  source
+let fold_intf = fold_context ~f:type_check_signature
+let fold_intf_map ~f ~ctx sigs = fold_intf ~ctx sigs >>| f
+let intf_context = fold_intf_map ~f:fst
+let type_check_intf = fold_intf_map ~f:snd
 
-let rec type_check_interface ~ctx sigs =
-  fold_context ~f:type_check_signature ~ctx sigs >>| snd
+let check_use ~find_intf ~ctx use =
+  let id = PosNode.get use in
+  let error () = Context.Error.unbound_intf id in
+  let intf = find_intf (PosNode.get id) in
+  let%bind intf = Lazy.of_option ~error intf in
+  let%map ctx = intf_context ~ctx intf in
+  DecNode.Toplevel.of_pos_node ~ctx ~node:use id
 
-(** [first_pass prog] returns an updated context with the function names
-    in [prog] *)
-let first_pass prog =
+let check_uses ~find_intf ~ctx uses =
+  fold_context ~f:(check_use ~find_intf) ~ctx uses
+
+let first_pass_def ctx node =
+  let pos = PosNode.position node in
+  match PosNode.get node with
+  | FnDefn (signature, _) ->
+      get_sig_context ~ctx ~pos ~f:Context.add_fn_defn signature
+  | GlobalDecl _ | GlobalInit _ -> Ok ctx
+
+let first_pass_defs ~ctx = List.fold_result ~init:ctx ~f:first_pass_def
+
+(** [first_pass source] returns an updated context with the function
+    names signatures in [source], along with the contexts from what it
+    uses. *)
+let first_pass_source ~find_intf { uses; definitions } =
   let ctx = Context.empty in
-  match prog with
-  | Source source -> failwith "unimplemented"
-  | Interface interface -> failwith "unimplemented"
+  let%bind ctx, uses = check_uses ~find_intf ~ctx uses in
+  let%map ctx = first_pass_defs ~ctx definitions in
+  (uses, ctx)
 
-(* TODO toplevel position *)
-let type_check prog =
+(** [find_intf_default _] is [None] *)
+let find_intf_default _ = None
+
+let type_check ?(find_intf = find_intf_default) prog =
   let ctx = Context.empty in
   match prog with
   | Source source ->
-      let%map source = type_check_source ~ctx source in
+      let%bind uses, ctx = first_pass_source ~find_intf source in
+      let%map definitions = check_defs ~ctx source.definitions in
+      let source : Decorated.Toplevel.source = { uses; definitions } in
       Decorated.Source source
-  | Interface interface ->
-      let%map interface = type_check_interface ~ctx interface in
-      Decorated.Interface interface
+  | Intf sigs -> type_check_intf ~ctx sigs >>| Decorated.intf
 
 module Decorated = Decorated

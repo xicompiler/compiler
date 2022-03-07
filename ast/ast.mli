@@ -6,11 +6,13 @@ include
      and module Stmt.Node := Node.Position
      and module Toplevel.Node := Node.Position
 
-val type_check : t -> Decorated.result
+val type_check :
+  ?find_intf:(string -> Toplevel.intf option) -> t -> Decorated.result
 (** [type_check ast] is [Ok ast'] where [ast'] is [ast] decorated if
     [ast] represents a semantically valid Xi program, or
     [Error type_error] where [type_error] describes the type error,
-    otherwise. *)
+    otherwise. References to intfs are resolved using [find_intf], which
+    returns [None] on any argument by default. *)
 
 val type_check_expr :
   ctx:Context.t -> Expr.node -> Decorated.expr_result

@@ -8,4 +8,5 @@ module Lazy = struct
     | None -> Error (error ())
 end
 
+let join_error = function Error e -> e | Ok _ as ok -> ok
 let ( >>? ) r f = Core.Result.map_error r ~f

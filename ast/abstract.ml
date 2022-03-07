@@ -75,12 +75,13 @@ module type S = sig
       definitions : node list;
     }
 
-    type interface = signature Node.t list
+    type intf = signature Node.t list
   end
 
   type t =
     | Source of Toplevel.source
-    | Interface of Toplevel.interface
+    | Intf of Toplevel.intf
+  [@@deriving variants]
 
   val sexp_of_t : t -> Sexp.t
 end

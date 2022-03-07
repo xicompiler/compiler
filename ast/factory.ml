@@ -67,12 +67,13 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
       definitions : node list;
     }
 
-    type interface = signature Node.t list
+    type intf = signature Node.t list
   end
 
   type t =
     | Source of Toplevel.source
-    | Interface of Toplevel.interface
+    | Intf of Toplevel.intf
+  [@@deriving variants]
 
   (** [sexp_of_id id] is [Sexp.Atom id]*)
   let sexp_of_id id = Sexp.Atom (Node.Position.get id)
@@ -82,9 +83,7 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
   open Toplevel
 
   (** [string_of_unop unop] is the string representation of [unop]. *)
-  let string_of_unop = function
-    | IntNeg -> "-"
-    | LogicalNeg -> "!"
+  let string_of_unop = function IntNeg -> "-" | LogicalNeg -> "!"
 
   let string_of_binop = function
     | Mult -> "*"
@@ -348,12 +347,11 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
         sexp_of_tp_list sexp_of_definition definitions;
       ]
 
-  (** [sexp_of_interface interface] is the s-expression serialization of
-      the AST [interface]. *)
-  let sexp_of_interface sigs =
-    Sexp.List [ sexp_of_tp_list sexp_of_fn sigs ]
+  (** [sexp_of_intf intf] is the s-expression serialization of the AST
+      [intf]. *)
+  let sexp_of_intf sigs = Sexp.List [ sexp_of_tp_list sexp_of_fn sigs ]
 
   let sexp_of_t = function
     | Source s -> sexp_of_source s
-    | Interface sigs -> sexp_of_interface sigs
+    | Intf sigs -> sexp_of_intf sigs
 end

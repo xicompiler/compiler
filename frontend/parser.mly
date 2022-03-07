@@ -67,9 +67,9 @@
 (* A primitive type *)
 %token <Type.Tau.primitive> TYPE
 
-%start <Ast.t> program
-%start <Ast.t> source
-%start <Ast.t> interface
+%start <Ast.t> prog
+%start <Ast.Toplevel.source> source
+%start <Ast.Toplevel.intf> intf
 
 %left OR
 %left AND
@@ -155,22 +155,22 @@ bracketed(X):
   | NOT { LogicalNeg }
   ;
 
-(** A program is either a source or interface *)
-program:
-  | s = source { s }
-  | i = interface { i }
+(** A prog is either a source or intf *)
+prog:
+  | s = source { Source s }
+  | i = intf { Intf i }
   ;
 
 (** A [source] derives a source file in  Xi, followed by EOF *)
 source:
   | s = source_file; EOF
-    { Source s }
+    { s }
   ;
 
-(** An [interface] derives an interface file in Xi, followed by EOF  *)
-interface:
+(** An [intf] derives an intf file in Xi, followed by EOF  *)
+intf:
   | signatures = node(signature)+; EOF
-    { Interface signatures }
+    { signatures }
   ;
 
 (** A [source_file] derives a source file in  Xi *)

@@ -2,6 +2,7 @@ open OUnit2
 open Frontend
 open Frontend.Lex
 open Frontend.Parse
+open TestUtils
 
 (** [char_token_of_int i] is a [CHAR] token carrying a utf8 codepoint
     with code [i]. *)
@@ -26,14 +27,6 @@ let lexing_test_ok test_name input expected =
     mapped as invalid tokens. *)
 let lexing_test_err test_name input expected =
   lexing_test test_name input (List.map Result.error expected)
-
-(** [file_contents in_file] is a string containing the contents of
-    [in_file]. *)
-let file_contents in_file =
-  let ch = open_in in_file in
-  let s = really_input_string ch (in_channel_length ch) in
-  close_in ch;
-  s
 
 (** [lexing_file_test name ~src ~out ~reference] constructs an OUnit
     test with name [name] asserting that following [to_file ~src ~out],

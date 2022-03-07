@@ -17,6 +17,8 @@ type t =
 (** A type in Xi is either a primitive type or an array of a type, where
     an Array is represented by a pair (contents, length) *)
 
+val to_string : t -> string
+
 val int_array : t
 (** [int_array] is [`Array `Int]*)
 
