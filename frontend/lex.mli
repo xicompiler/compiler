@@ -13,8 +13,7 @@ module Diagnostic : sig
   (** A [result] is either a token or a lexical error *)
 
   val string_of_error : error -> string
-  (** [string_of_error_cause e] is the error message corresponding to
-      [e] containing both its cause and position *)
+  (** [string_of_error e] is the diagnostic error message for [e] *)
 
   val read_result : Lexing.lexbuf -> result
   (** [read lexbuf] consumes the next lexeme in [lexbuf] and returns the

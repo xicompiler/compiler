@@ -3,6 +3,7 @@ open Parser
 open Position
 include Lexer
 
+(** [error_description e] is the error description corresponding to [e] *)
 let error_description = function
   | InvalidChar -> "Invalid character constant"
   | InvalidString -> "Invalid string constant"
@@ -12,16 +13,17 @@ let error_description = function
 let string_of_error_cause cause =
   cause |> error_description |> Printf.sprintf "error:%s"
 
+(** [string_of_error e] is the error message corresponding to [e] *)
 let string_of_error filename error =
-  let { line; column } = Error.position error in
-  error |> Error.cause |> string_of_error_cause
-  |> Printf.sprintf "Lexical error beginning at %s:%d:%d: %s" filename
-       line column
+  let pos = Error.position error in
+  error |> Error.cause |> error_description
+  |> format_position_error pos
+  |> Printf.sprintf "Lexical error beginning at %s:%s" filename
 
 module Diagnostic = struct
   type nonrec result = (Parser.token, error) result
 
-  let string_of_error error =
+  let string_of_error error = 
     let pos = Error.position error in
     error |> Error.cause |> string_of_error_cause
     |> format_position_error pos

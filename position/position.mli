@@ -7,6 +7,16 @@ type t = {
 type position = t
 (** [position] is an alias for [t] *)
 
+val get_position : Lexing.position -> t
+(** [get_position pos] is the position [pos] *)
+
+val get_position_lb : Lexing.lexbuf -> t
+(** [get_position_lb lexbuf] is the current position of [lexbuf] *)
+
+val format_position_error : position -> string -> string
+(** [format_position_error pos] is a function that formats an error
+    string with [pos] *)
+
 (** [Error] represents an error with an associated position *)
 module Error : sig
   type 'a t
@@ -26,13 +36,3 @@ end
 
 type 'a error = 'a Error.t
 (** [error] is an alias for [Error.t] *)
-
-val get_position : Lexing.position -> t
-(** [get_position pos] is the position [pos] *)
-
-val get_position_lb : Lexing.lexbuf -> t
-(** [get_position_lb lexbuf] is the current position of [lexbuf] *)
-
-val format_position_error : position -> string -> string
-(** [format_position_error pos] is a function that formats an error
-    string with [pos] *)

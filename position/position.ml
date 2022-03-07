@@ -9,6 +9,15 @@ type t = {
 
 type position = t
 
+let get_position (p : Lexing.position) =
+  { line = p.pos_lnum; column = col_offset + p.pos_cnum - p.pos_bol }
+
+let get_position_lb ({ lex_start_p = p; _ } : Lexing.lexbuf) =
+  get_position p
+
+let format_position_error { line; column } =
+  Printf.sprintf "%d:%d %s" line column
+
 module Error = struct
   type 'a t = {
     cause : 'a;
@@ -23,12 +32,3 @@ module Error = struct
 end
 
 type 'a error = 'a Error.t
-
-let get_position (p : Lexing.position) =
-  { line = p.pos_lnum; column = col_offset + p.pos_cnum - p.pos_bol }
-
-let get_position_lb ({ lex_start_p = p; _ } : Lexing.lexbuf) =
-  get_position p
-
-let format_position_error { line; column } =
-  Printf.sprintf "%d:%d %s" line column

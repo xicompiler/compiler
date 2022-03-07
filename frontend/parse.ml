@@ -25,19 +25,22 @@ let parse_source = parse ~start:Parser.source
 
 let parse_intf = parse ~start:Parser.intf
 
+(** [error_description e] is the error description corresponding to [e] *)
 let error_description cause =
   if String.is_empty cause then "Unable to parse program"
   else Printf.sprintf "Unexpected token %s" cause
 
+(** [string_of_error_cause e] is the error message corresponding to [e] *)
 let string_of_error_cause cause =
   Printf.sprintf "error:%s" (error_description cause)
 
 let string_of_error filename = function
   | LexicalError e -> Lex.string_of_error filename e
   | SyntaxError e ->
-      let { line; column } = Error.position e in
-      Printf.sprintf "Syntax error beginning at %s:%d:%d: Syntax Error"
-        filename line column
+    let pos = Error.position e in
+    e |> Error.cause |> error_description
+    |> format_position_error pos
+    |> Printf.sprintf "Syntax error beginning at %s:%s" filename
 
 (** [ast_of_source read lexbuf] wraps [Parser.source read lexbuf] up as
     [Ast.t]*)
@@ -60,10 +63,10 @@ module Diagnostic = struct
   (** [string_of_error e] is the string representing error [e] *)
   let string_of_error = function
     | LexicalError e -> Lex.Diagnostic.string_of_error e
-    | SyntaxError e ->
-        let pos = Error.position e in
-        e |> Error.cause |> string_of_error_cause
-        |> format_position_error pos
+    | SyntaxError e -> 
+      let pos = Error.position e in
+      e |> Error.cause |> string_of_error_cause
+      |> format_position_error pos
 
   (** [print_result out] prints the valid ast S-expression or an error
       message into the [out] out channel. *)
