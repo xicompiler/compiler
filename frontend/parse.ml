@@ -5,22 +5,26 @@ module Error = struct
   type syntax_error = string Position.error
 
   type t =
-    | LexicalError of Lex.error
-    | SyntaxError of syntax_error
+    [ `LexicalError of Lex.error
+    | `SyntaxError of syntax_error
+    ]
 
   (** [desc e] is the error description corresponding to [e] *)
   let desc cause =
     if String.is_empty cause then "Unable to parse program"
     else Printf.sprintf "Unexpected token %s" cause
 
-  let string_of_cause cause = Printf.sprintf "error:%s" (desc cause)
+  let string_of_cause cause = cause |> desc |> Printf.sprintf "error:%s"
+
+  (** [fmt] is the format for a lexical error message *)
+  let fmt = format_of_string "Syntax error beginning at %s:%s"
 
   let to_string filename = function
-    | LexicalError e -> Lex.Error.to_string filename e
-    | SyntaxError e ->
+    | `LexicalError e -> Lex.Error.to_string filename e
+    | `SyntaxError e ->
         let pos = Error.position e in
         e |> Error.cause |> desc |> Error.format pos
-        |> Printf.sprintf "Syntax error beginning at %s:%s" filename
+        |> Printf.sprintf fmt filename
 end
 
 type error = Error.t
@@ -31,11 +35,11 @@ open Error
 
 let parse ~start lexbuf =
   try Ok (start Lex.read lexbuf) with
-  | Lex.Error err -> Error (LexicalError err)
+  | Lex.Error err -> Error (`LexicalError err)
   | Parser.Error ->
       let pos = Position.get_position_lb lexbuf in
       let cause = Lexing.lexeme lexbuf in
-      Error (SyntaxError (Position.Error.make ~pos cause))
+      Error (`SyntaxError (Position.Error.make ~pos cause))
 
 let parse_prog = parse ~start:Parser.prog
 let parse_source = parse ~start:Parser.source
@@ -61,8 +65,8 @@ module Diagnostic = struct
 
   module Error = struct
     let to_string = function
-      | LexicalError e -> Lex.Diagnostic.Error.to_string e
-      | SyntaxError e ->
+      | `LexicalError e -> Lex.Diagnostic.Error.to_string e
+      | `SyntaxError e ->
           let pos = Position.Error.position e in
           e |> Position.Error.cause |> Error.string_of_cause
           |> Position.Error.format pos

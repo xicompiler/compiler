@@ -1,6 +1,6 @@
 open OUnit2
 open Frontend
-open TestUtils
+open Util
 
 (** [typing_file_test name ~src ~out ~reference] tests typechecking
     [src], comparing the resulting file in [out] with [reference] *)

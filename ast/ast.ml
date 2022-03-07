@@ -47,9 +47,6 @@ let type_check_id ~ctx ~pos id =
   let e = Decorated.Expr.Id id in
   DecNode.Expr.make ~ctx ~typ:(typ :> expr) ~pos e
 
-(** [type_check_expr ctx enode] is [Ok expr] where [expr] is [enode]
-    decorated within context [ctx] or [Error type_error] where
-    [type_error] describes a semantic error of [enode] *)
 let rec type_check_expr ~ctx enode =
   let pos = PosNode.position enode in
   match PosNode.get enode with
@@ -77,6 +74,9 @@ and type_check_exprs ~ctx ~pos ~types es =
   in
   fold2_result ~f ~pos ~init:[] types es >>| List.rev
 
+(** [type_check_array ~ctx ~pos arr] is [Ok arr'] where [arr'] is [arr]
+    decorated, or [Error type_error] where [type_error] describes the
+    type error otherwise *)
 and type_check_array ~ctx ~pos arr =
   if Array.is_empty arr then
     let empty_array = Decorated.Expr.Array [||] in
@@ -92,14 +92,24 @@ and type_check_array ~ctx ~pos arr =
     let%map typ = tau_of_expr_res (DecNode.Expr.typ dec) pos in
     DecNode.Expr.make ~ctx ~typ:(`Array typ) ~pos e
 
+(** [fold_array ctx fst acc elt] is [Ok lst] where [lst] is [elt]
+    decorated and appended to [acc], ensuring that its type is equal to
+    that of [fst], or [Error type_error] where [type_error] describes
+    the type error otherwise *)
 and fold_array ctx fst acc elt =
   let%bind dec = type_check_expr ~ctx elt in
   DecNode.Expr.assert_eq_tau fst dec >>| fun () -> dec :: acc
 
+(** [type_check_string ~ctx ~pos str] is [Ok str'] where [str'] is [str]
+    decorated, or [Error type_error] where [type_error] describes the
+    type error otherwise *)
 and type_check_string ~ctx ~pos str =
   let e = Decorated.Expr.String str in
   DecNode.Expr.make ~ctx ~typ:(`Array `Int) ~pos e
 
+(** [type_check_bop ~ctx ~pos op e1 e2] is [Ok bop] where [bop] is Bop
+    ([op], [e1], [e2]) decorated, or [Error type_error] where
+    [type_error] describes the type error otherwise *)
 and type_check_bop ~ctx ~pos op e1 e2 =
   let%bind dec1 = type_check_expr ~ctx e1 in
   let%bind dec2 = type_check_expr ~ctx e2 in
@@ -118,6 +128,9 @@ and type_check_bop ~ctx ~pos op e1 e2 =
       DecNode.Expr.make ~ctx ~typ:`Bool ~pos e
   | _ -> Error (Positioned.make ~pos OpMismatch)
 
+(** [type_check_uop ~ctx ~pos op e] is [Ok uop] where [uop] is Uop
+    ([op], [e]) decorated, or [Error type_error] where [type_error]
+    describes the type error otherwise *)
 and type_check_uop ~ctx ~pos op e =
   let%bind dec = type_check_expr ctx e in
   let e = Decorated.Expr.Uop (op, dec) in
@@ -125,19 +138,28 @@ and type_check_uop ~ctx ~pos op e =
   | IntNeg, `Int -> Ok (DecNode.Expr.make ~ctx ~typ:`Int ~pos e)
   | LogicalNeg, `Bool -> Ok (DecNode.Expr.make ~ctx ~typ:`Bool ~pos e)
   | _ -> Error (Positioned.make ~pos OpMismatch)
-(* TODO add op + type to opmismatch *)
 
+(** [type_check_call ~ctx ~pos id es] is [Ok (es', t)] where [es'] is
+    the nodes in [es] decorated and [t] is the return type of function
+    [id], or [Error type_error] where [type_error] describes the type
+    error otherwise *)
 and type_check_call ~ctx ~pos id es =
   let%bind t1, t2 = Context.find_fn ~id ctx in
   let types = tau_list_of_term t1 in
   let%map es = type_check_exprs ~ctx ~pos ~types es in
   (es, t2)
 
+(** [type_check_fn_call ~ctx ~pos id es] is [Ok fn] where [fn] is FnCall
+    ([id], [es]) decorated, or [Error type_error] where [type_error]
+    describes the type error otherwise *)
 and type_check_fn_call ~ctx ~pos id es =
   let%map es, t2 = type_check_call ~ctx ~pos id es in
   let e = Decorated.Expr.FnCall (id, es) in
   DecNode.Expr.make ~ctx ~typ:(expr_of_term t2) ~pos e
 
+(** [type_check_length ~ctx ~pos node] is [Ok ln] where [ln] is Length
+    [node] decorated, or [Error type_error] where [type_error] describes
+    the type error otherwise *)
 and type_check_length ~ctx ~pos node =
   let%bind dec = type_check_expr ctx node in
   let typ = DecNode.Expr.typ dec in
@@ -145,6 +167,9 @@ and type_check_length ~ctx ~pos node =
   assert_array typ >>? pos >>| fun () ->
   DecNode.Expr.make ~ctx ~typ ~pos e
 
+(** [type_check_index ~ctx ~pos e1 e2] is [Ok idx] where [idx] is Index
+    ([e1], [e2]) decorated, or [Error type_error] where [type_error]
+    describes the type error otherwise *)
 and type_check_index ~ctx ~pos e1 e2 =
   let%bind dec1 = type_check_expr ctx e1 in
   let%bind dec2 = type_check_expr ctx e2 in
@@ -162,6 +187,9 @@ let bool_or_error ~ctx e =
   let%bind e = type_check_expr ~ctx e in
   DecNode.Expr.assert_bool e >>| fun () -> e
 
+(** [type_check_var_decl ~ctx ~pos id typ] is [Ok vd] where [vd] is
+    VarDecl ([id], [typ]) decorated, or [Error type_error] where
+    [type_error] describes the type error otherwise *)
 let type_check_var_decl ~ctx ~pos id typ =
   let%map ctx = Context.add_var ~id ~typ ctx in
   let s = Decorated.Stmt.VarDecl (id, typ) in
@@ -186,6 +214,9 @@ let rec type_check_sizes ~ctx = function
       let%bind () = DecNode.Expr.assert_int e in
       type_check_sizes ~ctx es >>| List.cons e
 
+(** [type_check_array_decl ~ctx ~pos id typ es] is [Ok ad] where [ad] is
+    ArrayDecl ([id], [typ], [es]) decorated, or [Error type_error] where
+    [type_error] describes the type error otherwise *)
 let type_check_array_decl ~ctx ~pos id typ es =
   let%bind ctx = Context.add_var ~id ~typ ctx in
   let%map es = type_check_sizes ~ctx es in
@@ -193,6 +224,9 @@ let type_check_array_decl ~ctx ~pos id typ es =
   let s = Decorated.Stmt.ArrayDecl (id, typ, es) in
   DecNode.Stmt.make_unit ~ctx ~pos s
 
+(** [type_check_array_decl ~ctx ~pos id e] is [Ok assn] where [assn] is
+    Assign ([id], [e]) decorated, or [Error type_error] where
+    [type_error] describes the type error otherwise *)
 let type_check_assign ~ctx ~pos id e =
   let%bind typ = Context.find_var ~id ctx in
   let%bind dec = type_check_expr ~ctx e in
@@ -200,11 +234,17 @@ let type_check_assign ~ctx ~pos id e =
   let s = Decorated.Stmt.Assign (id, dec) in
   DecNode.Stmt.make_unit ~ctx ~pos s
 
+(** [type_check_expr_stmt ~ctx ~pos id es] is [Ok es] where [es] is
+    ExprStmt ([id], [es]) decorated, or [Error type_error] where
+    [type_error] describes the type error otherwise *)
 let type_check_expr_stmt ~ctx ~pos id es =
   let%map es, _ = type_check_call ~ctx ~pos id es in
   let s = Decorated.Stmt.ExprStmt (id, es) in
   DecNode.Stmt.make_unit ~ctx ~pos s
 
+(** [type_check_var_init ~ctx ~pos id typ e] is [Ok vi] where [vi] is
+    VarInit ([id], [typ], [e]) decorated, or [Error type_error] where
+    [type_error] describes the type error otherwise *)
 let type_check_var_init ~ctx ~pos id typ e =
   let%bind ctx = Context.add_var ~id ~typ ctx in
   let%bind dec = type_check_expr ~ctx e in
@@ -212,6 +252,9 @@ let type_check_var_init ~ctx ~pos id typ e =
   let s = Decorated.Stmt.VarInit (id, typ, dec) in
   DecNode.Stmt.make_unit ~ctx ~pos s
 
+(** [type_check_arr_assign ~ctx ~pos e1 e2 e3] is [Ok assn] where [assn]
+    is ArrayAssign ([e1], [e2], [e3]) decorated, or [Error type_error]
+    where [type_error] describes the type error otherwise *)
 let type_check_arr_assign ~ctx ~pos e1 e2 e3 =
   let%bind dec1 = type_check_expr ~ctx e1 in
   let%bind dec2 = type_check_expr ~ctx e2 in
@@ -228,6 +271,9 @@ let type_check_arr_assign ~ctx ~pos e1 e2 e3 =
   | _, `Int, _ -> Error (Positioned.expected_array pos1)
   | _, t, _ -> Error (Positioned.mismatch pos2 ~expect:`Int t)
 
+(** [check_decls ~ctx ~pos ds ts] is [Ok ctx'] where [ctx'] is [ctx]
+    updated with variables [ds] and types [ts], or [Error type_error]
+    where [type_error] describes the type error otherwise *)
 let check_decls ~ctx ~pos ds ts =
   let f ctx d typ =
     match d with
@@ -239,6 +285,10 @@ let check_decls ~ctx ~pos ds ts =
   in
   fold2_result ~pos ~f ~init:ctx ds ts
 
+(** [type_check_multi_assign ~ctx ~pos ds id es] is [Ok mult] where
+    [mult] is MultiAssign ([ds], [id], [es]) decorated, or
+    [Error type_error] where [type_error] describes the type error
+    otherwise *)
 let type_check_multi_assign ~ctx ~pos ds id es =
   let%bind es, t2 = type_check_call ~ctx ~pos id es in
   let s = Decorated.Stmt.MultiAssign (ds, id, es) in
@@ -246,6 +296,9 @@ let type_check_multi_assign ~ctx ~pos ds id es =
   let%map ctx = check_decls ~ctx ~pos ds ts in
   DecNode.Stmt.make_unit ~ctx ~pos s
 
+(** [type_check_return ~ctx ~pos es] is [Ok ret] where [ret] is Return
+    [es] decorated, or [Error type_error] where [type_error] describes
+    the type error otherwise *)
 let type_check_return ~ctx ~pos es =
   let rho = Context.ret ctx in
   let types = tau_list_of_term rho in
@@ -253,9 +306,6 @@ let type_check_return ~ctx ~pos es =
   let s = Decorated.Stmt.Return s_lst in
   DecNode.Stmt.make_void s ~ctx ~pos
 
-(** [type_check_stmt ctx snode] is [Ok stmt] where [stmt] is [snode]
-    decorated within function context [ctx] or [Error type_error] where
-    [type_error] describes a semantic error of [snode] *)
 let rec type_check_stmt ~ctx snode =
   let pos = PosNode.position snode in
   match PosNode.get snode with
@@ -274,18 +324,32 @@ let rec type_check_stmt ~ctx snode =
   | Return es -> type_check_return ~ctx ~pos es
   | Block stmts -> type_check_block ~ctx ~pos stmts
 
+(** [type_check_cond ~ctx e s] is [Ok (e', s')] where [e'] is [Ok \[e\]]
+    if [e] is a bool in [~ctx], and [s'] is the decorated node of [s].
+    Otherwise, it is [Error type_error] where [type_error] describes the
+    type error *)
 and type_check_cond ~ctx e s =
   let%bind e = bool_or_error ~ctx e in
   let%map s = type_check_stmt ~ctx s in
   (e, s)
 
+(** [make_cond ~f ~ctx ~pos e s] is [Ok u] where [u] is a decorated unit
+    node that carries the result of applying [f] to [e] and [s], or
+    [Error type_error] where [type_error] describes the type error
+    otherwise *)
 and make_cond ~f ~ctx ~pos e s =
   let%map e, s = type_check_cond ctx e s in
   DecNode.Stmt.make_unit ~ctx ~pos (f e s)
 
+(** [type_check_if ~ctx ~pos e s] is [Ok if] where [if] is If ([e], [s])
+    decorated, or [Error type_error] where [type_error] describes the
+    type error otherwise *)
 and type_check_if ~ctx ~pos e s =
   make_cond ~f:(fun e s -> Decorated.Stmt.If (e, s)) ~ctx ~pos e s
 
+(** [type_check_if_else ~ctx ~pos e s1 s2] is [Ok ifel] where [ifel] is
+    IfElse ([e], [s1], [s2]) decorated, or [Error type_error] where
+    [type_error] describes the type error otherwise *)
 and type_check_if_else ~ctx ~pos e s1 s2 =
   let%bind e, s1 = type_check_cond ctx e s1 in
   let%map s2 = type_check_stmt ctx s2 in
@@ -293,22 +357,39 @@ and type_check_if_else ~ctx ~pos e s1 s2 =
   let s = Decorated.Stmt.IfElse (e, s1, s2) in
   DecNode.Stmt.make ~ctx ~pos ~typ s
 
+(** [type_check_while ~ctx ~pos e s] is [Ok w] where [w] is While ([e],
+    [s]) decorated, or [Error type_error] where [type_error] describes
+    the type error otherwise *)
 and type_check_while ~ctx ~pos e s =
   make_cond ~f:(fun e s -> Decorated.Stmt.While (e, s)) ~ctx ~pos e s
 
+(** [type_check_pr_call ~ctx ~pos id es] is [Ok pr] where [pr] is PrCall
+    ([id], [es]) decorated, or [Error type_error] where [type_error]
+    describes the type error otherwise *)
 and type_check_pr_call ~ctx ~pos id es =
   let%bind es, t2 = type_check_call ~ctx ~pos id es in
   let s = Decorated.Stmt.PrCall (id, es) in
   assert_unit t2 >>? pos >>| fun () ->
   DecNode.Stmt.make_unit ~ctx ~pos s
 
+(** [type_check_block ~ctx ~pos stmts] is [Ok block] where [block] is
+    Block [stmts] decorated, or [Error type_error] where [type_error]
+    describes the type error otherwise *)
 and type_check_block ~ctx ~pos stmts =
   let%map stmts, typ = type_check_stmts ~ctx stmts in
   let s = Decorated.Stmt.Block stmts in
   DecNode.Stmt.make ~ctx ~pos ~typ s
 
+(** [type_check_stmts ~ctx block] is [Ok (lst, typ)] where [lst] is a
+    block of the decorated nodes of [block] and [typ] is its overall
+    type. Otherwise, it is [Error type_error] where [type_error]
+    describes the type error *)
 and type_check_stmts ~ctx = type_check_stmts_acc ~ctx []
 
+(** [type_check_stmts_acc ~ctx acc block] is [Ok (lst, typ)] where [lst]
+    is a block of the decorated nodes of [block] appended to [acc] and
+    [typ] is its overall type. Otherwise, it is [Error type_error] where
+    [type_error] describes the type error *)
 and type_check_stmts_acc ~ctx acc = function
   | [] -> Ok ([], `Unit)
   | s :: stmts ->
@@ -326,22 +407,36 @@ let fold_decls ~ctx ~pos =
   let f ctx (id, typ) = Context.add_var ~id ~typ ctx in
   List.fold_result ~init:ctx ~f
 
+(** [get_fn_context ~ctx ~pos signature] is [Ok ctx'] where [ctx'] is
+    the result of adding the parameters and relevant return type to
+    [ctx], or [Error] otherwise *)
 let get_fn_context ~ctx ~pos { id; params; types } =
   let ret = term_of_tau_list types in
   let%map fn_ctx = fold_decls ~ctx ~pos params in
   Context.with_ret ~ret fn_ctx
 
+(** [type_check_function ~ctx ~pos signature block] is [Ok fn] where
+    [fn] is FnDefn ([signature], [block]) decorated, or
+    [Error type_error] where [type_error] describes the type error
+    otherwise *)
 let type_check_function ~ctx ~pos signature block =
   let%bind fn_ctx = get_fn_context ~ctx ~pos signature in
   let%map block, typ = type_check_stmts ~ctx:fn_ctx block in
   let fn_defn = Decorated.Toplevel.FnDefn (signature, block) in
   DecNode.Toplevel.make ~ctx ~pos fn_defn
 
+(** [type_check_global_decl ~ctx ~pos id typ] is [Ok gd] where [gd] is
+    GlobalDecl ([id], [typ]) decorated, or [Error type_error] where
+    [type_error] describes the type error otherwise *)
 let check_global_decl ~ctx ~pos id typ =
   let%map ctx = Context.add_var ~id ~typ ctx in
   let globdecl = Decorated.Toplevel.GlobalDecl (id, typ) in
   DecNode.Toplevel.make ~ctx ~pos globdecl
 
+(** [type_check_global_init ~ctx ~pos id tau primitive] is [Ok gi] where
+    [gi] is GlobalInit ([id], [tau], [primitive]) decorated, or
+    [Error type_error] where [type_error] describes the type error
+    otherwise *)
 let check_global_init ~ctx ~pos id tau primitive =
   let%bind ctx = Context.add_var ~id ~typ:tau ctx in
   let p_type = type_of_primitive primitive in
@@ -351,6 +446,9 @@ let check_global_init ~ctx ~pos id tau primitive =
   let globinit = Decorated.Toplevel.GlobalInit (id, tau, primitive) in
   DecNode.Toplevel.make ~ctx ~pos globinit
 
+(** [type_check_defn ~ctx node] is [Ok defn] where [defn] is [node]
+    decorated, or [Error type_error] where [type_error] describes the
+    type error otherwise *)
 let check_defn ~ctx node =
   let pos = PosNode.position node in
   match PosNode.get node with
@@ -371,13 +469,22 @@ let fold_context ~f ~ctx nodes =
   let init = (ctx, []) in
   List.fold_result ~init ~f:fold nodes >>| Tuple2.map_snd ~f:List.rev
 
+(** [check_defs ~ctx defs] is [Ok lst] where [lst] is the decorated
+    nodes of [defs] *)
 let check_defs ~ctx defs = fold_context ~f:check_defn ~ctx defs >>| snd
 
+(** [get_sig_context ~pos ~ctx ~f sig] is [Ok ctx'] where [ctx'] is the
+    context after applying [f] to add the signature to the context as
+    either a function declaration or function definition. Otherwise, it
+    is [Error] *)
 let get_sig_context ~pos ~ctx ~f { id; params; types } =
   let arg = term_of_tau_list (List.map ~f:snd params) in
   let ret = term_of_tau_list types in
   f ~id ~arg ~ret ctx
 
+(** [type_check_signature ~ctx signode] is [Ok sig] where [sig] is the
+    [signode] decorated, or [Error type_error] where [type_error]
+    describes the type error otherwise *)
 let type_check_signature ~ctx signode =
   let signature = PosNode.get signode in
   let pos = PosNode.position signode in
@@ -386,11 +493,31 @@ let type_check_signature ~ctx signode =
   in
   DecNode.Toplevel.make ~ctx ~pos signature
 
+(** [fold_intf ctx sigs] is [Ok (ctx', sigs')] where [ctx'] is the
+    context resulting from adding [sigs], and [sigs'] are the decorated
+    nodes of [sigs]. Otherwise, it is [Error type_error] where
+    [type_error] describes the type error *)
 let fold_intf = fold_context ~f:type_check_signature
+
+(** [fold_intf_map ~f ~ctx sigs] is [Ok res] where [res] is the result
+    of applying [f] to a call of [fold_intf ~ctx sigs], or
+    [Error type_error] where [type_error] describes the type error
+    otherwise*)
 let fold_intf_map ~f ~ctx sigs = fold_intf ~ctx sigs >>| f
+
+(** [intf_context ctx sigs] is [Ok ctx'] where [ctx'] is the context
+    after adding signatures in [sigs], or [Error type_error] where
+    [type_error] describes the type error otherwise *)
 let intf_context = fold_intf_map ~f:fst
+
+(** [type_check_intf ctx sigs] is [Ok lst] where [lst] is a list of
+    decorated nodes of [sigs], or [Error type_error] where [type_error]
+    describes the type error otherwise *)
 let type_check_intf = fold_intf_map ~f:snd
 
+(** [check_use ~find_intf ~ctx use] is [Ok use'] where [use'] is the
+    decorated node of [use], or [Error type_error] where [type_error]
+    describes the type error otherwise *)
 let check_use ~find_intf ~ctx use =
   let id = PosNode.get use in
   let error () = Context.Error.unbound_intf id in
@@ -399,9 +526,16 @@ let check_use ~find_intf ~ctx use =
   let%map ctx = intf_context ~ctx intf in
   DecNode.Toplevel.of_pos_node ~ctx ~node:use id
 
+(** [check_uses ~find_intf ~ctx uses] is [Ok (uses', ctx')] where
+    [uses'] are the decorated nodes of [uses] and [ctx'] is the updated
+    context from checking the relevant interface files. Otherwise, it is
+    [Error type_error] where [type_error] describes the type error *)
 let check_uses ~find_intf ~ctx uses =
   fold_context ~f:(check_use ~find_intf) ~ctx uses
 
+(** [first_pass_def ctx def] is [Ok ctx'] where [ctx'] is [ctx] updated
+    with the signature in [def], or [Error type_error] where
+    [type_error] describes the type error, otherwise. *)
 let first_pass_def ctx node =
   let pos = PosNode.position node in
   match PosNode.get node with
@@ -409,11 +543,14 @@ let first_pass_def ctx node =
       get_sig_context ~ctx ~pos ~f:Context.add_fn_defn signature
   | GlobalDecl _ | GlobalInit _ -> Ok ctx
 
+(** [first_pass_defs ~ctx defs] is [Ok ctx'] where [ctx'] is [ctx]
+    updated with the signatures in [defs], or [Error type_error] where
+    [type_error] describes the type error, otherwise. *)
 let first_pass_defs ~ctx = List.fold_result ~init:ctx ~f:first_pass_def
 
-(** [first_pass source] returns an updated context with the function
-    names signatures in [source], along with the contexts from what it
-    uses. *)
+(** [first_pass_source ~find_intf source] is an updated context with the
+    function names signatures in [source], along with the contexts from
+    what it uses. *)
 let first_pass_source ~find_intf { uses; definitions } =
   let ctx = Context.empty in
   let%bind ctx, uses = check_uses ~find_intf ~ctx uses in

@@ -20,7 +20,7 @@ module Error = struct
 
   let to_string filename error =
     let pos = Position.Error.position error in
-    error |> Position.Error.cause |> string_of_cause
+    error |> Position.Error.cause |> desc
     |> Position.Error.format pos
     |> Printf.sprintf fmt filename
 end

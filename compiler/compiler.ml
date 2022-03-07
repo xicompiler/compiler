@@ -79,5 +79,5 @@ let compile_file_options { lex; parse; src_dir; out_dir; _ } file =
 
 let compile args =
   args.files
-  |> List.rev_map ~f:(compile_file_options args)
+  |> List.map ~f:(compile_file_options args)
   |> Result.combine_errors_unit

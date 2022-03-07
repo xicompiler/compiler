@@ -9,4 +9,5 @@ val map_file_tests :
   string ->
   string ->
   test list
-(** [map_file_tests f ref_ext dir] *)
+(** [map_file_tests f ref_ext dir] tests [f] on all files in [dir],
+    outputting files with extension [ref_ext] *)

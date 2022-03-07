@@ -7,14 +7,3 @@ type t = {
   parse : bool;
   typecheck : bool;
 }
-
-let default =
-  {
-    files = [];
-    out_dir = None;
-    src_dir = None;
-    lib_dir = None;
-    lex = false;
-    parse = false;
-    typecheck = false;
-  }

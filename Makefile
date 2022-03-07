@@ -6,6 +6,9 @@ build:
 test: build
 	dune exec ./test/main.exe
 
+test-cli:
+	test/cli/test-cli
+
 clean: bisect-clean
 	dune clean
 	find . -name '*.lexed' -delete

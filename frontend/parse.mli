@@ -5,11 +5,12 @@ module Error : sig
   type syntax_error = string Position.error
   (** A [syntax_error] is an error resulting from an unsuccessful parse. *)
 
+  type t =
+    [ `LexicalError of Lex.error
+    | `SyntaxError of syntax_error
+    ]
   (** A [t] is either a lexical error or a syntax error. Both variants
       carry the position at which they occur. *)
-  type t =
-    | LexicalError of Lex.error
-    | SyntaxError of syntax_error
 
   val string_of_cause : string -> string
   (** [string_of_cause e] is the error message corresponding to [e] *)

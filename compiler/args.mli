@@ -8,7 +8,3 @@ type t = {
   typecheck : bool;
 }
 (** [t] is the type of arguments passed to the compiler *)
-
-val default : t
-(** [default] contains the default command line arguments to the
-    compiler *)

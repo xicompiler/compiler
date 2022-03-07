@@ -1,6 +1,6 @@
 open OUnit2
 open Frontend
-open TestUtils
+open Util
 
 (** [parsing_file_test name ~src ~out ~reference] constructs an OUnit
     test with name [name] asserting that following
