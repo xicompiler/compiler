@@ -1,15 +1,23 @@
 open Core
-
 include module type of Parser
 
 type syntax_error = string Position.error
 (** A [syntax_error] is an error resulting from an unsuccessful parse. *)
 
-(** An [error] is either a lexical error or a syntax error. Both
-    variants carry the position at which they occur. *)
-type error =
-  | LexicalError of Lex.error
-  | SyntaxError of syntax_error
+module Error : sig
+  (** A [t] is either a lexical error or a syntax error. Both variants
+      carry the position at which they occur. *)
+  type t =
+    | LexicalError of Lex.error
+    | SyntaxError of syntax_error
+
+  val to_string : string -> t -> string
+  (** [string_of_error filename e] is the cli error message for the
+      parsing error [e] in [filename] *)
+end
+
+type error = Error.t
+(** [error] is an alias for [Error.t]*)
 
 type 'a start = (Lexing.lexbuf -> Parser.token) -> Lexing.lexbuf -> 'a
 (** [start] is the type of a parsing function that consumes a lexeme and
@@ -39,16 +47,12 @@ val parse_intf : Lexing.lexbuf -> Ast.Toplevel.intf result
     [Error SyntaxError] if [start lexbuf] raises a syntax error, and
     [Error LexicalError] if [start lexbuf] raises a lexical error. *)
 
-val string_of_error : string -> error -> string
-(** [string_of_error filename e] is the cli error message for the
-    parsing error [e] in [filename] *)
-
 val bind :
   f:(Ast.t start -> Lexing.lexbuf -> 'a XiFile.result) ->
   string ->
   'a XiFile.result
 (** Let [lexbuf] be a lexer buffer created from [file]. Then
-    [bind ~f file] is [f Parse.start lexbuf] if [file] is a xi source
+    [bind ~f file] is [f Parse.source lexbuf] if [file] is a xi source
     file, [f Parse.intf file] if [file] is a xi intf file, and [Error]
     if [file] does not exist. *)
 

@@ -1,7 +1,8 @@
 open OUnit2
 open Frontend
-open Frontend.Lex
-open Frontend.Parse
+open Lex
+open Error
+open Parse
 open TestUtils
 
 (** [char_token_of_int i] is a [CHAR] token carrying a utf8 codepoint
@@ -38,19 +39,7 @@ let lexing_file_test name ~src ~out ~reference =
   name >:: fun _ -> assert_equal expected actual
 
 (* Maps each file in [dir] using [lexing_file_test]. *)
-let lexing_file_tests dir =
-  let make_test file =
-    if Filename.extension file = ".xi" then
-      let name =
-        file |> Filename.remove_extension |> Printf.sprintf "%s/%s" dir
-      in
-      let src = name ^ ".xi" in
-      let out = name ^ ".output" in
-      let reference = name ^ ".lexedsol" in
-      Some (lexing_file_test name ~src ~out ~reference)
-    else None
-  in
-  Sys.readdir dir |> Array.to_list |> List.filter_map make_test
+let lexing_file_tests = map_file_tests lexing_file_test ".lexedsol"
 
 let str_error =
   Position.Error.make ~pos:{ line = 1; column = 1 } InvalidString

@@ -1,12 +1,16 @@
 {
 open Parser
 
-type error_cause =
-  | InvalidChar
-  | InvalidString
-  | InvalidSource
+module Error = struct
+  type cause =
+    | InvalidChar
+    | InvalidString
+    | InvalidSource
+  
+  type t = cause Position.error
+end
 
-type error = error_cause Position.error
+type error = Error.t
 
 exception Error of error
 

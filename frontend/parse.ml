@@ -3,12 +3,13 @@ open Position
 
 type syntax_error = string Position.error
 
-type error =
-  | LexicalError of Lex.error
-  | SyntaxError of syntax_error
+module Error = struct
+  type error =
+    | LexicalError of Lex.error
+    | SyntaxError of syntax_error
+end
 
 type 'a start = (Lexing.lexbuf -> Parser.token) -> Lexing.lexbuf -> 'a
-
 type nonrec 'a result = ('a, error) result
 
 let parse ~start lexbuf =
@@ -20,9 +21,7 @@ let parse ~start lexbuf =
       Error (SyntaxError (Error.make ~pos cause))
 
 let parse_prog = parse ~start:Parser.prog
-
 let parse_source = parse ~start:Parser.source
-
 let parse_intf = parse ~start:Parser.intf
 
 let error_description cause =
@@ -33,7 +32,7 @@ let string_of_error_cause cause =
   Printf.sprintf "error:%s" (error_description cause)
 
 let string_of_error filename = function
-  | LexicalError e -> Lex.string_of_error filename e
+  | LexicalError e -> Lex.Error.to_string filename e
   | SyntaxError e ->
       let { line; column } = Error.position e in
       Printf.sprintf "Syntax error beginning at %s:%d:%d: Syntax Error"
@@ -59,11 +58,11 @@ module Diagnostic = struct
 
   (** [string_of_error e] is the string representing error [e] *)
   let string_of_error = function
-    | LexicalError e -> Lex.Diagnostic.string_of_error e
+    | LexicalError e -> Lex.Diagnostic.Error.to_string e
     | SyntaxError e ->
         let pos = Error.position e in
         e |> Error.cause |> string_of_error_cause
-        |> format_position_error pos
+        |> Position.Error.format pos
 
   (** [print_result out] prints the valid ast S-expression or an error
       message into the [out] out channel. *)

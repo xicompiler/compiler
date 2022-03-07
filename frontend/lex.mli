@@ -1,10 +1,16 @@
+open Core
 include module type of Lexer
 
-open Core
+(** [Error] represents a lexical error *)
+module Error : sig
+  include module type of struct
+    include Error
+  end
 
-val string_of_error : string -> error -> string
-(** [string_of_error filename e] is the cli error message for the
-    lexical error [e] in [filename] *)
+  val to_string : string -> t -> string
+  (** [to_string filename e] is the cli error message for the lexical
+      error [e] in [filename] *)
+end
 
 (** The [Diagnostic] module cotains functions for generating diagnostic
     lexer output. *)
@@ -12,9 +18,11 @@ module Diagnostic : sig
   type nonrec result = (Parser.token, error) result
   (** A [result] is either a token or a lexical error *)
 
-  val string_of_error : error -> string
-  (** [string_of_error_cause e] is the error message corresponding to
-      [e] containing both its cause and position *)
+  module Error : sig
+    val to_string : error -> string
+    (** [to_string e] is the error message corresponding to [e]
+        containing both its cause and position *)
+  end
 
   val read_result : Lexing.lexbuf -> result
   (** [read lexbuf] consumes the next lexeme in [lexbuf] and returns the

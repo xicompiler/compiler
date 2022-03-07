@@ -18,22 +18,9 @@ let parsing_file_test name ~src ~out ~reference =
   with _ -> assert_equal expected actual
 
 (* Maps each file in [dir] using [parsing_file_test]. *)
-let parsing_file_tests dir =
-  let make_test file =
-    let ext = Filename.extension file in
-    if ext = ".xi" || ext = ".ixi" then
-      let name =
-        file |> Filename.remove_extension |> Printf.sprintf "%s/%s" dir
-      in
-      let src = name ^ ext in
-      let out = name ^ ".output" in
-      let reference = name ^ ".parsedsol" in
-      Some (parsing_file_test name ~src ~out ~reference)
-    else None
-  in
-  Sys.readdir dir |> Array.to_list |> List.filter_map make_test
+let parsing_file_tests = map_file_tests parsing_file_test ".parsedsol"
 
-(** [parsing_test_cases] is a list of unit tests for [parse_string]. *)
+(** [parsing_file_test_cases] is a list of unit tests for parsing files. *)
 let parsing_file_test_cases =
   List.flatten
     [
