@@ -65,10 +65,10 @@ let typecheck_diagnostic_file ~lib_dir ~dir ~file =
 
 (** [compile_file file] compiles file at path [file] and is [Ok ()] on
     success or [Error e] on failure, where [e] is an error message. *)
-let compile_file src_path lib_dir =
+let compile_file ?cache src_path lib_dir =
   let f lexbuf =
     lexbuf
-    |> Check.type_check ~lib_dir
+    |> Check.type_check ?cache ~lib_dir
     |> Result.map_error ~f:(Check.Error.to_string src_path)
     |> Result.ignore_m
   in
@@ -79,6 +79,7 @@ open Args
 (** [compile_file_options args file] compiles file [file] with command
     line arguments [args] *)
 let compile_file_options
+    ?cache
     { lex; parse; typecheck; src_dir; out_dir; lib_dir; _ }
     file =
   let src_path = concat ~dir:src_dir file in
@@ -88,15 +89,15 @@ let compile_file_options
   if typecheck then
     ignore
       (typecheck_diagnostic_file ~lib_dir ~dir:out_dir ~file src_path);
-  compile_file src_path lib_dir
+  compile_file ?cache src_path lib_dir
 
 (** [stringify res] is an error message string if [res] is an error *)
 let stringify = function
-  | Ok (Ok ()) -> Ok ()
-  | Ok (Error s) -> Error s
+  | Ok ok -> ok
   | Error e -> Error (File.Xi.Error.to_string e)
 
 let compile args =
+  let cache = String.Table.create () in
   args.files
-  |> List.map ~f:(compile_file_options args)
+  |> List.map ~f:(compile_file_options ~cache args)
   |> List.map ~f:stringify |> Result.combine_errors_unit

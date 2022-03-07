@@ -26,22 +26,36 @@ module Error = struct
 end
 
 type error = Error.t
+type cache = Ast.Toplevel.intf option String.Table.t
 
-let type_check ~lib_dir lexbuf =
-  let find_intf file =
-    let path = Filename.concat lib_dir (Util.File.ixi file) in
-    match Parse.parse_intf_file path with
-    | Ok (Ok sigs) -> Some sigs
-    | Ok (Error e) -> raise (Parse.Exn e)
-    | Error _ -> None
-    (* throw errors here *)
-  in
-  let%bind prog =
-    Parse.parse_prog lexbuf
-    |> Result.map_error ~f:(fun e -> (e :> error))
-  in
-  type_check ~find_intf prog
-  |> Result.map_error ~f:(fun e -> `SemanticError e)
+let parse_intf ~lib_dir intf =
+  let path = Filename.concat lib_dir (Util.File.ixi intf) in
+  match Parse.parse_intf_file path with
+  | Ok (Ok sigs) -> Some sigs
+  | Ok (Error e) -> raise (Parse.Exn e)
+  | Error _ -> None
+
+let find_intf ?cache ~lib_dir intf =
+  let default = parse_intf ~lib_dir in
+  match cache with
+  | Some cache -> Hashtbl.findi_or_add cache intf ~default
+  | None -> default intf
+
+let coerce e = (e :> error)
+
+let parse_prog =
+  Fn.compose (Result.map_error ~f:coerce) Parse.parse_prog
+
+let semantic_error e = `SemanticError e
+let default_lib_dir = "."
+
+let type_check ?cache ?(lib_dir = default_lib_dir) lexbuf =
+  let%bind prog = parse_prog lexbuf in
+  try
+    prog
+    |> type_check ~find_intf:(find_intf ?cache ~lib_dir)
+    |> Result.map_error ~f:semantic_error
+  with Parse.Exn e -> Error (coerce e)
 
 module Diagnostic = struct
   module Error = struct
@@ -61,12 +75,12 @@ module Diagnostic = struct
     | Ok _ -> Printf.fprintf out "%s\n" valid_xi_program
     | Error e -> e |> Error.to_string |> Printf.fprintf out "%s\n"
 
-  let to_channel lexbuf ~lib_dir out =
-    type_check ~lib_dir lexbuf |> print_res out
+  let to_channel lexbuf ?cache ?(lib_dir = default_lib_dir) out =
+    lexbuf |> type_check ?cache ~lib_dir |> print_res out
 
-  let to_file ~lib_dir lexbuf out =
-    Out_channel.with_file ~f:(to_channel lexbuf ~lib_dir) out
+  let to_file ?cache ?(lib_dir = default_lib_dir) lexbuf out =
+    Out_channel.with_file ~f:(to_channel lexbuf ?cache ~lib_dir) out
 
-  let file_to_file ~src ~lib_dir ~out =
-    File.Xi.map_same ~f:(fun buf -> to_file ~lib_dir buf out) src
+  let file_to_file ?cache ?(lib_dir = default_lib_dir) ~src ~out () =
+    File.Xi.map_same ~f:(fun buf -> to_file ?cache ~lib_dir buf out) src
 end
