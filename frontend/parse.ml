@@ -56,7 +56,6 @@ let ast_of_source read lexbuf = Ast.Source (Parser.source read lexbuf)
     [Ast.t]*)
 let ast_of_intf read lexbuf = Ast.Intf (Parser.intf read lexbuf)
 
-let map ~f = File.Xi.map ~source:(f ast_of_source) ~intf:(f ast_of_intf)
 let parse_intf_file = File.map ~f:parse_intf
 
 module Diagnostic = struct
@@ -90,7 +89,9 @@ module Diagnostic = struct
     Out_channel.with_file ~f:(to_channel ~start lexbuf) out
 
   let file_to_file ~src ~out =
-    map ~f:(fun start lexbuf -> to_file ~start lexbuf out) src
+    let source lexbuf = to_file ~start:ast_of_source lexbuf out in
+    let intf lexbuf = to_file ~start:ast_of_intf lexbuf out in
+    File.Xi.map ~source ~intf src
 end
 
 include Parser

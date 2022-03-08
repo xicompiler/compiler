@@ -58,13 +58,6 @@ val parse_intf_file : string -> Ast.Toplevel.intf result File.result
 (** [parse_intf_file src] is the result of parsing the file located at
     [src] *)
 
-val map :
-  f:(Ast.t start -> Lexing.lexbuf -> 'a) -> string -> 'a File.Xi.result
-(** Let [lexbuf] be a lexer buffer created from [file]. Then
-    [map ~f file] is [Ok (f Parse.start lexbuf)] if [file] is a xi
-    source file, [f Parse.intf file] if [file] is a xi intf file, and
-    [Error] if [file] does not exist. *)
-
 (** The [Diagnostic] module cotains functions for generating diagnostic
     parsing output. *)
 module Diagnostic : sig
@@ -82,9 +75,9 @@ module Diagnostic : sig
       start symbol [start] and writes the diagnostic output to file at
       path [out] *)
 
-  val file_to_file : src:string -> out:string -> unit File.Xi.result
+  val file_to_file :
+    src:string -> out:string -> (unit, unit) Either.t File.Xi.result
   (** [file_to_file ~src ~out] writes parsing diagnostic information to
       a file located at path [out], reading from file at path [src]. It
-      yields [Ok ()] on success and [Error e] on failure, where [e] is a
-      string describing the failure. *)
+      yields [Ok ()] on success and [Error e] on failure. *)
 end

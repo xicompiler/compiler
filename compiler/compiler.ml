@@ -40,7 +40,7 @@ let compile_file ?cache ~args file =
     |> Result.map_error ~f:(Check.Error.to_string src_path)
     |> Result.ignore_m
   in
-  File.Xi.map_same ~f src_path
+  File.Xi.map_same_fn ~f src_path
 
 (** [compile_file_options args file] compiles file [file] with command
     line arguments [args] *)

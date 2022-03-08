@@ -57,11 +57,13 @@ let coerce e = (e :> error)
 let parse_prog =
   Fn.compose (Result.map_error ~f:coerce) Parse.parse_prog
 
-let parse_source =
-  Fn.compose (Result.map_error ~f:coerce) Parse.parse_source
+let parse_source lb =
+  Fn.compose (Result.map_error ~f:coerce) Parse.parse_source lb
+  >>| Ast.source
 
-let parse_intf =
-  Fn.compose (Result.map_error ~f:coerce) Parse.parse_intf
+let parse_intf lb =
+  Fn.compose (Result.map_error ~f:coerce) Parse.parse_intf lb
+  >>| Ast.intf
 
 let semantic_error e = `SemanticError e
 
@@ -70,22 +72,6 @@ let type_check ?cache ~deps lexbuf =
   try
     prog
     |> type_check ~find_intf:(find_intf ?cache ~deps)
-    |> Result.map_error ~f:semantic_error
-  with Parse.Exn e -> Error (coerce e)
-
-let type_check_source ?cache ~deps lexbuf =
-  let%bind source = parse_source lexbuf in
-  try
-    source
-    |> type_check_source ~find_intf:(find_intf ?cache ~deps)
-    |> Result.map_error ~f:semantic_error
-  with Parse.Exn e -> Error (coerce e)
-
-let type_check_intf lexbuf =
-  let%bind intf = parse_intf lexbuf in
-  try
-    intf
-    |> type_check_intf ~ctx:Context.empty
     |> Result.map_error ~f:semantic_error
   with Parse.Exn e -> Error (coerce e)
 
@@ -114,5 +100,5 @@ module Diagnostic = struct
     Out_channel.with_file ~f:(to_channel ?cache ~deps lexbuf) out
 
   let file_to_file ?cache ~src ~out ~deps () =
-    File.Xi.map_same ~f:(fun buf -> to_file ?cache ~deps buf out) src
+    File.Xi.map_same_fn ~f:(fun buf -> to_file ?cache ~deps buf out) src
 end

@@ -43,5 +43,5 @@ module Diagnostic : sig
   val file_to_file : src:string -> out:string -> unit File.Xi.result
   (** [file_to_file ~src ~dst] lexes the file at [src] and writes the
       results to file at path [out]. It yields [Ok ()] on success and
-      [Error msg] on failure. *)
+      [Error e] on failure. *)
 end

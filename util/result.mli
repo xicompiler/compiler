@@ -13,7 +13,15 @@ module Lazy : sig
 end
 
 val join_error : ('a, ('a, 'err) result) result -> ('a, 'err) result
-(** [join_error rr] is [e] if [r] is [Error e] and [r] otherwise*)
+(** [join_error rr] is [e] if [r] is [Error e] and [r] otherwise *)
+
+val map_either :
+  ok:('a -> 'b) ->
+  error:('c -> 'd) ->
+  ('a, 'c) result ->
+  ('b, 'd) result
+(** [map_either ~ok ~error r] is [Ok (ok o)] if [r] is [Ok o] and
+    [Error (error e)] if [r] is [Error e]. *)
 
 val compose_ok : ('a -> 'b) -> 'a -> ('b, 'err) result
 (** [compose_ok f x] is [Ok (f x)]*)
