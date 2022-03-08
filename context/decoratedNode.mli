@@ -81,7 +81,11 @@ module Stmt : sig
   include S with type typ = stmt
 
   val assert_unit : 'a t -> unit Positioned.result
-  (** [assert_unit stmt] is [Ok ()] if [expr] has the unit type and
+  (** [assert_unit stmt] is [Ok ()] if [stmt] has the unit type and
+      [Error StmtMismatch] otherwise *)
+
+  val assert_void : 'a t -> unit Positioned.result
+  (** [assert_void stmt] is [Ok ()] if [stmt] has the unit type and
       [Error StmtMismatch] otherwise *)
 
   val make_unit : 'a -> ctx:Ctx.t -> pos:Position.t -> 'a t
