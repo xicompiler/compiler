@@ -4,7 +4,10 @@ open Util.Test
 
 (** [deps] are the dependencies used for testing *)
 let deps : Check.dependencies =
-  { std_dir = Util.File.stdlib; lib_dir = "./test/typcheck/interfaces" }
+  {
+    std_dir = Util.File.stdlib;
+    lib_dir = "./test/typecheck/interfaces";
+  }
 
 (** [typing_file_test name ~src ~out ~reference] tests typechecking
     [src], comparing the resulting file in [out] with [reference] *)
@@ -23,8 +26,8 @@ let typing_file_tests =
 let typing_file_test_cases =
   List.flatten
     [
-      typing_file_tests "./test/typcheck";
-      typing_file_tests "./test/typcheck/autograder";
+      typing_file_tests "./test/typecheck";
+      typing_file_tests "./test/typecheck/autograder";
     ]
 
 let typing_suite =

@@ -12,6 +12,11 @@ let map_either ~ok ~error = function
   | Ok o -> Ok (ok o)
   | Error e -> Error (error e)
 
+let transpose_either = function
+  | First (Ok ok) -> Ok (First ok)
+  | Second (Ok ok) -> Ok (Second ok)
+  | First (Error _ as err) | Second (Error _ as err) -> err
+
 let compose_ok f x = Ok (f x)
 let join_error = function Error e -> e | Ok _ as ok -> ok
 let ( >>? ) r f = Core.Result.map_error r ~f
