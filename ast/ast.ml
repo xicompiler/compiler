@@ -518,6 +518,17 @@ let fold_intf_map ~f ~ctx sigs = fold_intf ~ctx sigs >>| f
     [type_error] describes the type error otherwise *)
 let intf_context = fold_intf_map ~f:fst
 
+let fold_sig ctx signode =
+  let signature = PosNode.get signode in
+  let pos = PosNode.position signode in
+  get_sig_context ~pos ~ctx ~f:Context.add_fn_decl signature
+
+(** [first_pass_sigs ~ctx sigs] is [Ok ctx'] where [ctx'] is [ctx]
+    updated with the signature in [sigs], or [Error type_error] where
+    [type_error] describes the type error, otherwise. *)
+let first_pass_intf ~ctx intf =
+  List.fold_result ~init:ctx ~f:fold_sig intf
+
 (** [check_use ~find_intf ~ctx use] is [Ok use'] where [use'] is the
     decorated node of [use], or [Error type_error] where [type_error]
     describes the type error otherwise *)
@@ -526,6 +537,7 @@ let check_use ~find_intf ~ctx use =
   let error () = Context.Error.unbound_intf id in
   let intf = find_intf (PosNode.get id) in
   let%bind intf = Lazy.of_option ~error intf in
+  let%bind ctx = first_pass_intf ~ctx intf in
   let%map ctx = intf_context ~ctx intf in
   DecNode.Toplevel.of_pos_node ~ctx ~node:use id
 
@@ -568,17 +580,6 @@ let type_check_source ?(find_intf = find_intf_default) source =
   let%map definitions = check_defs ~ctx source.definitions in
   let source : Decorated.Toplevel.source = { uses; definitions } in
   Decorated.Source source
-
-let fold_sig ctx signode =
-  let signature = PosNode.get signode in
-  let pos = PosNode.position signode in
-  get_sig_context ~pos ~ctx ~f:Context.add_fn_decl signature
-
-(** [first_pass_sigs ~ctx sigs] is [Ok ctx'] where [ctx'] is [ctx]
-    updated with the signature in [sigs], or [Error type_error] where
-    [type_error] describes the type error, otherwise. *)
-let first_pass_intf ~ctx intf =
-  List.fold_result ~init:ctx ~f:fold_sig intf
 
 (** [type_check_intf ctx sigs] is [Ok lst] where [lst] is a list of
     decorated nodes of [sigs], or [Error type_error] where [type_error]
