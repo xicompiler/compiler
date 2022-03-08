@@ -54,9 +54,9 @@ val parse_intf : Lexing.lexbuf -> Ast.Toplevel.intf result
     [Error SyntaxError] if [start lexbuf] raises a syntax error, and
     [Error LexicalError] if [start lexbuf] raises a lexical error. *)
 
-val parse_intf_file : string -> Ast.Toplevel.intf result File.result
-(** [parse_intf_file src] is the result of parsing the file located at
-    [src] *)
+val map : start:'a start -> f:('a -> 'b) -> Lexing.lexbuf -> 'b result
+(** [map ~start ~f buf] is applies [f] to the AST parsed from [buf]
+    using start symbol [start] *)
 
 (** The [Diagnostic] module cotains functions for generating diagnostic
     parsing output. *)
@@ -80,4 +80,27 @@ module Diagnostic : sig
   (** [file_to_file ~src ~out] writes parsing diagnostic information to
       a file located at path [out], reading from file at path [src]. It
       yields [Ok ()] on success and [Error e] on failure. *)
+end
+
+(** [File] contains functions for parsing files *)
+module File : sig
+  val parse_intf : string -> Ast.Toplevel.intf result File.result
+  (** [parse_intf_file src] is the result of parsing the file located at
+      [src], not checking the file extension *)
+
+  type 'a source = Ast.Toplevel.source -> 'a
+  (** An ['a source] maps [Ast.Toplevel.source] to ['a] *)
+
+  type 'a intf = Ast.Toplevel.intf -> 'a
+  (** An ['a source] maps [Ast.Toplevel.source] to ['a] *)
+
+  val map_same :
+    source:'a source ->
+    intf:'a intf ->
+    string ->
+    'a result File.Xi.result
+  (** Same as [map] but both [source] and [intf] return the same type *)
+
+  val map_ast : f:(Ast.t -> 'a) -> string -> 'a result File.Xi.result
+  (** [map_ast ~f file] applies [f] to the AST parsed from [file]*)
 end

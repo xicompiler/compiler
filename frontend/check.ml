@@ -41,7 +41,7 @@ let get_path { lib_dir; std_dir } intf =
   else Util.File.ixi_of_dir ~dir:std_dir intf
 
 let parse_intf ~deps intf =
-  match Parse.parse_intf_file (get_path deps intf) with
+  match Parse.File.parse_intf (get_path deps intf) with
   | Ok (Ok sigs) -> Some sigs
   | Ok (Error e) -> raise (Parse.Exn e)
   | Error _ -> None

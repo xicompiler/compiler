@@ -23,6 +23,12 @@ val map_either :
 (** [map_either ~ok ~error r] is [Ok (ok o)] if [r] is [Ok o] and
     [Error (error e)] if [r] is [Error e]. *)
 
+val transpose_either :
+  (('a, 'err) result, ('b, 'err) result) Either.t ->
+  (('a, 'b) Either.t, 'err) result
+(** [transpose_either] maps a result wrapped in an either to an either
+    wrapped in a result. *)
+
 val compose_ok : ('a -> 'b) -> 'a -> ('b, 'err) result
 (** [compose_ok f x] is [Ok (f x)]*)
 
