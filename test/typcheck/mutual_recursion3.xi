@@ -1,10 +1,10 @@
 a(b : int) : bool {
-    return b(false) > 0
+  return b(false) > 0
 }
 
 b(a : bool) : int {
-    if (a(1)) {
-        return 1;
-    }
-    return 0;
+  if(a(1)) {
+    return 1;
+  }
+  return 0;
 }

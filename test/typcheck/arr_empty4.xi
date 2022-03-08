@@ -1,5 +1,5 @@
 main() {
-    a : int[] = {};
-    b : bool[] = {};
-    c : int[] = a + b;
+  a : int[] = {};
+  b : bool[] = {};
+  c : int[] = a + b;
 }

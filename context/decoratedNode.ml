@@ -88,6 +88,7 @@ module Stmt = struct
   let make_unit = make ~typ:`Unit
   let make_void = make ~typ:`Void
   let assert_unit stmt = assert_eq ~expect:`Unit stmt
+  let assert_void stmt = assert_eq ~expect:`Void stmt
   let lub s1 s2 = Stmt.lub (typ s1) (typ s2)
 end
 

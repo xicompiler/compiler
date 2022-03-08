@@ -11,3 +11,9 @@ val map_file_tests :
   test list
 (** [map_file_tests f ref_ext dir] tests [f] on all files in [dir],
     outputting files with extension [ref_ext] *)
+
+val map_file_tests_no_ixi :
+  (string -> src:string -> out:string -> reference:string -> test) ->
+  string ->
+  string ->
+  test list

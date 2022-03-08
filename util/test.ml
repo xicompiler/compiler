@@ -18,3 +18,18 @@ let map_file_tests f ref_ext dir =
     else None
   in
   Sys.readdir dir |> Array.to_list |> Stdlib.List.filter_map make_test
+
+let map_file_tests_no_ixi f ref_ext dir =
+  let make_test file =
+    let ext = Filename.extension file in
+    if ext = ".xi" then
+      let name =
+        file |> Filename.remove_extension |> Printf.sprintf "%s/%s" dir
+      in
+      let src = name ^ ext in
+      let out = name ^ ".output" in
+      let reference = name ^ ref_ext in
+      Some (f name ~src ~out ~reference)
+    else None
+  in
+  Sys.readdir dir |> Array.to_list |> Stdlib.List.filter_map make_test

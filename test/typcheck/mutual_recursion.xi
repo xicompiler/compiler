@@ -1,10 +1,10 @@
 foo() : bool {
-    return bar() > 0
+  return bar() > 0
 }
 
 bar() : int {
-    if (foo()) {
-        return true;
-    }
-    return false;
+  if (foo()) {
+    return -1;
+  }
+  return 1;
 }

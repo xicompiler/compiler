@@ -16,6 +16,10 @@ val bound : id -> error
 (** [bound id] is an [error] indicating that [id] is already bound in
     the context *)
 
+val unbound : id -> error
+(** [unbound id] is an [error] indicating that [id] is not bound in the
+    context *)
+
 val fn_mismatch : id -> error
 (** [fn_mismatch id] is an [error] indicating that that declaration and
     implementation of function named [id] do not match *)
