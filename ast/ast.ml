@@ -433,9 +433,13 @@ let type_check_function ~ctx ~pos signature block =
     get_sig_context ~pos ~ctx ~f:Context.add_fn_defn signature
   in
   let%bind fn_ctx = get_fn_context ~ctx ~pos signature in
-  let%map block, typ = type_check_stmts ~ctx:fn_ctx block in
+  let%bind block, typ = type_check_stmts ~ctx:fn_ctx block in
   let fn_defn = Decorated.Toplevel.FnDefn (signature, block) in
-  DecNode.Toplevel.make ~ctx ~pos fn_defn
+  match signature.types with
+  | [] -> Ok (DecNode.Toplevel.make ~ctx ~pos fn_defn)
+  | _ ->
+      assert_void typ >>? pos >>| fun () ->
+      DecNode.Toplevel.make ~ctx ~pos fn_defn
 
 (** [type_check_global_decl ~ctx ~pos id typ] is [Ok gd] where [gd] is
     GlobalDecl ([id], [typ]) decorated, or [Error type_error] where
