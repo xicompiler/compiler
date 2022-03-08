@@ -16,6 +16,7 @@ module Error : sig
 end
 
 type error = Error.t
+type nonrec result = (Ast.Decorated.t, error) result
 
 type cache = Ast.Toplevel.intf option String.Table.t
 (** [cache] caches interfaces used in type-checking *)
@@ -27,26 +28,18 @@ type dependencies = {
 (** [dependecies] represents a type for representing the external
     dependencies for a fil e*)
 
-val type_check :
-  ?cache:cache ->
-  deps:dependencies ->
-  Lexing.lexbuf ->
-  (Ast.Decorated.t, error) result
+val type_check : ?cache:cache -> deps:dependencies -> Ast.t -> result
 (** [type_check ~cache { lib_dir; std_dir } lb] returns [Ok ast] where
     [ast] is the decorated ast of [lb], or [Error err] where [err] is a
     parsing error or type error. If [cache] is [Some tbl], AST nodes are
     memoized in [tbl]. If not provided, [lib_dir] defaults to ".".
     [std_dir] is used to resolve references to the standard library. *)
 
-module Diagnostic : sig
-  val to_file :
-    ?cache:cache -> deps:dependencies -> Lexing.lexbuf -> string -> unit
-  (** [to_file ~deps:{ lib_dir; std_dir } lexbuf out] checks [lexbuf]
-      and writes the results to file at path [out]. If [cache] is
-      [Some tbl], AST nodes are memoized in [tbl]. If not provided,
-      [lib_dir] defaults to ".". [std_dir] is used to resolve references
-      to the standard library.*)
+val type_check_file :
+  ?cache:cache -> deps:dependencies -> string -> result File.Xi.result
+(** same as [type_check] but takes a filename as argument *)
 
+module Diagnostic : sig
   val file_to_file :
     ?cache:cache ->
     src:string ->

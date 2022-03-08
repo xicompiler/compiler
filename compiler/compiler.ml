@@ -1,4 +1,5 @@
 open Core
+open Result.Let_syntax
 open Frontend
 open Util.File
 module Args = Args
@@ -34,13 +35,11 @@ let deps_of_args { lib_dir; std_dir; _ } : Check.dependencies =
     message. *)
 let compile_file ?cache ~args file =
   let src_path = Filename.concat args.src_dir file in
-  let f lexbuf =
-    lexbuf
-    |> Check.type_check ?cache ~deps:(deps_of_args args)
-    |> Result.map_error ~f:(Check.Error.to_string src_path)
-    |> Result.ignore_m
-  in
-  File.Xi.map_same_fn ~f src_path
+  let deps = deps_of_args args in
+  let%map r = Check.type_check_file ?cache ~deps src_path in
+  r
+  |> Result.map_error ~f:(Check.Error.to_string src_path)
+  |> Result.ignore_m
 
 (** [compile_file_options args file] compiles file [file] with command
     line arguments [args] *)
