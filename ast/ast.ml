@@ -165,7 +165,7 @@ and type_check_length ~ctx ~pos node =
   let typ = DecNode.Expr.typ dec in
   let e = Decorated.Expr.Length dec in
   assert_array typ >>? pos >>| fun () ->
-  DecNode.Expr.make ~ctx ~typ ~pos e
+  DecNode.Expr.make ~ctx ~typ:`Int ~pos e
 
 (** [type_check_index ~ctx ~pos e1 e2] is [Ok idx] where [idx] is Index
     ([e1], [e2]) decorated, or [Error type_error] where [type_error]
