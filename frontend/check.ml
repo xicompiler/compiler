@@ -104,6 +104,7 @@ module Diagnostic = struct
     Out_channel.with_file ~f:(fun oc -> print_result ~out:oc r) out
 
   let file_to_file ?cache ~src ~out ~deps () =
-    let f = Fn.compose (print_to_file ~out) (type_check ?cache ~deps) in
-    Result.ignore_m (Parse.File.map_ast ~f src)
+    let r = type_check_file ?cache ~deps src in
+    Result.iter ~f:(print_to_file ~out) r;
+    Result.ignore_m r
 end
