@@ -1,3 +1,3 @@
 main () {
-    a : int[] = {1,2,true}
+  a : int[] = {1, 2, true}
 }

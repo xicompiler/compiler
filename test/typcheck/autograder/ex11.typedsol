@@ -1,1 +1,1 @@
-2:16 error:Expected int, but found bool
+2:9 error:Expression mismatch, types Int and Bool

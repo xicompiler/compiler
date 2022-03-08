@@ -1,3 +1,3 @@
 main() {
-    b : bool = eof()
+  b : bool = eof()
 }

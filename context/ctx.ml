@@ -19,6 +19,7 @@ type t = {
 let init context = { context; ret = `Unit }
 
 let empty = init Map.empty
+
 let pr_int_array = Bound.fn_decl ~arg:Tau.int_array ()
 
 (** [io_bindings] describe the context created by the [io] module*)
@@ -36,6 +37,7 @@ let io_bindings =
 let of_list bindings = bindings |> Map.of_alist_exn |> init
 
 let io = of_list io_bindings
+
 let int_bool = `Tuple [ `Int; `Bool ]
 
 let conv_bindings =
@@ -45,12 +47,15 @@ let conv_bindings =
   ]
 
 let conv = of_list conv_bindings
+
 let ret { ret } = ret
+
 let with_ret ~ret ctx = { ctx with ret = (ret :> term) }
 
 let find ~id { context } =
   let key = Node.Position.get id in
-  key |> Map.find context |> Lazy.of_option ~error:(fun () -> bound id)
+  key |> Map.find context
+  |> Lazy.of_option ~error:(fun () -> unbound id)
 
 let find_var ~id ctx =
   match%bind find ~id ctx with
@@ -123,6 +128,7 @@ let of_args f ~id ~arg ~ret =
   f ~id ~fn
 
 let add_fn_decl ~id ~arg ~ret = of_args add_fn_decl ~id ~arg ~ret
+
 let add_fn_defn ~id ~arg ~ret = of_args add_fn_defn ~id ~arg ~ret
 
 (** [of_list f ~id ~arg:args ~ret:rets] is [f ~id ~arg ~ret] where [arg]
@@ -134,4 +140,5 @@ let of_list f ~id ~arg ~ret =
   f ~id ~arg ~ret
 
 let add_fn_decl_list = of_list add_fn_decl
+
 let add_fn_defn_list = of_list add_fn_defn

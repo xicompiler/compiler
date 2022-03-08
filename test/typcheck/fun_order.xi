@@ -1,7 +1,7 @@
 main() {
-    foo()
+  foo()
 }
 
-foo () {
-    
+foo() {
+  
 }
