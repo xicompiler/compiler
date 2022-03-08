@@ -1,18 +1,11 @@
 open Core
-include Factory.Make (Type.Node.Expr) (Type.Node.Stmt)
+open Context
+open Node
 
-module Error = struct
-  type t = {
-    cause : Type.error;
-    pos : Position.t;
-  }
+include
+  Factory.Make (Decorated.Expr) (Decorated.Stmt) (Decorated.Toplevel)
 
-  let make ~pos cause = { cause; pos }
-  let cause { cause } = cause
-  let pos { pos } = pos
-
-  type nonrec 'a result = ('a, t) result
-end
+module Error = Type.Error.Positioned
 
 type expr_result = Expr.node Error.result
 type stmt_result = Stmt.node Error.result

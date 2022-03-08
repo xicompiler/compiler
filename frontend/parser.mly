@@ -4,7 +4,45 @@
   open Ast
   open Expr
   open Stmt
+  open Toplevel
   open Position
+
+  let node ~pos t = Pos.make ~pos:(get_position pos) t
+
+  let int_err pos i = raise (Exception.InvalidIntLiteral (get_position pos, i))
+
+  type unsafe_int =
+    | SafeInt of Int64.t
+    | IntBound of string
+
+  type unsafe_primitive =
+    | SafePrimitive of primitive
+    | UnsafeInt of unsafe_int
+  
+  type unsafe_expr =
+    | SafeExpr of expr
+    | UnsafePrimitive of unsafe_primitive
+  
+  let int_of_unsafe ~pos = function
+    | SafeInt i -> i
+    | IntBound s -> int_err pos s
+
+  let primitive_of_unsafe ~pos = function
+    | SafePrimitive p -> p
+    | UnsafeInt i -> Int (int_of_unsafe ~pos i)
+
+  let expr_of_unsafe ~pos = function
+    | SafeExpr p -> p
+    | UnsafePrimitive p -> Primitive (primitive_of_unsafe ~pos p)
+  
+  let enode_of_unsafe ~pos e = node ~pos (expr_of_unsafe ~pos e)
+
+  let parse_int ~pos ~neg s =
+    try
+      let i = if neg then "-" ^ s else s in
+      SafeInt (Int64.of_string i)
+    with _ ->
+      int_err pos s
 %}
 
 (* Keywords *)
@@ -66,9 +104,9 @@
 (* A primitive type *)
 %token <Type.Tau.primitive> TYPE
 
-%start <Ast.t> program
-%start <Ast.t> source
-%start <Ast.t> interface
+%start <Ast.t> prog
+%start <Ast.Toplevel.source> source
+%start <Ast.Toplevel.intf> intf
 
 %left OR
 %left AND
@@ -85,8 +123,8 @@
 (** [node(TERM)] is the pair [(e, start)] where [TERM] produces [e] and 
     [startpos] is the start position of [TERM] *)
 node(TERM):
-  | e = TERM
-    { Pos.make ~pos:(get_position $startpos) e }
+  | t = TERM
+    { node $startpos t }
   ;
 
 (** [enode] produces a node wrapping an [expr] *)
@@ -154,42 +192,47 @@ bracketed(X):
   | NOT { LogicalNeg }
   ;
 
-(** A program is either a source or interface *)
-program:
-  | s = source { s }
-  | i = interface { i }
+(** A prog is either a source or intf *)
+prog:
+  | s = source { Source s }
+  | i = intf { Intf i }
   ;
 
 (** A [source] derives a source file in  Xi, followed by EOF *)
 source:
   | s = source_file; EOF
-    { Source s }
+    { s }
   ;
 
-(** An [interface] derives an interface file in Xi, followed by EOF  *)
-interface:
-  | signatures = signature+; EOF
-    { Interface signatures }
+(** An [intf] derives an intf file in Xi, followed by EOF  *)
+intf:
+  | signatures = node(signature)+; EOF
+    { signatures }
   ;
 
 (** A [source_file] derives a source file in  Xi *)
 source_file:
   | definitions = definitions
     { { uses = []; definitions } }
-  | uses = use+; definitions = definitions
+  | uses = node(use)+; definitions = definitions
     { { uses; definitions } }
+  ;
+
+id:
+  | id = node(ID)
+    { id }
   ;
 
 (** [use] derives the top level statement [use id] *)
 use:
-  | USE; id = semi(ID)
+  | USE; id = semi(id)
     { id }
   ;
 
 definitions:
-  | global = global_semi; definitions = definitions
+  | global = node(global_semi); definitions = definitions
     { global :: definitions }
-  | fn_defn = fn_defn; definitions = definition*
+  | fn_defn = node(fn_defn); definitions = node(definition)*
     { fn_defn :: definitions }
   ;
 
@@ -213,11 +256,23 @@ global:
   | decl = decl
     { GlobalDecl decl }
   | decl = decl; GETS; v = primitive
-    { let (id, typ) = decl in GlobalInit (id, typ, v) }
+    { 
+      let (id, typ) = decl in
+      let v = primitive_of_unsafe ~pos:$startpos(v) v in
+      GlobalInit (id, typ, v)
+    }
+  | decl = decl; GETS; neg = MINUS; i = INT
+    {
+      let (id, typ) = decl in 
+      let pos = $startpos(neg) in
+      let i = parse_int ~pos ~neg:true i in
+      let v = Int (int_of_unsafe ~pos i) in
+      GlobalInit (id, typ, v)
+    }
   ;
 
 decl:
-  | id = ID; COLON; typ = typ
+  | id = id; COLON; typ = typ
     { (id, typ) }
   ;
 
@@ -237,49 +292,78 @@ array_init:
   ;
 
 index(lhs):
-  | e1 = node(lhs); e2 = bracketed(enode)
-    { (e1, e2) }
+  | e1 = lhs; e2 = bracketed(enode)
+    { (enode_of_unsafe ~pos:$startpos e1, e2) }
   ;
 
 expr:
+  | e = bop_expr
+    { expr_of_unsafe ~pos:$startpos(e) e }
+  ;
+
+bop_expr:
   | e1 = enode; bop = binop; e2 = enode
-    { Bop (bop, e1, e2) }
+    { SafeExpr (Bop (bop, e1, e2)) }
   | e = uop_expr
     { e }
   ;
 
 uop_expr:
-  | uop = unop; e = node(uop_expr)
-    { Uop (uop, e) }
+  | uop = unop; e = uop_expr
+    {
+      let pos = $startpos(e) in
+      match uop, e with
+      | IntNeg, SafeExpr (Primitive (Int i)) ->
+        if Int64.is_negative i then
+         SafeExpr (Uop (uop, (enode_of_unsafe ~pos e)))
+        else
+          UnsafePrimitive (UnsafeInt (SafeInt (Int64.neg i)))
+      | IntNeg, UnsafePrimitive (UnsafeInt (IntBound _)) ->
+          UnsafePrimitive (UnsafeInt (SafeInt (Int64.min_value)))
+      | _ -> 
+         SafeExpr (Uop (uop, (enode_of_unsafe ~pos e)))
+    }
   | e = call_expr
     { e }
   ;
 
 call_expr:
   | index = index(call_expr)
-    { Index index }
+    { SafeExpr (Index index) }
   | e = parens(expr)
-    { e }
+    { SafeExpr e }
   | v = primitive
-    { Primitive v }
+    { UnsafePrimitive v }
   | LBRACE; array = array
-    { Array (Array.of_list array) }
+    { SafeExpr (Array (Array.of_list array)) }
   | s = STRING
-    { String s }
+    { SafeExpr (String s) }
   | LENGTH; e = parens(enode)
-    { Length e }
+    { SafeExpr (Length e) }
   | e = array_assign_expr
-    { e }
+    { SafeExpr e }
   ;
 
 primitive:
-  | i = INT
-    { Int i }
+  | i = unsafe_int
+    { UnsafeInt i }
   | b = BOOL
-    { Bool b }
+    { SafePrimitive (Bool b) }
   | c = CHAR
-    { Char c }
-  ; 
+    { SafePrimitive (Char c) }
+  ;
+
+unsafe_int:
+  | i = INT
+    {
+      let pos = $startpos in
+      try
+        parse_int ~pos ~neg:false i
+      with _ ->
+        let _ = parse_int ~pos ~neg:true i in
+        IntBound i
+    }
+  ;
 
 array:
   | e = enode?; RBRACE
@@ -289,7 +373,7 @@ array:
   ;
 
 call:
-  | id = ID; args = parens(enodes);
+  | id = id; args = parens(enodes);
     { (id, args) }
   ;
 
@@ -298,7 +382,7 @@ call:
 array_assign_expr:
   | call = call
     { FnCall call }
-  | id = ID
+  | id = id
     { Id id }
   ;
 
@@ -306,9 +390,9 @@ array_assign_expr:
     [e1[e2] = e3] *)
 array_assign_lhs:
   | index = index(array_assign_lhs)
-    { Index index }
+    { SafeExpr (Index index) }
   | e = array_assign_expr
-    { e }
+    { SafeExpr e }
 
 fn:
   | signature = signature; body = block
@@ -316,7 +400,7 @@ fn:
   ;
 
 signature:
-  | id = ID; LPAREN; params = params; RPAREN; types = loption(types)
+  | id = id; LPAREN; params = params; RPAREN; types = loption(types)
     { { id; params; types } }
   ;
 
@@ -372,9 +456,9 @@ semicolon_terminated:
     { VarDecl decl }
   | decl = decl; GETS; e = enode
     { let (id, typ) = decl in VarInit (id, typ, e) }
-  | id = ID; COLON; init = array_init
+  | id = id; COLON; init = array_init
     { let (typ, es) = init in ArrayDecl (id, typ, es) }
-  | id = ID; GETS; e = enode
+  | id = id; GETS; e = enode
     { Assign (id, e) }
   | index = index(array_assign_lhs); GETS; e3 = enode
     { let (e1, e2) = index in ArrAssign (e1, e2, e3) }

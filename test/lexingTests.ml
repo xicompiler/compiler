@@ -1,7 +1,9 @@
 open OUnit2
 open Frontend
-open Frontend.Lex
-open Frontend.Parse
+open Lex
+open Error
+open Parse
+open Util.Test
 
 (** [char_token_of_int i] is a [CHAR] token carrying a utf8 codepoint
     with code [i]. *)
@@ -27,37 +29,23 @@ let lexing_test_ok test_name input expected =
 let lexing_test_err test_name input expected =
   lexing_test test_name input (List.map Result.error expected)
 
-(** [file_contents in_file] is a string containing the contents of
-    [in_file]. *)
-let file_contents in_file =
-  let ch = open_in in_file in
-  let s = really_input_string ch (in_channel_length ch) in
-  close_in ch;
-  s
-
 (** [lexing_file_test name ~src ~out ~reference] constructs an OUnit
     test with name [name] asserting that following [to_file ~src ~out],
     the contents of [out] and [reference] are equal. *)
 let lexing_file_test name ~src ~out ~reference =
   let expected = file_contents reference in
-  Result.get_ok (Lex.Diagnostic.file_to_file ~src ~out);
+  ignore (Lex.Diagnostic.file_to_file ~src ~out);
   let actual = file_contents out in
   name >:: fun _ -> assert_equal expected actual
 
 (* Maps each file in [dir] using [lexing_file_test]. *)
-let lexing_file_tests dir =
-  let make_test file =
-    if Filename.extension file = ".xi" then
-      let name =
-        file |> Filename.remove_extension |> Printf.sprintf "%s/%s" dir
-      in
-      let src = name ^ ".xi" in
-      let out = name ^ ".output" in
-      let reference = name ^ ".lexedsol" in
-      Some (lexing_file_test name ~src ~out ~reference)
-    else None
-  in
-  Sys.readdir dir |> Array.to_list |> List.filter_map make_test
+let lexing_file_tests = map_file_tests lexing_file_test ".lexedsol"
+
+let str_error =
+  Position.Error.make ~pos:{ line = 1; column = 1 } InvalidString
+
+let char_error =
+  Position.Error.make ~pos:{ line = 1; column = 1 } InvalidChar
 
 (** [lexing_test_cases] is a list of unit tests for [lex_string]. *)
 let lexing_test_cases =
@@ -76,14 +64,11 @@ let lexing_test_cases =
       [ char_token_of_int 0x5c ];
     lexing_test_ok "test quote" "'\"' '\\x{22}'"
       [ char_token_of_char '\"'; char_token_of_int 0x22 ];
-    lexing_test_err "test open string" "\""
-      [ { cause = InvalidString; position = { line = 1; column = 1 } } ];
-    lexing_test_err "test open char" "'"
-      [ { cause = InvalidChar; position = { line = 1; column = 1 } } ];
-    lexing_test_err "test invalid unicode" "'\\k'"
-      [ { cause = InvalidChar; position = { line = 1; column = 1 } } ];
+    lexing_test_err "test open string" "\"" [ str_error ];
+    lexing_test_err "test open char" "'" [ char_error ];
+    lexing_test_err "test invalid unicode" "'\\k'" [ char_error ];
     lexing_test_err "test invalid unicode" "'\\x{FFFFFF}'"
-      [ { cause = InvalidChar; position = { line = 1; column = 1 } } ];
+      [ char_error ];
   ]
 
 (** [lexing_test_cases] is a list of unit tests for our test files. *)

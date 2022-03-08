@@ -1,13 +1,19 @@
-(** An [error_caise] is either the presence of an invalid character or
-    string literal, or an illegal character in the source file *)
-type error_cause =
-  | InvalidChar
-  | InvalidString
-  | InvalidSource
+(** [Error] represents a lexical error *)
+module Error : sig
+  (** An [error_caise] is either the presence of an invalid character or
+      string literal, or an illegal character in the source file *)
+  type cause =
+    | InvalidChar
+    | InvalidString
+    | InvalidSource
 
-type error = error_cause Position.error
-(** An [error] describes the cause and position of an error encountered
-    during lexing *)
+  type t = cause Position.error
+  (** An [t] describes the cause and position of an error encountered
+      during lexing *)
+end
+
+type error = Error.t
+(** [error] is an alias for [Error.t]*)
 
 exception Error of error
 (** An [Error] is a lexical error with an associated position where the

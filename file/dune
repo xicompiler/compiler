@@ -1,0 +1,5 @@
+(library
+ (name file)
+ (preprocess
+  (pps ppx_jane))
+ (libraries core))

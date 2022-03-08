@@ -6,6 +6,9 @@ build:
 test: build
 	dune exec ./test/main.exe
 
+test-cli:
+	test/cli/test-cli
+
 clean: bisect-clean
 	dune clean
 	find . -name '*.lexed' -delete
@@ -25,4 +28,4 @@ bisect-clean:
 	rm -rf _coverage bisect*.coverage
 
 zip: clean
-	zip zak33.zip -r . -x@exclude.lst
+	zip bfs45_dc854_vmj5_zak33.zip -r . -x@exclude.lst

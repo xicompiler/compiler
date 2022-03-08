@@ -1,9 +1,7 @@
 open Core
 open Abstract
 
-module Make (Ex : Node.S) (St : Node.S) = struct
-  type id = string
-
+module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
   module Expr = struct
     include Op
     include Primitive
@@ -29,8 +27,6 @@ module Make (Ex : Node.S) (St : Node.S) = struct
   type expr = Expr.t
 
   module Stmt = struct
-    type decl = id * Type.tau
-
     module Node = St
 
     type t =
@@ -54,37 +50,42 @@ module Make (Ex : Node.S) (St : Node.S) = struct
 
   type stmt = Stmt.t
 
-  type signature = {
-    id : id;
-    params : Stmt.decl list;
-    types : Type.tau list;
-  }
+  module Toplevel = struct
+    module Node = Tp
 
-  type fn = signature * Stmt.block
+    type fn = signature * Stmt.block
 
-  type definition =
-    | FnDefn of fn
-    | GlobalDecl of Stmt.decl
-    | GlobalInit of id * Type.tau * Expr.primitive
+    type definition =
+      | FnDefn of fn
+      | GlobalDecl of decl
+      | GlobalInit of id * Type.tau * Expr.primitive
 
-  type source = {
-    uses : id list;
-    definitions : definition list;
-  }
+    type node = definition Node.t
 
-  type interface = signature list
+    type source = {
+      uses : id Node.t list;
+      definitions : node list;
+    }
+
+    type intf = signature Node.t list
+  end
 
   type t =
-    | Source of source
-    | Interface of interface
+    | Source of Toplevel.source
+    | Intf of Toplevel.intf
+  [@@deriving variants]
+
+  (** [sexp_of_id id] is [Sexp.Atom id]*)
+  let sexp_of_id id = Sexp.Atom (Node.Position.get id)
 
   open Expr
   open Stmt
+  open Toplevel
+
+  let int_bound = "9223372036854775808"
 
   (** [string_of_unop unop] is the string representation of [unop]. *)
-  let string_of_unop = function
-    | IntNeg -> "-"
-    | LogicalNeg -> "!"
+  let string_of_unop = function IntNeg -> "-" | LogicalNeg -> "!"
 
   let string_of_binop = function
     | Mult -> "*"
@@ -101,9 +102,6 @@ module Make (Ex : Node.S) (St : Node.S) = struct
     | Neq -> "!="
     | And -> "&"
     | Or -> "|"
-
-  (** [sexp_of_id id] is [Sexp.Atom id]*)
-  let sexp_of_id id = Sexp.Atom id
 
   (** [sexp_of_gets lhs rhs] is the s-expression serialization of the
       statement [lhs = rhs] *)
@@ -123,13 +121,6 @@ module Make (Ex : Node.S) (St : Node.S) = struct
   let sexp_of_string s =
     Sexp.Atom (s |> Unicode.escape_string |> Printf.sprintf "\"%s\"")
 
-  (** [sexp_of_primitive v] is the s-expression serialization of literal
-      value [v] *)
-  let sexp_of_primitive = function
-    | Char c -> sexp_of_char c
-    | Int i -> Sexp.Atom i
-    | Bool b -> Bool.sexp_of_t b
-
   (** [sexp_of_expr e] is the s-expression serialization of expression
       [e] *)
   let rec sexp_of_expr = function
@@ -143,9 +134,23 @@ module Make (Ex : Node.S) (St : Node.S) = struct
     | Length e -> sexp_of_length e
     | Index (e1, e2) -> sexp_of_index e1 e2
 
+  (** [sexp_of_primitive v] is the s-expression serialization of literal
+      value [v] *)
+  and sexp_of_primitive = function
+    | Char c -> sexp_of_char c
+    | Int i ->
+        if Int64.is_negative i then
+          let s =
+            if Int64.equal Int64.min_value i then int_bound
+            else Int64.to_string (Int64.neg i)
+          in
+          Sexp.List [ Sexp.Atom "-"; Sexp.Atom s ]
+        else Sexp.Atom (Int64.to_string i)
+    | Bool b -> Bool.sexp_of_t b
+
   (** [sexp_of_enode node] is the s-expression serialization of the
       expression wrapped in node [node] *)
-  and sexp_of_enode node = node |> Expr.Node.get |> sexp_of_expr
+  and sexp_of_enode node = node |> Ex.get |> sexp_of_expr
 
   (** [sexp_of_array arr] is the s-expression serialization of the Xi
       array [arr] *)
@@ -154,8 +159,7 @@ module Make (Ex : Node.S) (St : Node.S) = struct
   (** [sexp_of_infix_binop bop e1 e2] is the s-expression serialization
       of the infix binary operation represented by operation [bop] and
       expressions [e1] and [e2]. *)
-  and sexp_of_infix_bop bop e1 e2 =
-    sexp_of_bop (string_of_binop bop) e1 e2
+  and sexp_of_infix_bop bop e1 e2 = sexp_of_bop (string_of_binop bop) e1 e2
 
   (** [sexp_of_bop s e1 e2] is the s-expression serialization of the
       binary operation represented by operation [s] and expressions [e1]
@@ -173,12 +177,12 @@ module Make (Ex : Node.S) (St : Node.S) = struct
       serialization of the application of function [id] to
       [e1, ..., en], i.e. the call [id(e1, ..., en)]. *)
   and sexp_of_call id args =
-    Sexp.List
-      (args |> List.map ~f:sexp_of_enode |> List.cons (sexp_of_id id))
+    Sexp.List (args |> List.map ~f:sexp_of_enode |> List.cons (sexp_of_id id))
 
-  (** [sexo_of_length e] is the s-expression serialization of the
+  (** [sexp_of_length e] is the s-expression serialization of the
       expression [length(e)] *)
-  and sexp_of_length e = sexp_of_call "length" [ e ]
+  and sexp_of_length e =
+    Sexp.List [ Sexp.Atom "length"; sexp_of_enode e ]
 
   (** [sexp_of_index e1 e2] is the s-expression serialization of the
       indexing of array [e1] at index [e2]. *)
@@ -189,17 +193,16 @@ module Make (Ex : Node.S) (St : Node.S) = struct
   let sexp_of_prim_type = function
     | `Int -> Sexp.Atom "int"
     | `Bool -> Sexp.Atom "bool"
+    | `Poly -> Sexp.Atom "<poly>"
 
   (** [sexp_of_type t] is the s-expression serialization of type [t] *)
   let rec sexp_of_type = function
     | `Array t -> Sexp.List [ Sexp.Atom "[]"; sexp_of_type t ]
-    | (`Int | `Bool) as prim -> sexp_of_prim_type prim
+    | (`Int | `Bool | `Poly) as prim -> sexp_of_prim_type prim
 
   (** [hd_tl_exn lst] is [h :: t] if [lst] is [h :: t]. Raises:
       [Failure] if [lst] is nil. *)
-  let hd_tl_exn = function
-    | h :: t -> (h, t)
-    | [] -> failwith "list empty"
+  let hd_tl_exn = function h :: t -> (h, t) | [] -> failwith "list empty"
 
   (** [sexp_of_decl_type typ lengths] is the s-expression serialization
       of the array type [t\[l1\]\[l2\]...] where each length is optional *)
@@ -209,7 +212,7 @@ module Make (Ex : Node.S) (St : Node.S) = struct
         let e, es = hd_tl_exn lengths in
         let lst = Option.to_list (Option.map e ~f:sexp_of_enode) in
         Sexp.List (Sexp.Atom "[]" :: sexp_of_decl_type t es :: lst)
-    | (`Int | `Bool) as prim -> sexp_of_prim_type prim
+    | (`Int | `Bool | `Poly) as prim -> sexp_of_prim_type prim
 
   (** [sexp_of_decl id typ] is the s-expression serialization of the
       statement [id: typ]. *)
@@ -279,11 +282,10 @@ module Make (Ex : Node.S) (St : Node.S) = struct
 
   (** [sexp_of_snode node] is the s-expression serialization of the stmt
       wrapped in [mode]*)
-  and sexp_of_snode node = node |> Stmt.Node.get |> sexp_of_stmt
+  and sexp_of_snode node = node |> St.get |> sexp_of_stmt
 
   and sexp_of_cond e s lst =
-    Sexp.List
-      (Sexp.Atom "if" :: sexp_of_enode e :: sexp_of_snode s :: lst)
+    Sexp.List (Sexp.Atom "if" :: sexp_of_enode e :: sexp_of_snode s :: lst)
 
   (** [sexp_of_if e s1] is the s-expression serialization of if
       statement [if e s1] *)
@@ -335,21 +337,25 @@ module Make (Ex : Node.S) (St : Node.S) = struct
     | GlobalDecl (id, typ) -> sexp_of_global id typ
     | GlobalInit (id, typ, init) -> sexp_of_global id typ ~init
 
+  (** [sexp_of_tp_list f lst] is the s-expression serialization of
+      toplevel node list [lst] where each element is serialized using
+      [f] *)
+  let sexp_of_tp_list f = List.sexp_of_t (fun n -> f (Tp.get n))
+
   (** [sexp_of_source source] is the s-expression serialization of the
       AST [source] *)
   let sexp_of_source { uses; definitions } =
     Sexp.List
       [
-        List.sexp_of_t sexp_of_use uses;
-        List.sexp_of_t sexp_of_definition definitions;
+        sexp_of_tp_list sexp_of_use uses;
+        sexp_of_tp_list sexp_of_definition definitions;
       ]
 
-  (** [sexp_of_interface interface] is the s-expression serialization of
-      the AST [interface]. *)
-  let sexp_of_interface sigs =
-    Sexp.List [ List.sexp_of_t sexp_of_fn sigs ]
+  (** [sexp_of_intf intf] is the s-expression serialization of the AST
+      [intf]. *)
+  let sexp_of_intf sigs = Sexp.List [ sexp_of_tp_list sexp_of_fn sigs ]
 
   let sexp_of_t = function
     | Source s -> sexp_of_source s
-    | Interface sigs -> sexp_of_interface sigs
+    | Intf sigs -> sexp_of_intf sigs
 end

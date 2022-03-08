@@ -1,4 +1,4 @@
 type primitive =
-  | Int of string
+  | Int of Int64.t
   | Bool of bool
   | Char of Uchar.t
