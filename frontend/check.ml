@@ -54,6 +54,8 @@ let find_intf ?cache ~deps intf =
 
 let coerce e = (e :> error)
 
+type nonrec result = (Ast.Decorated.t, error) result
+
 let parse_prog =
   Fn.compose (Result.map_error ~f:coerce) Parse.parse_prog
 
@@ -65,15 +67,20 @@ let parse_intf lb =
   Fn.compose (Result.map_error ~f:coerce) Parse.parse_intf lb
   >>| Ast.intf
 
+let map ~f = File.Xi.map ~source:(f parse_source) ~intf:(f parse_intf)
 let semantic_error e = `SemanticError e
 
-let type_check ?cache ~deps lexbuf =
-  let%bind prog = parse_prog lexbuf in
+let type_check ?cache ~deps ast =
   try
-    prog
+    ast
     |> type_check ~find_intf:(find_intf ?cache ~deps)
     |> Result.map_error ~f:semantic_error
   with Parse.Exn e -> Error (coerce e)
+
+let type_check_file ?cache ~deps file =
+  Parse.File.map_ast ~f:(type_check ?cache ~deps) file >>| function
+  | Ok ok -> ok
+  | Error err -> Error (coerce err)
 
 module Diagnostic = struct
   module Error = struct
@@ -89,16 +96,15 @@ module Diagnostic = struct
       is semantically valid *)
   let valid_xi_program = "Valid Xi Program"
 
-  let print_res out = function
+  let print_result ~out = function
     | Ok _ -> Printf.fprintf out "%s\n" valid_xi_program
     | Error e -> e |> Error.to_string |> Printf.fprintf out "%s\n"
 
-  let to_channel ?cache ~deps lexbuf out =
-    lexbuf |> type_check ?cache ~deps |> print_res out
-
-  let to_file ?cache ~deps lexbuf out =
-    Out_channel.with_file ~f:(to_channel ?cache ~deps lexbuf) out
+  let print_to_file ~out r =
+    Out_channel.with_file ~f:(fun oc -> print_result ~out:oc r) out
 
   let file_to_file ?cache ~src ~out ~deps () =
-    File.Xi.map_same_fn ~f:(fun buf -> to_file ?cache ~deps buf out) src
+    let r = type_check_file ?cache ~deps src in
+    Result.iter ~f:(print_to_file ~out) r;
+    Result.ignore_m r
 end

@@ -1,3 +1,5 @@
 (library
  (name compiler)
- (libraries core frontend util))
+ (libraries core frontend util)
+ (preprocess
+  (pps ppx_jane -allow-unannotated-ignores)))
