@@ -8,6 +8,7 @@ type error =
   | ExpectedArray
   | ExpectedFn
   | ExpectedUnit
+  | ExpectedVoid
   | FnMismatch of string
   | OpMismatch
   | Mismatch of expr * expr
@@ -23,6 +24,7 @@ let to_string = function
   | ExpectedArray -> "Expected an array"
   | ExpectedFn -> "Expected a function"
   | ExpectedUnit -> "Expected type unit"
+  | ExpectedVoid -> "Expected type void"
   | FnMismatch s ->
       "Function declaration " ^ s ^ " does not match signature"
   | OpMismatch -> "Operation mismatch"
@@ -42,6 +44,7 @@ module Positioned = struct
   include Position.Error
 
   type nonrec error = error t
+
   type nonrec 'a result = ('a, error) result
 
   let mismatch pos ~expect got =
@@ -49,8 +52,11 @@ module Positioned = struct
     make ~pos cause
 
   let count_mismatch pos = make ~pos CountMismatch
+
   let illegal_arr_decl pos = make ~pos IllegalArrayDecl
+
   let expected_unit pos = make ~pos ExpectedUnit
+
   let expected_array pos = make ~pos ExpectedArray
 end
 

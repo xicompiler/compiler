@@ -415,15 +415,31 @@ let get_fn_context ~ctx ~pos { id; params; types } =
   let%map fn_ctx = fold_decls ~ctx ~pos params in
   Context.with_ret ~ret fn_ctx
 
+(** [get_sig_context ~pos ~ctx ~f s] is [Ok ctx'] where [ctx'] is the
+    context after applying [f] to add the signature to the context as
+    either a function declaration or function definition. Otherwise, it
+    is [Error] *)
+let get_sig_context ~pos ~ctx ~f { id; params; types } =
+  let arg = term_of_tau_list (List.map ~f:snd params) in
+  let ret = term_of_tau_list types in
+  f ~id ~arg ~ret ctx
+
 (** [type_check_function ~ctx ~pos signature block] is [Ok fn] where
     [fn] is FnDefn ([signature], [block]) decorated, or
     [Error type_error] where [type_error] describes the type error
     otherwise *)
 let type_check_function ~ctx ~pos signature block =
+  let%bind ctx =
+    get_sig_context ~pos ~ctx ~f:Context.add_fn_defn signature
+  in
   let%bind fn_ctx = get_fn_context ~ctx ~pos signature in
-  let%map block, typ = type_check_stmts ~ctx:fn_ctx block in
+  let%bind block, typ = type_check_stmts ~ctx:fn_ctx block in
   let fn_defn = Decorated.Toplevel.FnDefn (signature, block) in
-  DecNode.Toplevel.make ~ctx ~pos fn_defn
+  match signature.types with
+  | [] -> Ok (DecNode.Toplevel.make ~ctx ~pos fn_defn)
+  | _ ->
+      assert_void typ >>? pos >>| fun () ->
+      DecNode.Toplevel.make ~ctx ~pos fn_defn
 
 (** [type_check_global_decl ~ctx ~pos id typ] is [Ok gd] where [gd] is
     GlobalDecl ([id], [typ]) decorated, or [Error type_error] where
@@ -472,15 +488,6 @@ let fold_context ~f ~ctx nodes =
 (** [check_defs ~ctx defs] is [Ok lst] where [lst] is the decorated
     nodes of [defs] *)
 let check_defs ~ctx defs = fold_context ~f:check_defn ~ctx defs >>| snd
-
-(** [get_sig_context ~pos ~ctx ~f s] is [Ok ctx'] where [ctx'] is the
-    context after applying [f] to add the signature to the context as
-    either a function declaration or function definition. Otherwise, it
-    is [Error] *)
-let get_sig_context ~pos ~ctx ~f { id; params; types } =
-  let arg = term_of_tau_list (List.map ~f:snd params) in
-  let ret = term_of_tau_list types in
-  f ~id ~arg ~ret ctx
 
 (** [type_check_signature_no_params ~ctx signode] is [Ok sign] where
     [sign] is the [signode] decorated, or [Error type_error] where
@@ -536,7 +543,7 @@ let first_pass_def ctx node =
   let pos = PosNode.position node in
   match PosNode.get node with
   | FnDefn (signature, _) ->
-      get_sig_context ~ctx ~pos ~f:Context.add_fn_defn signature
+      get_sig_context ~ctx ~pos ~f:Context.add_fn_decl signature
   | GlobalDecl _ | GlobalInit _ -> Ok ctx
 
 (** [first_pass_defs ~ctx defs] is [Ok ctx'] where [ctx'] is [ctx]
@@ -565,7 +572,7 @@ let type_check_source ?(find_intf = find_intf_default) source =
 let fold_sig ctx signode =
   let signature = PosNode.get signode in
   let pos = PosNode.position signode in
-  get_sig_context ~pos ~ctx ~f:Context.add_fn_defn signature
+  get_sig_context ~pos ~ctx ~f:Context.add_fn_decl signature
 
 (** [first_pass_sigs ~ctx sigs] is [Ok ctx'] where [ctx'] is [ctx]
     updated with the signature in [sigs], or [Error type_error] where

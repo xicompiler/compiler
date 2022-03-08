@@ -9,6 +9,7 @@ type error =
   | ExpectedArray
   | ExpectedFn
   | ExpectedUnit
+  | ExpectedVoid
   | FnMismatch of string
   | OpMismatch
   | Mismatch of expr * expr
