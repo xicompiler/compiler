@@ -1,5 +1,5 @@
 (library
  (name type)
- (libraries core node position)
+ (libraries core node position util)
  (preprocess
-  (pps ppx_let)))
+  (pps ppx_jane)))

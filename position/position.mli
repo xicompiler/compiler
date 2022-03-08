@@ -4,12 +4,32 @@ type t = {
 }
 (** [t] is the type of position, consisting of the line and column *)
 
-type 'a error = {
-  cause : 'a;
-  position : t;
-}
-(** ['a error] is the type of an error with cause of type ['a],
-    occurring at a specified position. *)
+type position = t
+(** [position] is an alias for [t] *)
+
+(** [Error] represents an error with an associated position *)
+module Error : sig
+  type 'a t
+  (** ['a t] is the type of an error with cause of type ['a], occurring
+      at a specified position. *)
+
+  val make : pos:position -> 'a -> 'a t
+  (** [make ~pos cause] is a [t] ocurring at position [pos] with cause
+      [cause] *)
+
+  val cause : 'a t -> 'a
+  (** [cause err] is the cause of [err] *)
+
+  val position : 'a t -> position
+  (** [position err] is the position at which [err] occurs *)
+
+  val format : position -> string -> string
+  (** [format pos s] is a function that formats an error string [s] with
+      [pos] *)
+end
+
+type 'a error = 'a Error.t
+(** [error] is an alias for [Error.t] *)
 
 val get_position : Lexing.position -> t
 (** [get_position pos] is the position [pos] *)

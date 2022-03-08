@@ -1,20 +1,21 @@
-type tau = Tau.t
+open Sexplib.Std
+module Tau = Tau
 
-type expr =
-  [ tau
-  | `Tuple of tau list
-  ]
+type tau = Tau.t [@@deriving sexp_of]
 
-type term =
-  [ expr
-  | `Unit
-  ]
+module Expr = Expr
 
-type stmt =
-  [ `Unit
-  | `Void
-  ]
+type expr = Expr.t [@@deriving sexp_of]
 
-type id =
-  | Var of tau
-  | Fn of term * term
+module Term = Term
+
+type term = Term.t [@@deriving sexp_of]
+
+module Stmt = Stmt
+module FnType = FnType
+
+type stmt = Stmt.t [@@deriving sexp_of]
+
+module Bound = Bound
+
+type bound = Bound.t [@@deriving sexp_of]

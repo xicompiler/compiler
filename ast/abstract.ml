@@ -1,8 +1,15 @@
 open Core
 
-module type S = sig
-  type id = string
+type id = string Node.Position.t
+type decl = id * Type.tau
 
+type signature = {
+  id : id;
+  params : decl list;
+  types : Type.tau list;
+}
+
+module type S = sig
   module Expr : sig
     include module type of Op
     include module type of Primitive
@@ -28,8 +35,6 @@ module type S = sig
   type expr = Expr.t
 
   module Stmt : sig
-    type decl = id * Type.tau
-
     module Node : Node.S
 
     type t =
@@ -53,29 +58,30 @@ module type S = sig
 
   type stmt = Stmt.t
 
-  type signature = {
-    id : id;
-    params : Stmt.decl list;
-    types : Type.tau list;
-  }
+  module Toplevel : sig
+    module Node : Node.S
 
-  type fn = signature * Stmt.block
+    type fn = signature * Stmt.block
 
-  type definition =
-    | FnDefn of fn
-    | GlobalDecl of Stmt.decl
-    | GlobalInit of id * Type.tau * Expr.primitive
+    type definition =
+      | FnDefn of fn
+      | GlobalDecl of decl
+      | GlobalInit of id * Type.tau * Expr.primitive
 
-  type source = {
-    uses : id list;
-    definitions : definition list;
-  }
+    type node = definition Node.t
 
-  type interface = signature list
+    type source = {
+      uses : id Node.t list;
+      definitions : node list;
+    }
+
+    type intf = signature Node.t list
+  end
 
   type t =
-    | Source of source
-    | Interface of interface
+    | Source of Toplevel.source
+    | Intf of Toplevel.intf
+  [@@deriving variants]
 
   val sexp_of_t : t -> Sexp.t
 end

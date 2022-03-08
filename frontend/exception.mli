@@ -1,1 +1,1 @@
-exception InvalidIntLiteral of Position.t
+exception InvalidIntLiteral of Position.t * string

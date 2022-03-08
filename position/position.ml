@@ -7,10 +7,21 @@ type t = {
   column : int;
 }
 
-type 'a error = {
-  cause : 'a;
-  position : t;
-}
+type position = t
+
+module Error = struct
+  type 'a t = {
+    cause : 'a;
+    position : position;
+  }
+
+  let make ~pos cause = { cause; position = pos }
+  let cause { cause } = cause
+  let position { position } = position
+  let format { line; column } = Printf.sprintf "%d:%d %s" line column
+end
+
+type 'a error = 'a Error.t
 
 let get_position (p : Lexing.position) =
   { line = p.pos_lnum; column = col_offset + p.pos_cnum - p.pos_bol }
