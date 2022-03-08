@@ -15,13 +15,13 @@ let lex_out ~dir ~src =
 (** [parse_out ~dir src] writes the parsing diagnostic file to [src] *)
 let parse_out ~dir ~src =
   Parse.Diagnostic.file_to_file ~src
-    ~out:(Util.File.diagnostic ".lexed" dir src)
+    ~out:(Util.File.diagnostic ".parsed" dir src)
 
 (** [check_out ~dir src] writes the typechecking diagnostic file to
     [src] *)
 let check_out ?cache ~dir ~src ~deps () =
   Check.Diagnostic.file_to_file ?cache ~src
-    ~out:(Util.File.diagnostic ".lexed" dir src)
+    ~out:(Util.File.diagnostic ".typed" dir src)
     ~deps ()
 
 (** [deps_of_args args] are the semantic dependecies corresponding to
