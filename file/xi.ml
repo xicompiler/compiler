@@ -1,4 +1,5 @@
 open Core
+open Result.Monad_infix
 
 module Error = struct
   type t =
@@ -17,15 +18,18 @@ end
 type error = Error.t
 type nonrec 'a result = ('a, error) result
 
-let map_nsf ~f file =
-  file |> Main.map ~f |> Result.map_error ~f:Error.nosuchfile
-
-let map ~source ~intf file =
-  match Caml.Filename.extension file with
-  | ".xi" -> map_nsf ~f:source file
-  | ".ixi" -> map_nsf ~f:intf file
-  | _ -> Error (`NotXiFile file)
+let map_nsf ~f =
+  Fn.compose (Result.map_error ~f:Error.nosuchfile) (Main.map ~f)
 
 type 'a map = Lexing.lexbuf -> 'a
 
-let map_same ~f = map ~source:f ~intf:f
+let map ~source ~intf file =
+  match Caml.Filename.extension file with
+  | ".xi" -> map_nsf ~f:source file >>| Either.first
+  | ".ixi" -> map_nsf ~f:intf file >>| Either.second
+  | _ -> Error (`NotXiFile file)
+
+let map_same ~source ~intf file =
+  map ~source ~intf file >>| Either.value
+
+let map_same_fn ~f = map_same ~source:f ~intf:f

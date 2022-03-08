@@ -57,8 +57,7 @@ module Diagnostic : sig
   (** [file_to_file ~cache ~src ~out { lib_dir; src_dir }] writes
       checking diagnostic information to a file located at path [out],
       reading from file at path [src]. It yields [Ok ()] on success and
-      [Error e] on failure, where [e] is a string describing the
-      failure. If not provided, [lib_dir] defaults to ".". If [cache] is
-      [Some tbl], AST nodes are memoized in [tbl]. [std_dir] is used to
-      resolve references to the standard library. *)
+      [Error e] on failure. If not provided, [lib_dir] defaults to ".".
+      If [cache] is [Some tbl], AST nodes are memoized in [tbl].
+      [std_dir] is used to resolve references to the standard library. *)
 end

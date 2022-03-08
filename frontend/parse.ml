@@ -1,5 +1,5 @@
 open Core
-open Position
+open Result.Monad_infix
 
 module Error = struct
   type syntax_error = string Position.error
@@ -22,8 +22,9 @@ module Error = struct
   let to_string filename = function
     | `LexicalError e -> Lex.Error.to_string filename e
     | `SyntaxError e ->
-        let pos = Error.position e in
-        e |> Error.cause |> desc |> Error.format pos
+        let pos = Position.Error.position e in
+        e |> Position.Error.cause |> desc
+        |> Position.Error.format pos
         |> Printf.sprintf fmt filename
 end
 
@@ -33,8 +34,6 @@ exception Exn of error
 
 type 'a start = (Lexing.lexbuf -> Parser.token) -> Lexing.lexbuf -> 'a
 type nonrec 'a result = ('a, error) result
-
-open Error
 
 let parse ~start lexbuf =
   try Ok (start Lex.read lexbuf) with
@@ -56,8 +55,7 @@ let ast_of_source read lexbuf = Ast.Source (Parser.source read lexbuf)
     [Ast.t]*)
 let ast_of_intf read lexbuf = Ast.Intf (Parser.intf read lexbuf)
 
-let map ~f = File.Xi.map ~source:(f ast_of_source) ~intf:(f ast_of_intf)
-let parse_intf_file = File.map ~f:parse_intf
+let map ~start ~f buf = parse ~start buf >>| f
 
 module Diagnostic = struct
   (** [print_ast out ast] prints the S-expression of [ast] into the
@@ -90,7 +88,26 @@ module Diagnostic = struct
     Out_channel.with_file ~f:(to_channel ~start lexbuf) out
 
   let file_to_file ~src ~out =
-    map ~f:(fun start lexbuf -> to_file ~start lexbuf out) src
+    let source lexbuf = to_file ~start:ast_of_source lexbuf out in
+    let intf lexbuf = to_file ~start:ast_of_intf lexbuf out in
+    File.Xi.map ~source ~intf src
+end
+
+module File = struct
+  type 'a source = Ast.Toplevel.source -> 'a
+  type 'a intf = Ast.Toplevel.intf -> 'a
+
+  let map_same ~source ~intf file : 'a result File.Xi.result =
+    let source buf = parse_source buf >>| source in
+    let intf buf = parse_intf buf >>| intf in
+    File.Xi.map_same ~source ~intf file
+
+  let map_ast ~f file =
+    let source = Fn.compose f Ast.source in
+    let intf = Fn.compose f Ast.intf in
+    map_same ~source ~intf file
+
+  let parse_intf = File.map ~f:parse_intf
 end
 
 include Parser

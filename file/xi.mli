@@ -1,3 +1,5 @@
+open Core
+
 (** [Error] represents the errors that can occur from binding a function
     to a Xi file *)
 module Error : sig
@@ -25,13 +27,21 @@ type nonrec 'a result = ('a, error) result
 type 'a map = Lexing.lexbuf -> 'a
 (** An ['a map] maps terms of type [Lexing.lexbuf] to terms of type ['a] *)
 
-val map : source:'a map -> intf:'a map -> string -> 'a result
+val map :
+  source:'a map -> intf:'b map -> string -> ('a, 'b) Either.t result
+(** Let [lexbuf] be a lexer buffer created from [file]. Then
+    [map ~source ~intf file] is [Ok (First (source lexbuf))] if [file]
+    is a xi source file, [Ok (Second (intf lexbuf))] if [file] is a xi
+    intf file, and [Error] if [file] does not exist or is not a [Xi]
+    file *)
+
+val map_same : source:'a map -> intf:'a map -> string -> 'a result
 (** Let [lexbuf] be a lexer buffer created from [file]. Then
     [map ~source ~intf file] is [Ok (source lexbuf)] if [file] is a xi
     source file, [Ok (intf lexbuf)] if [file] is a xi intf file, and
     [Error] if [file] does not exist or is not a [Xi] file *)
 
-val map_same : f:'a map -> string -> 'a result
+val map_same_fn : f:'a map -> string -> 'a result
 (** Let [lexbuf] be a lexer buffer created from [file]. Then
-    [map_same ~f file] is [Ok (f lexbuf)] if [file] is a Xi source or
+    [map_same_fn ~f file] is [Ok (f lexbuf)] if [file] is a Xi source or
     intf file and [Error] if [file] does not exist or is not a [Xi] file *)

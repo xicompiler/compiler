@@ -34,7 +34,7 @@ let lexing_test_err test_name input expected =
     the contents of [out] and [reference] are equal. *)
 let lexing_file_test name ~src ~out ~reference =
   let expected = file_contents reference in
-  Result.get_ok (Lex.Diagnostic.file_to_file ~src ~out);
+  ignore (Lex.Diagnostic.file_to_file ~src ~out);
   let actual = file_contents out in
   name >:: fun _ -> assert_equal expected actual
 
