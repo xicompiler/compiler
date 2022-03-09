@@ -9,7 +9,10 @@
 
   let node ~pos t = Pos.make ~pos:(get_position pos) t
 
-  let int_err pos i = raise (Exception.InvalidIntLiteral (get_position pos, i))
+  let int_err pos i =
+    let pos = get_position pos in
+    let err = Position.Error.make ~pos i in
+    raise (Exception.InvalidIntLiteral err)
 
   type unsafe_int =
     | SafeInt of Int64.t
