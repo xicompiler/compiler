@@ -42,8 +42,7 @@ let parse ~start lexbuf =
       let pos = Position.get_position_lb lexbuf in
       let cause = Lexing.lexeme lexbuf in
       Error (`SyntaxError (Position.Error.make ~pos cause))
-  | Exception.InvalidIntLiteral (pos, i) ->
-      Error (`SyntaxError (Position.Error.make ~pos i))
+  | Exception.InvalidIntLiteral err -> Error (`SyntaxError err)
 
 let parse_prog = parse ~start:Parser.prog
 let parse_source = parse ~start:Parser.source
