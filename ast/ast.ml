@@ -391,7 +391,7 @@ and type_check_stmts ~ctx = type_check_stmts_acc ~ctx []
     [typ] is its overall type. Otherwise, it is [Error type_error] where
     [type_error] describes the type error *)
 and type_check_stmts_acc ~ctx acc = function
-  | [] -> Ok ([], `Unit)
+  | [] -> Ok ([], `Unit) (* Only ever matches if initial block empty *)
   | s :: stmts ->
       let%bind s = type_check_stmt ~ctx s in
       let acc = s :: acc in
@@ -429,9 +429,8 @@ let get_sig_context ~pos ~ctx ~f { id; params; types } =
     [Error type_error] where [type_error] describes the type error
     otherwise *)
 let type_check_function ~ctx ~pos signature block =
-  let%bind ctx =
-    get_sig_context ~pos ~ctx ~f:Context.add_fn_defn signature
-  in
+  let f = Context.add_fn_defn in
+  let%bind ctx = get_sig_context ~pos ~ctx ~f signature in
   let%bind fn_ctx = get_fn_context ~ctx ~pos signature in
   let%bind block, typ = type_check_stmts ~ctx:fn_ctx block in
   let fn_defn = Decorated.Toplevel.FnDefn (signature, block) in
@@ -495,9 +494,8 @@ let check_defs ~ctx defs = fold_context ~f:check_defn ~ctx defs >>| snd
 let type_check_signature ~ctx signode =
   let signature = PosNode.get signode in
   let pos = PosNode.position signode in
-  let%bind ctx =
-    get_sig_context ~pos ~ctx ~f:Context.add_fn_decl signature
-  in
+  let f = Context.add_fn_decl in
+  let%bind ctx = get_sig_context ~pos ~ctx ~f signature in
   let%map fn_ctx = fold_decls ~ctx ~pos signature.params in
   DecNode.Toplevel.make ~ctx ~pos signature
 
@@ -575,21 +573,21 @@ let first_pass_source ~find_intf { uses; definitions } =
 (** [find_intf_default _] is [None] *)
 let find_intf_default _ = None
 
-let type_check_source ?(find_intf = find_intf_default) source =
+let type_check_source ~find_intf source =
   let%bind uses, ctx = first_pass_source ~find_intf source in
   let%map definitions = check_defs ~ctx source.definitions in
   let source : Decorated.Toplevel.source = { uses; definitions } in
   Decorated.Source source
 
-(** [type_check_intf ctx sigs] is [Ok lst] where [lst] is a list of
+(** [type_check_intf sigs] is [Ok lst] where [lst] is a list of
     decorated nodes of [sigs], or [Error type_error] where [type_error]
     describes the type error otherwise *)
-let type_check_intf ~ctx intf =
-  let%bind ctx = first_pass_intf ~ctx intf in
+let type_check_intf intf =
+  let%bind ctx = first_pass_intf ~ctx:Context.empty intf in
   fold_intf_map ~f:snd ~ctx intf >>| Decorated.intf
 
 let type_check ?(find_intf = find_intf_default) = function
   | Source source -> type_check_source ~find_intf source
-  | Intf intf -> type_check_intf Context.empty intf
+  | Intf intf -> type_check_intf intf
 
 module Decorated = Decorated
