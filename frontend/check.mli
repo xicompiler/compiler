@@ -15,11 +15,11 @@ module Error : sig
       error [e] in [filename] *)
 end
 
+type cache = (Ast.Toplevel.intf option, exn) result String.Table.t
+(** [cache] caches interfaces used in type-checking *)
+
 type error = Error.t
 type nonrec result = (Ast.Decorated.t, error) result
-
-type cache = Ast.Toplevel.intf option String.Table.t
-(** [cache] caches interfaces used in type-checking *)
 
 type dependencies = {
   lib_dir : string;
