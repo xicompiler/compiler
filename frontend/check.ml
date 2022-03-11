@@ -28,7 +28,7 @@ module Error = struct
 end
 
 type error = Error.t
-type cache = Ast.Toplevel.intf option String.Table.t
+type cache = (Ast.Toplevel.intf option, exn) result String.Table.t
 
 type dependencies = {
   lib_dir : string;
@@ -40,17 +40,26 @@ let get_path { lib_dir; std_dir } intf =
   if Util.File.accessible lib_path then lib_path
   else Util.File.ixi_of_dir ~dir:std_dir intf
 
+(** [parse_intf ~deps intf] is [Ok (Some ast)] if [ast] is the interface
+    ast parsed from file [intf], [Ok None] if file [intf] does not exist
+    and [Error exn] on syntax error. *)
 let parse_intf ~deps intf =
   match Parse.File.parse_intf (get_path deps intf) with
-  | Ok (Ok sigs) -> Some sigs
-  | Ok (Error e) -> raise (Parse.Exn e)
-  | Error _ -> None
+  | Ok (Ok sigs) -> Ok (Some sigs)
+  | Ok (Error e) -> Error (Parse.Exn e)
+  | Error _ -> Ok None
 
+(** [find_intf ~cache ~deps intf] is [parse_intf ~deps intf], caching
+    the result in [cache] if provided *)
 let find_intf ?cache ~deps intf =
   let default = parse_intf ~deps in
   match cache with
   | Some cache -> Hashtbl.findi_or_add cache intf ~default
   | None -> default intf
+
+(** Same as [find_intf], but raises [exn] on [Error exn] *)
+let find_intf_exn ?cache ~deps =
+  Fn.compose Result.ok_exn (find_intf ?cache ~deps)
 
 let coerce e = (e :> error)
 
@@ -73,7 +82,7 @@ let semantic_error e = `SemanticError e
 let type_check ?cache ~deps ast =
   try
     ast
-    |> type_check ~find_intf:(find_intf ?cache ~deps)
+    |> type_check ~find_intf:(find_intf_exn ?cache ~deps)
     |> Result.map_error ~f:semantic_error
   with Parse.Exn e -> Error (coerce e)
 
