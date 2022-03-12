@@ -31,3 +31,7 @@ val type_check_stmt :
 module Decorated : module type of struct
   include Decorated
 end
+
+module Op : module type of struct
+  include Op
+end
