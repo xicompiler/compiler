@@ -1,9 +1,9 @@
-(** [Mir] is a mid level intermediate representation*)
+(** [Mir] is a mid level intermediate representation *)
 module Mir : module type of struct
   include Mir
 end
 
-(** [Lir] is a low level intermedia representation *)
+(** [Lir] is a low level intermediate representation *)
 module Lir : module type of struct
   include Lir
 end
