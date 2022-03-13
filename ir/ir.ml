@@ -38,27 +38,27 @@ let rec ir_expr_of_enode enode =
 and ir_expr_of_uop uop e =
   let ir = ir_expr_of_enode e in
   match uop with
-  | IntNeg -> `IR_ADD (`IR_NOT ir, 1)
-  | LogicalNeg -> `IR_AND (`IR_NOT ir, 1)
+  | IntNeg -> `Bop (`IR_SUB, `CONST 0L, ir)
+  | LogicalNeg -> `Bop (`IR_XOR, ir, `CONST 1L)
 
 and ir_expr_of_bop bop e1 e2 =
   let ir1 = ir_expr_of_enode e1 in
   let ir2 = ir_expr_of_enode e2 in
   match bop with
   | Mult -> `Bop (`IR_MUL, ir1, ir2)
-  | HighMult -> `IR_ARSHIFT (`IR_MUL (ir1, ir2), 32)
-  | Div -> `IR_DIV (ir1, ir2)
-  | Mod -> `IR_MOD (ir1, ir2)
-  | Plus -> `IR_ADD (ir1, ir2)
-  | Minus -> `IR_SUB (ir1, ir2)
-  | Lt -> `IR_LT (ir1, ir2)
-  | Leq -> `IR_LEQ (ir1, ir2)
-  | Geq -> `IR_GEQ (ir1, ir2)
-  | Gt -> `IR_GT (ir1, ir2)
-  | Eq -> `IR_EQ (ir1, ir2)
-  | Neq -> `IR_NEQ (ir1, ir2)
-  | And -> `IR_AND (ir1, ir2)
-  | Or -> `IR_OR (ir1, ir2) in
+  | HighMult -> `Bop (`IR_ARSHIFT, `Bop (`IR_MUL, ir1, ir2), `CONST 32L)
+  | Div -> `Bop (`IR_DIV, ir1, ir2)
+  | Mod -> `Bop (`IR_MOD, ir1, ir2)
+  | Plus -> `Bop (`IR_ADD, ir1, ir2)
+  | Minus -> `Bop (`IR_SUB, ir1, ir2)
+  | Lt -> `Bop (`IR_LT, ir1, ir2)
+  | Leq -> `Bop (`IR_LEQ, ir1, ir2)
+  | Geq -> `Bop (`IR_GEQ, ir1, ir2)
+  | Gt -> `Bop (`IR_GT, ir1, ir2)
+  | Eq -> `Bop (`IR_EQ, ir1, ir2)
+  | Neq -> `Bop (`IR_NEQ, ir1, ir2)
+  | And -> `Bop (`IR_AND, ir1, ir2)
+  | Or -> `Bop (`IR_OR, ir1, ir2)
 
 and ir_expr_of_fncall id es =
   let expr_lst = List.map ir_expr_of_enode es in
