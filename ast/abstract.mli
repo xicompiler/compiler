@@ -20,6 +20,7 @@ module type S = sig
   (** An [Expr] represents an expression in the Xi langauge *)
   module Expr : sig
     include module type of Op
+
     include module type of Primitive
 
     module Node : Node.S
