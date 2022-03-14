@@ -23,3 +23,7 @@ type nonrec result = t Error.result
 (** A [result] is either [Ok ast] where [ast] is a decorated AST or
     [Error err] where [err] details the semantic error causing
     decoration to fail *)
+
+val const_fold : t -> t
+(** [const_fold ast] is [ast] where all constants expressions have been
+    fully evaluated. Conditionals are also folded, if possible. *)
