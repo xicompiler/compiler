@@ -4,7 +4,7 @@ type binop = Bop
 type label = string
 
 type 'expr dest =
-  [ `Mem of 'expr * 'expr
+  [ `Mem of 'expr
   | `Temp of label
   ]
 
