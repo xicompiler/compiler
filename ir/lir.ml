@@ -18,9 +18,9 @@ let rec lower_expr expr =
   | `Call e, elist -> let (sv1, e1) = lower_expr e in
                       let e1temp = make_fresh_temp () in
                       let translated_e = sv1 @ [`Move (`Temp e1temp, e1)] in
-                      let translated_calls = List.map elist ~f:(fun el ->
+                      let translated_calls = List.fold_right elist (fun el acc ->
                           let (sv, e') = lower_expr el in
-                          sv @ [`Move (`Temp (make_fresh_temp ()), e')]) in
+                          sv @ [`Move (`Temp (make_fresh_temp ()), e')] @ acc) [] in
                       (translated_e @ translated_calls @ [`Call (e1temp, temps)], `Temp "_RV1")
   | `ESeq s, e -> let sv = lower_stmt s in let (sv', e') = lower_expr e in
   (sv @ sv', e')
