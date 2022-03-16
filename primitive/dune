@@ -1,5 +1,5 @@
 (library
  (name primitive)
- (libraries core type)
+ (libraries core type unicode)
  (preprocess
   (pps ppx_jane)))

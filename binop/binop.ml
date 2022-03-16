@@ -47,7 +47,7 @@ let to_string = function
     ints and the operation succeeds, or [None] otherwise *)
 let eval_int op i1 i2 =
   match op with
-  | #arith as op -> Arith.eval op i1 i2 >>| Primitive.int
+  | #arith as op -> Arith.eval op i1 i2 >>| Primitive.Base.int
   | #cmp as op -> Some (`Bool (Cmp.eval op i1 i2))
   | #log -> None
 
@@ -62,5 +62,5 @@ let eval_bool op b1 b2 =
 let eval op x1 x2 =
   match (Primitive.cast x1, Primitive.cast x2) with
   | `Int i1, `Int i2 -> eval_int op i1 i2
-  | `Bool b1, `Bool b2 -> eval_bool op b1 b2 >>| Primitive.bool
+  | `Bool b1, `Bool b2 -> eval_bool op b1 b2 >>| Primitive.Base.bool
   | `Int _, `Bool _ | `Bool _, `Int _ -> None

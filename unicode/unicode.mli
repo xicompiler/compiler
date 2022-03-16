@@ -15,12 +15,9 @@ val fold : ('a -> Uchar.t -> 'a) -> 'a -> string -> 'a
     as the initial value of the accumulator. Raises: [Invalid_argument]
     if [s] is malformed. *)
 
-val uchars_of_string : string -> Uchar.t Seq.t
-(** [uchars_of_string s] is a sequence containing every codepoint of [s] *)
-
-val string_of_uchar : Uchar.t -> string
-(** [string_of_uchar u] is the escaped string representing unicode
-    character [u] *)
+val to_string : Uchar.t -> string
+(** [to_string u] is the escaped string representing unicode character
+    [u] *)
 
 val escape_string : string -> string
 (** [escape_string s] is [s] escaped and properly formatted to be

@@ -94,11 +94,6 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
       statement [use id] *)
   let sexp_of_use id = Sexp.List [ Sexp.Atom "use"; sexp_of_id id ]
 
-  (** [sexp_of_char c] is the s-expression serialization of character
-      [c], surrounded by single quotes. *)
-  let sexp_of_char c =
-    Sexp.Atom (c |> Unicode.string_of_uchar |> Printf.sprintf "'%s'")
-
   (** [sexp_of_string c] is the s-expression serialization of string
       [s], surrounded by double quotes. *)
   let sexp_of_string s =
@@ -108,7 +103,7 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
       [e] *)
   let rec sexp_of_expr = function
     | Id id -> sexp_of_id id
-    | Primitive v -> sexp_of_primitive v
+    | Primitive v -> Primitive.sexp_of_t v
     | Array arr -> sexp_of_array arr
     | String s -> sexp_of_string s
     | Bop (bop, e1, e2) -> sexp_of_infix_bop bop e1 e2
@@ -116,20 +111,6 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
     | FnCall (id, args) -> sexp_of_call id args
     | Length e -> sexp_of_length e
     | Index (e1, e2) -> sexp_of_index e1 e2
-
-  (** [sexp_of_primitive v] is the s-expression serialization of literal
-      value [v] *)
-  and sexp_of_primitive = function
-    | `Char c -> sexp_of_char c
-    | `Int i ->
-        if Int64.is_negative i then
-          let s =
-            if Int64.equal Int64.min_value i then int_bound
-            else Int64.to_string (Int64.neg i)
-          in
-          Sexp.List [ Sexp.Atom "-"; Sexp.Atom s ]
-        else Sexp.Atom (Int64.to_string i)
-    | `Bool b -> Bool.sexp_of_t b
 
   (** [sexp_of_enode node] is the s-expression serialization of the
       expression wrapped in node [node] *)
@@ -315,7 +296,7 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
     let global = Sexp.Atom ":global" in
     let id_sexp = sexp_of_id id in
     let type_sexp = sexp_of_type typ in
-    let lst = Option.to_list (Option.map init ~f:sexp_of_primitive) in
+    let lst = Option.to_list (Option.map init ~f:Primitive.sexp_of_t) in
     Sexp.List (global :: id_sexp :: type_sexp :: lst)
 
   (** [sexp_of_definition def] is the s-expression serialization of
