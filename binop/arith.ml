@@ -1,21 +1,13 @@
 open Core
 open Int64
 
-type total =
+type t =
   [ `Mult
   | `HighMult
   | `Plus
   | `Minus
-  ]
-
-type partial =
-  [ `Div
+  | `Div
   | `Mod
-  ]
-
-type t =
-  [ total
-  | partial
   ]
 
 let high_mult i1 i2 =
@@ -33,5 +25,4 @@ let eval_exn = function
   | `Div -> ( / )
   | `Mod -> ( % )
 
-let eval_total (op : total) = eval_exn op
 let eval op i1 i2 = Option.try_with (fun () -> eval_exn op i1 i2)
