@@ -154,18 +154,6 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
       indexing of array [e1] at index [e2]. *)
   and sexp_of_index e1 e2 = sexp_of_bop "[]" e1 e2
 
-  (** [sexp_of_prim_type t] is the s-expression serialization of
-      primitive type [t] *)
-  let sexp_of_prim_type = function
-    | `Int -> Sexp.Atom "int"
-    | `Bool -> Sexp.Atom "bool"
-    | `Poly -> Sexp.Atom "<poly>"
-
-  (** [sexp_of_type t] is the s-expression serialization of type [t] *)
-  let rec sexp_of_type = function
-    | `Array t -> Sexp.List [ Sexp.Atom "[]"; sexp_of_type t ]
-    | (`Int | `Bool | `Poly) as prim -> sexp_of_prim_type prim
-
   (** [sexp_of_decl_type typ lengths] is the s-expression serialization
       of the array type [t\[l1\]\[l2\]...] where each length is optional *)
   let rec sexp_of_decl_type typ lengths =
@@ -174,7 +162,7 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
         let e, es = Util.List.hd_tl_exn lengths in
         let lst = Option.to_list (Option.map e ~f:sexp_of_enode) in
         Sexp.List (Sexp.Atom "[]" :: sexp_of_decl_type t es :: lst)
-    | (`Int | `Bool | `Poly) as prim -> sexp_of_prim_type prim
+    | #Tau.primitive as p -> Tau.Primitive.sexp_of_t p
 
   (** [sexp_of_decl id typ] is the s-expression serialization of the
       statement [id: typ]. *)
@@ -188,7 +176,7 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
 
   (** [sexp_of_var_decl (id, typ)] is the s-expression serialization of
       the Xi declaration [id: typ] *)
-  let sexp_of_var_decl id typ = sexp_of_decl id (sexp_of_type typ)
+  let sexp_of_var_decl id typ = sexp_of_decl id (Tau.sexp_of_t typ)
 
   (** [sexp_of_assign lhs e] is the s-expression serialization of the
       assignment statement [lhs = e]. *)
@@ -279,7 +267,7 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
     let id = sexp_of_id id in
     let sexp_of_param (id, typ) = sexp_of_var_decl id typ in
     let params = List.sexp_of_t sexp_of_param params in
-    let types = List.sexp_of_t sexp_of_type types in
+    let types = List.sexp_of_t Tau.sexp_of_t types in
     let body = Option.map body ~f:sexp_of_stmts in
     Sexp.List (id :: params :: types :: Option.to_list body)
 
@@ -289,7 +277,7 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
   let sexp_of_global ?init id typ =
     let global = Sexp.Atom ":global" in
     let id_sexp = sexp_of_id id in
-    let type_sexp = sexp_of_type typ in
+    let type_sexp = Tau.sexp_of_t typ in
     let lst = Option.to_list (Option.map init ~f:Primitive.sexp_of_t) in
     Sexp.List (global :: id_sexp :: type_sexp :: lst)
 
