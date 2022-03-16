@@ -21,7 +21,8 @@ let rec lower_expr expr =
                       let translated_calls = List.fold_right elist (fun el acc ->
                           let (sv, e') = lower_expr el in
                           sv @ [`Move (`Temp (make_fresh_temp ()), e')] @ acc) [] in
-                      (translated_e @ translated_calls @ [`Call (e1temp, temps)], `Temp "_RV1")
+                      let new_temp = `Temp (make_fresh_temp ()) in
+                      (translated_e @ translated_calls @ [`Call (e1temp, temps); `Move (new_temp, `Temp "_RV1")], new_temp)
   | `ESeq s, e -> let sv = lower_stmt s in let (sv', e') = lower_expr e in
   (sv @ sv', e')
   | `Bop op, e1,  e2 -> failwith "unimplmented"
@@ -29,7 +30,14 @@ let rec lower_expr expr =
 
 and lower_stmt stmt =
   match stmt with
-  | `Move e1, e2 -> failwith "unimplemented"
+  | `Move dest, e -> let (sv2', e2') = lower_expr e in
+  begin
+  match dest with
+  | `Temp _ -> sv2' @ [`Move(dest, e2')]
+  | `Mem e1 -> let (sv1', e1') = lower_expr e1 in
+               let new_temp = `Temp (make_fresh_temp ()) in
+               sv1' @ [`Move(new_temp, e1')] @ sv2' @ [`Move (`Mem (new_temp), e2')]
+  end
   | `Jump e -> let (sv, e') = lower_expr e in sv @ [`Jump e']
   | `Label l -> [stmt]
   | `Return elist -> failwith "unimplemented"
