@@ -445,31 +445,28 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
       let lst = Option.to_list (init >>| Primitive.sexp_of_t) in
       Sexp.List (global :: id_sexp :: type_sexp :: lst)
 
-    (** [sexp_of_definition def] is the s-expression serialization of
-        global definition [def] *)
-    let sexp_of_definition = function
+    (** [sexp_of_defn def] is the s-expression serialization of global
+        definition [def] *)
+    let sexp_of_defn = function
       | FnDefn (signature, body) -> sexp_of_fn signature ~body
       | GlobalDecl (id, typ) -> sexp_of_global id typ
       | GlobalInit (id, typ, init) -> sexp_of_global id typ ~init
 
-    (** [sexp_of_tp_list f lst] is the s-expression serialization of
+    (** [sexp_of_nodes f lst] is the s-expression serialization of
         toplevel node list [lst] where each element is serialized using
         [f] *)
-    let sexp_of_tp_list f = List.sexp_of_t (fun n -> f (Tp.get n))
+    let sexp_of_nodes f = List.sexp_of_t (Tp.compose ~f)
 
     (** [sexp_of_source source] is the s-expression serialization of the
         AST [source] *)
     let sexp_of_source { uses; definitions } =
-      Sexp.List
-        [
-          sexp_of_tp_list sexp_of_use uses;
-          sexp_of_tp_list sexp_of_definition definitions;
-        ]
+      let uses = sexp_of_nodes sexp_of_use uses in
+      let defs = sexp_of_nodes sexp_of_defn definitions in
+      Sexp.List [ uses; defs ]
 
     (** [sexp_of_intf intf] is the s-expression serialization of the AST
         [intf]. *)
-    let sexp_of_intf sigs =
-      Sexp.List [ sexp_of_tp_list sexp_of_fn sigs ]
+    let sexp_of_intf sigs = Sexp.List [ sexp_of_nodes sexp_of_fn sigs ]
   end
 
   type t =
