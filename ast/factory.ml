@@ -166,18 +166,12 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
     | `Array t -> Sexp.List [ Sexp.Atom "[]"; sexp_of_type t ]
     | (`Int | `Bool | `Poly) as prim -> sexp_of_prim_type prim
 
-  (** [hd_tl_exn lst] is [h :: t] if [lst] is [h :: t]. Raises:
-      [Failure] if [lst] is nil. *)
-  let hd_tl_exn = function
-    | h :: t -> (h, t)
-    | [] -> failwith "list empty"
-
   (** [sexp_of_decl_type typ lengths] is the s-expression serialization
       of the array type [t\[l1\]\[l2\]...] where each length is optional *)
   let rec sexp_of_decl_type typ lengths =
     match typ with
     | `Array t ->
-        let e, es = hd_tl_exn lengths in
+        let e, es = Util.List.hd_tl_exn lengths in
         let lst = Option.to_list (Option.map e ~f:sexp_of_enode) in
         Sexp.List (Sexp.Atom "[]" :: sexp_of_decl_type t es :: lst)
     | (`Int | `Bool | `Poly) as prim -> sexp_of_prim_type prim

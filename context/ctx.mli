@@ -9,12 +9,6 @@ type t [@@deriving sexp_of]
 val empty : t
 (** [empty] is an empty typing context having return type [`Unit] *)
 
-val io : t
-(** [io] is a context corresponding to the [io] module in Xi *)
-
-val conv : t
-(** [conv] is a context corresponding to the [conv] module in Xi *)
-
 val with_ret : ret:[< term ] -> t -> t
 (** [with_ret ~ret ctx] is [ctx] requiring that any return statement
     return type [ret] *)
