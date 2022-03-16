@@ -8,5 +8,3 @@ let rec fold2_result ~unequal_lengths ~f ~init l1 l2 =
       fold2_result ~unequal_lengths ~f ~init t1 t2
   | [], [] -> Ok init
   | _ -> Error unequal_lengths
-
-let map_tr ~f = Fn.compose List.rev (List.rev_map ~f)
