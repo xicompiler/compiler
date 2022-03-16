@@ -12,7 +12,7 @@
   let int_err pos i = raise (Exception.InvalidIntLiteral (get_position pos, i))
 
   type unsafe_int =
-    | SafeInt of Int64.t
+    | SafeInt of int64
     | IntBound of string
 
   type unsafe_primitive =
@@ -29,7 +29,7 @@
 
   let primitive_of_unsafe ~pos = function
     | SafePrimitive p -> p
-    | UnsafeInt i -> Int (int_of_unsafe ~pos i)
+    | UnsafeInt i -> `Int (int_of_unsafe ~pos i)
 
   let expr_of_unsafe ~pos = function
     | SafeExpr p -> p
@@ -170,26 +170,26 @@ bracketed(X):
 
 (** A [binop] is a binary operator in Xi *)
 %inline binop:
-  | MULT { Mult }
-  | HIGHMULT { HighMult }
-  | DIV { Div }
-  | MOD { Mod }
-  | PLUS { Plus }
-  | MINUS { Minus }
-  | LT { Lt }
-  | LEQ { Leq}
-  | GEQ { Geq }
-  | GT { Gt }
-  | EQ { Eq }
-  | NEQ { Neq }
-  | AND { And }
-  | OR { Or }
+  | MULT { `Mult }
+  | HIGHMULT { `HighMult }
+  | DIV { `Div }
+  | MOD { `Mod }
+  | PLUS { `Plus }
+  | MINUS { `Minus }
+  | LT { `Lt }
+  | LEQ { `Leq}
+  | GEQ { `Geq }
+  | GT { `Gt }
+  | EQ { `Eq }
+  | NEQ { `Neq }
+  | AND { `And }
+  | OR { `Or }
   ;
 
 (** A [unop] is a unary operator in Xi *)
 %inline unop:
-  | MINUS { IntNeg }
-  | NOT { LogicalNeg }
+  | MINUS { `IntNeg }
+  | NOT { `LogNeg }
   ;
 
 (** A prog is either a source or intf *)
@@ -266,7 +266,7 @@ global:
       let (id, typ) = decl in 
       let pos = $startpos(neg) in
       let i = parse_int ~pos ~neg:true i in
-      let v = Int (int_of_unsafe ~pos i) in
+      let v = `Int (int_of_unsafe ~pos i) in
       GlobalInit (id, typ, v)
     }
   ;
@@ -313,12 +313,12 @@ uop_expr:
     {
       let pos = $startpos(e) in
       match uop, e with
-      | IntNeg, SafeExpr (Primitive (Int i)) ->
+      | `IntNeg, SafeExpr (Primitive (`Int i)) ->
         if Int64.is_negative i then
          SafeExpr (Uop (uop, (enode_of_unsafe ~pos e)))
         else
           UnsafePrimitive (UnsafeInt (SafeInt (Int64.neg i)))
-      | IntNeg, UnsafePrimitive (UnsafeInt (IntBound _)) ->
+      | `IntNeg, UnsafePrimitive (UnsafeInt (IntBound _)) ->
           UnsafePrimitive (UnsafeInt (SafeInt (Int64.min_value)))
       | _ -> 
          SafeExpr (Uop (uop, (enode_of_unsafe ~pos e)))
@@ -335,7 +335,7 @@ call_expr:
   | v = primitive
     { UnsafePrimitive v }
   | LBRACE; array = array
-    { SafeExpr (Array (Array.of_list array)) }
+    { SafeExpr (Array array) }
   | s = STRING
     { SafeExpr (String s) }
   | LENGTH; e = parens(enode)
@@ -348,9 +348,9 @@ primitive:
   | i = unsafe_int
     { UnsafeInt i }
   | b = BOOL
-    { SafePrimitive (Bool b) }
+    { SafePrimitive (`Bool b) }
   | c = CHAR
-    { SafePrimitive (Char c) }
+    { SafePrimitive (`Char c) }
   ;
 
 unsafe_int:

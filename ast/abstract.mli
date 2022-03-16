@@ -19,8 +19,10 @@ type signature = {
 module type S = sig
   (** An [Expr] represents an expression in the Xi langauge *)
   module Expr : sig
-    include module type of Op
-    include module type of Primitive
+    open Op
+
+    type primitive = Primitive.t
+    (** [primitive] is the type of a primitive value *)
 
     module Node : Node.S
     (** [Node] wraps an expression node *)
@@ -29,7 +31,7 @@ module type S = sig
     type t =
       | Primitive of primitive
       | Id of id
-      | Array of node array
+      | Array of node list
       | String of string
       | Bop of binop * node * node
       | Uop of unop * node

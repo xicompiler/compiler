@@ -1,0 +1,3 @@
+(library
+ (name binop)
+ (libraries core primitive))

@@ -1,6 +1,6 @@
 (library
  (name ast)
- (libraries core unicode node type context util)
+ (libraries core op unicode node type context primitive util)
  (preprocess
   (pps ppx_jane))
  (instrumentation

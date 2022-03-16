@@ -1,16 +1,17 @@
 open Core
 open Abstract
+open Op
 
 module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
   module Expr = struct
-    include Op
-    include Primitive
+    type primitive = Primitive.t
+
     module Node = Ex
 
     type t =
       | Primitive of primitive
       | Id of id
-      | Array of node array
+      | Array of node list
       | String of string
       | Bop of binop * node * node
       | Uop of unop * node
@@ -84,25 +85,6 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
 
   let int_bound = "9223372036854775808"
 
-  (** [string_of_unop unop] is the string representation of [unop]. *)
-  let string_of_unop = function IntNeg -> "-" | LogicalNeg -> "!"
-
-  let string_of_binop = function
-    | Mult -> "*"
-    | HighMult -> "*>>"
-    | Div -> "/"
-    | Mod -> "%"
-    | Plus -> "+"
-    | Minus -> "-"
-    | Lt -> "<"
-    | Leq -> "<="
-    | Geq -> ">="
-    | Gt -> ">"
-    | Eq -> "=="
-    | Neq -> "!="
-    | And -> "&"
-    | Or -> "|"
-
   (** [sexp_of_gets lhs rhs] is the s-expression serialization of the
       statement [lhs = rhs] *)
   let sexp_of_gets lhs rhs = Sexp.List [ Sexp.Atom "="; lhs; rhs ]
@@ -137,8 +119,8 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
   (** [sexp_of_primitive v] is the s-expression serialization of literal
       value [v] *)
   and sexp_of_primitive = function
-    | Char c -> sexp_of_char c
-    | Int i ->
+    | `Char c -> sexp_of_char c
+    | `Int i ->
         if Int64.is_negative i then
           let s =
             if Int64.equal Int64.min_value i then int_bound
@@ -146,7 +128,7 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
           in
           Sexp.List [ Sexp.Atom "-"; Sexp.Atom s ]
         else Sexp.Atom (Int64.to_string i)
-    | Bool b -> Bool.sexp_of_t b
+    | `Bool b -> Bool.sexp_of_t b
 
   (** [sexp_of_enode node] is the s-expression serialization of the
       expression wrapped in node [node] *)
@@ -154,12 +136,13 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
 
   (** [sexp_of_array arr] is the s-expression serialization of the Xi
       array [arr] *)
-  and sexp_of_array arr = Array.sexp_of_t sexp_of_enode arr
+  and sexp_of_array arr = List.sexp_of_t sexp_of_enode arr
 
   (** [sexp_of_infix_binop bop e1 e2] is the s-expression serialization
       of the infix binary operation represented by operation [bop] and
       expressions [e1] and [e2]. *)
-  and sexp_of_infix_bop bop e1 e2 = sexp_of_bop (string_of_binop bop) e1 e2
+  and sexp_of_infix_bop bop e1 e2 =
+    sexp_of_bop (Binop.to_string bop) e1 e2
 
   (** [sexp_of_bop s e1 e2] is the s-expression serialization of the
       binary operation represented by operation [s] and expressions [e1]
@@ -170,14 +153,15 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
   (** [sexp_of_unop uop e] is the s-expression serialization of the
       unary operation with operator [uop] and expression [e]. *)
   and sexp_of_uop uop e =
-    let uop_sexp = Sexp.Atom (string_of_unop uop) in
+    let uop_sexp = Sexp.Atom (Unop.to_string uop) in
     Sexp.List [ uop_sexp; sexp_of_enode e ]
 
   (** [sexp_of_call id \[e1; ...; en\]] is the s-expression
       serialization of the application of function [id] to
       [e1, ..., en], i.e. the call [id(e1, ..., en)]. *)
   and sexp_of_call id args =
-    Sexp.List (args |> List.map ~f:sexp_of_enode |> List.cons (sexp_of_id id))
+    Sexp.List
+      (args |> List.map ~f:sexp_of_enode |> List.cons (sexp_of_id id))
 
   (** [sexp_of_length e] is the s-expression serialization of the
       expression [length(e)] *)
@@ -202,7 +186,9 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
 
   (** [hd_tl_exn lst] is [h :: t] if [lst] is [h :: t]. Raises:
       [Failure] if [lst] is nil. *)
-  let hd_tl_exn = function h :: t -> (h, t) | [] -> failwith "list empty"
+  let hd_tl_exn = function
+    | h :: t -> (h, t)
+    | [] -> failwith "list empty"
 
   (** [sexp_of_decl_type typ lengths] is the s-expression serialization
       of the array type [t\[l1\]\[l2\]...] where each length is optional *)
@@ -285,7 +271,8 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
   and sexp_of_snode node = node |> St.get |> sexp_of_stmt
 
   and sexp_of_cond e s lst =
-    Sexp.List (Sexp.Atom "if" :: sexp_of_enode e :: sexp_of_snode s :: lst)
+    Sexp.List
+      (Sexp.Atom "if" :: sexp_of_enode e :: sexp_of_snode s :: lst)
 
   (** [sexp_of_if e s1] is the s-expression serialization of if
       statement [if e s1] *)

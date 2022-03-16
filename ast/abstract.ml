@@ -11,14 +11,16 @@ type signature = {
 
 module type S = sig
   module Expr : sig
-    include module type of Op
-    include module type of Primitive
+    open Op
+
+    type primitive = Primitive.t
+
     module Node : Node.S
 
     type t =
       | Primitive of primitive
       | Id of id
-      | Array of node array
+      | Array of node list
       | String of string
       | Bop of binop * node * node
       | Uop of unop * node

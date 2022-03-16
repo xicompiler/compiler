@@ -27,17 +27,11 @@ let fold2_result ~pos =
   let unequal_lengths = Positioned.count_mismatch pos in
   Util.List.fold2_result ~unequal_lengths
 
-(** [type_of_primitive p] is [`Int] if [p] is [Int] or [Char] and
-    [`Bool] if [p] is [Bool] *)
-let type_of_primitive = function
-  | Int _ | Char _ -> `Int
-  | Bool _ -> `Bool
-
 (** [type_check_primitive ctx p] is [Ok expr] where [expr] is a
     decorated expression node for [p] *)
 let type_check_primitive ~ctx ~pos p =
   let e = Decorated.Expr.Primitive p in
-  let typ = type_of_primitive p in
+  let typ = (Primitive.typeof p :> expr) in
   DecNode.Expr.make ~ctx ~typ ~pos e
 
 (** [type_check_id ctx i] is [Ok expr] where [expr] is a decorated
@@ -77,20 +71,18 @@ and type_check_exprs ~ctx ~pos ~types es =
 (** [type_check_array ~ctx ~pos arr] is [Ok arr'] where [arr'] is [arr]
     decorated, or [Error type_error] where [type_error] describes the
     type error otherwise *)
-and type_check_array ~ctx ~pos arr =
-  if Array.is_empty arr then
-    let empty_array = Decorated.Expr.Array [||] in
-    let typ = `Array `Poly in
-    Ok (DecNode.Expr.make ~ctx ~typ ~pos empty_array)
-  else
-    let%bind dec = type_check_expr ~ctx (Array.get arr 0) in
-    let%bind lst =
-      Array.fold_result arr ~init:[] ~f:(fold_array ctx dec)
-    in
-    let dec_array = lst |> List.rev |> Array.of_list in
-    let e = Decorated.Expr.Array dec_array in
-    let%map typ = tau_of_expr_res (DecNode.Expr.typ dec) pos in
-    DecNode.Expr.make ~ctx ~typ:(`Array typ) ~pos e
+and type_check_array ~ctx ~pos = function
+  | [] ->
+      let empty_array = Decorated.Expr.Array [] in
+      let typ = `Array `Poly in
+      Ok (DecNode.Expr.make ~ctx ~typ ~pos empty_array)
+  | h :: _ as arr ->
+      let%bind dec = type_check_expr ~ctx h in
+      let f = fold_array ctx dec in
+      let%bind lst = List.fold_result arr ~init:[] ~f in
+      let e = Decorated.Expr.Array (List.rev lst) in
+      let%map typ = tau_of_expr_res (DecNode.Expr.typ dec) pos in
+      DecNode.Expr.make ~ctx ~typ:(`Array typ) ~pos e
 
 (** [fold_array ctx fst acc elt] is [Ok lst] where [lst] is [elt]
     decorated and appended to [acc], ensuring that its type is equal to
@@ -115,15 +107,15 @@ and type_check_bop ~ctx ~pos op e1 e2 =
   let%bind dec2 = type_check_expr ~ctx e2 in
   let e = Decorated.Expr.Bop (op, dec1, dec2) in
   match (op, DecNode.Expr.typ dec1, DecNode.Expr.typ dec2) with
-  | (Plus | Minus | Mult | HighMult | Div | Mod), `Int, `Int ->
+  | #Binop.arith, `Int, `Int ->
       Ok (DecNode.Expr.make ~ctx ~typ:`Int ~pos e)
-  | Plus, `Array t1, `Array t2 ->
+  | `Plus, `Array t1, `Array t2 ->
       if Tau.equal t1 t2 then
         Ok (DecNode.Expr.make ~ctx ~typ:(`Array t1) ~pos e)
       else Error (Positioned.make ~pos OpMismatch)
-  | (Lt | Leq | Gt | Geq), `Int, `Int | (And | Or), `Bool, `Bool ->
+  | #Binop.ord, `Int, `Int | #Binop.log, `Bool, `Bool ->
       Ok (DecNode.Expr.make ~ctx ~typ:`Bool ~pos e)
-  | (Eq | Neq), _, _ ->
+  | #Binop.eq, _, _ ->
       DecNode.Expr.assert_eq_tau dec1 dec2 >>| fun () ->
       DecNode.Expr.make ~ctx ~typ:`Bool ~pos e
   | _ -> Error (Positioned.make ~pos OpMismatch)
@@ -135,8 +127,8 @@ and type_check_uop ~ctx ~pos op e =
   let%bind dec = type_check_expr ctx e in
   let e = Decorated.Expr.Uop (op, dec) in
   match (op, DecNode.Expr.typ dec) with
-  | IntNeg, `Int -> Ok (DecNode.Expr.make ~ctx ~typ:`Int ~pos e)
-  | LogicalNeg, `Bool -> Ok (DecNode.Expr.make ~ctx ~typ:`Bool ~pos e)
+  | `IntNeg, `Int -> Ok (DecNode.Expr.make ~ctx ~typ:`Int ~pos e)
+  | `LogNeg, `Bool -> Ok (DecNode.Expr.make ~ctx ~typ:`Bool ~pos e)
   | _ -> Error (Positioned.make ~pos OpMismatch)
 
 (** [type_check_call ~ctx ~pos id es] is [Ok (es', t)] where [es'] is
@@ -455,7 +447,7 @@ let check_global_decl ~ctx ~pos id typ =
     otherwise *)
 let check_global_init ~ctx ~pos id tau primitive =
   let%bind ctx = Context.add_var ~id ~typ:tau ctx in
-  let p_type = type_of_primitive primitive in
+  let p_type = (Primitive.typeof primitive :> expr) in
   let tau_type = (tau :> expr) in
   let error () = Positioned.mismatch pos ~expect:tau_type p_type in
   let%map () = Lazy.ok_if_true ~error (Expr.equal tau_type p_type) in
