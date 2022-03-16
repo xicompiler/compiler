@@ -110,12 +110,12 @@ module type S = sig
     (** A [definition] is the type of a top-level declaration in Xi:
         either a function definition, or declaration or initialization
         of a global variable. *)
-    type defn =
+    type definition =
       | FnDefn of fn
       | GlobalDecl of decl
       | GlobalInit of id * Type.tau * Expr.primitive
 
-    type node = defn Node.t
+    type node = definition Node.t
 
     type source = {
       uses : id Node.t list;

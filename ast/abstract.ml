@@ -69,12 +69,12 @@ module type S = sig
 
     type fn = signature * Stmt.block
 
-    type defn =
+    type definition =
       | FnDefn of fn
       | GlobalDecl of decl
       | GlobalInit of id * Type.tau * Expr.primitive
 
-    type node = defn Node.t
+    type node = definition Node.t
 
     type source = {
       uses : id Node.t list;
