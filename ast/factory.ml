@@ -29,7 +29,7 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
     type t =
       | Primitive of primitive
       | Id of id
-      | Array of node list
+      | Array of nodes
       | String of string
       | Bop of binop * node * node
       | Uop of unop * node
