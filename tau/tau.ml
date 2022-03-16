@@ -9,7 +9,6 @@ let poly_string = "<poly>"
 
 type t =
   [ primitive
-  | `Poly
   | `Array of t
   ]
 
