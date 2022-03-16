@@ -467,6 +467,16 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
     (** [sexp_of_intf intf] is the s-expression serialization of the AST
         [intf]. *)
     let sexp_of_intf sigs = Sexp.List [ sexp_of_nodes sexp_of_fn sigs ]
+
+    (** [const_fold_defn def] is [def] where each constituent expression
+        has been recursively constant folded *)
+    let const_fold_defn = function
+      | FnDefn (sg, block) -> FnDefn (sg, Stmt.const_fold_nodes block)
+      | global -> global
+
+    (** [const_fold_defls defs] is [defs] where each constituent
+        definition has been recursively constant folded *)
+    let const_fold_defs = List.map ~f:(Node.map ~f:const_fold_defn)
   end
 
   type t =
@@ -480,20 +490,9 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
     | Source s -> sexp_of_source s
     | Intf sigs -> sexp_of_intf sigs
 
-  (** [const_fold_defn def] is [def] where each constituent expression
-      has been recursively constant folded *)
-  let const_fold_defn = function
-    | FnDefn (sg, block) -> FnDefn (sg, Stmt.const_fold_nodes block)
-    | global -> global
-
-  (** [const_fold_defls defs] is [defs] where each constituent
-      definition has been recursively constant folded *)
-  let const_fold_defs =
-    List.map ~f:(Toplevel.Node.map ~f:const_fold_defn)
-
   let const_fold = function
     | Source src ->
-        let definitions = const_fold_defs src.definitions in
+        let definitions = Toplevel.const_fold_defs src.definitions in
         Source { src with definitions }
     | intf -> intf
 end
