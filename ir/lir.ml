@@ -33,8 +33,8 @@ and lower_stmt stmt =
   | `Move dest, e -> let (sv2', e2') = lower_expr e in
   begin
   match dest with
-  | `Temp _ -> sv2' @ [`Move(dest, e2')]
-  | `Mem e1 -> let (sv1', e1') = lower_expr e1 in
+  | `Temp _ -> sv2' @ [`Move(dest, e2')] (* commute rule *)
+  | `Mem e1 -> let (sv1', e1') = lower_expr e1 in (* general rule *)
                let new_temp = `Temp (make_fresh_temp ()) in
                sv1' @ [`Move(new_temp, e1')] @ sv2' @ [`Move (`Mem (new_temp), e2')]
   end
