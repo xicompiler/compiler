@@ -136,4 +136,8 @@ module type S = sig
 
   val sexp_of_t : t -> Sexp.t
   (** [sexp_of_t ast] is the s-expression serialization of [ast]. *)
+
+  val const_fold : t -> t
+  (** [const_fold ast] is [ast] where all constants expressions have
+      been fully evaluated. Conditionals are also folded, if possible. *)
 end

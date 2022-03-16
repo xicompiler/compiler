@@ -86,4 +86,5 @@ module type S = sig
   [@@deriving variants]
 
   val sexp_of_t : t -> Sexp.t
+  val const_fold : t -> t
 end
