@@ -95,14 +95,3 @@ let of_args f ~id ~arg ~ret =
 
 let add_fn_decl ~id ~arg ~ret = of_args add_fn_decl ~id ~arg ~ret
 let add_fn_defn ~id ~arg ~ret = of_args add_fn_defn ~id ~arg ~ret
-
-(** [of_list f ~id ~arg:args ~ret:rets] is [f ~id ~arg ~ret] where [arg]
-    is the [term] representation of [args] and [ret] is the [term]
-    representation of [rets] *)
-let of_list f ~id ~arg ~ret =
-  let arg = term_of_tau_list arg in
-  let ret = term_of_tau_list ret in
-  f ~id ~arg ~ret
-
-let add_fn_decl_list = of_list add_fn_decl
-let add_fn_defn_list = of_list add_fn_defn

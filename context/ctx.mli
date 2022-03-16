@@ -42,16 +42,8 @@ val add_fn_defn :
     [ctx :: (id, Fn (arg, ret))] if [id] is unbound in [ctx], or
     [Error (Bound id)] otherwise *)
 
-val add_fn_defn_list :
-  id:id -> arg:tau list -> ret:tau list -> t -> t Positioned.result
-(** Same as [add_fn_defn] but takes list of argument and return types *)
-
 val add_fn_decl :
   id:id -> arg:[< term ] -> ret:[< term ] -> t -> t Positioned.result
 (** [add_fn_decl ~id ~arg ~ret ctx] is [Ok ctx'] where [ctx'] is
     [ctx :: (id, Fn (arg, ret))] if [id] is unbound in [ctx], or
     [Error (Bound id)] otherwise *)
-
-val add_fn_decl_list :
-  id:id -> arg:tau list -> ret:tau list -> t -> t Positioned.result
-(** Same as [add_fn_decl] but takes list of argument and return types *)
