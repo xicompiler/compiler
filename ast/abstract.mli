@@ -53,6 +53,8 @@ module type S = sig
     and index = node * node
     (** [index] represents an index expression [e1\[e2\]] as a pair
         [(e1, e2)]*)
+
+    include Term.S with type t := t and type node := node
   end
 
   type expr = Expr.t
@@ -88,6 +90,8 @@ module type S = sig
     (** A [block] is the type of a possible empty block of statements in
         Xi, represented as a list of statements possibly followed by a
         return statement *)
+
+    include Term.S with type t := t and type node := node
   end
 
   type stmt = Stmt.t
@@ -106,12 +110,12 @@ module type S = sig
     (** A [definition] is the type of a top-level declaration in Xi:
         either a function definition, or declaration or initialization
         of a global variable. *)
-    type definition =
+    type defn =
       | FnDefn of fn
       | GlobalDecl of decl
       | GlobalInit of id * Type.tau * Expr.primitive
 
-    type node = definition Node.t
+    type node = defn Node.t
 
     type source = {
       uses : id Node.t list;

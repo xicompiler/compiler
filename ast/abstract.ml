@@ -32,6 +32,8 @@ module type S = sig
     and nodes = node list
     and call = id * nodes
     and index = node * node
+
+    include Term.S with type t := t and type node := node
   end
 
   type expr = Expr.t
@@ -56,6 +58,8 @@ module type S = sig
 
     and node = t Node.t
     and block = node list
+
+    include Term.S with type t := t and type node := node
   end
 
   type stmt = Stmt.t
@@ -65,12 +69,12 @@ module type S = sig
 
     type fn = signature * Stmt.block
 
-    type definition =
+    type defn =
       | FnDefn of fn
       | GlobalDecl of decl
       | GlobalInit of id * Type.tau * Expr.primitive
 
-    type node = definition Node.t
+    type node = defn Node.t
 
     type source = {
       uses : id Node.t list;
