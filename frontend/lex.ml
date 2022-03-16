@@ -93,8 +93,7 @@ module Diagnostic = struct
     | ID x -> string_of_id_token x
     | WILDCARD -> "_"
     | EOF -> "EOF"
-    | TYPE `Int -> "int"
-    | TYPE `Bool -> "bool"
+    | TYPE p -> Type.Tau.Primitive.to_string p
 
   let read_result lexbuf =
     try Ok (read lexbuf) with Error e -> Result.Error e

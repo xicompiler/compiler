@@ -1,19 +1,25 @@
 open Core
 
-type primitive = Primitive.t [@@deriving sexp_of]
+type primitive = Primitive.t
+
+module Primitive = Primitive
+
+(** [poly_string] is the string representation of [`Poly] *)
+let poly_string = "<poly>"
 
 type t =
   [ primitive
   | `Poly
   | `Array of t
   ]
-[@@deriving sexp_of]
 
 let rec to_string = function
-  | `Int -> "Int"
-  | `Bool -> "Bool"
-  | `Poly -> "Poly"
-  | `Array t -> "Array " ^ to_string t
+  | #primitive as p -> Primitive.to_string p
+  | `Array t -> to_string t ^ "[]"
+
+let rec sexp_of_t = function
+  | `Array t -> Sexp.List [ Sexp.Atom "[]"; sexp_of_t t ]
+  | #primitive as p -> Primitive.sexp_of_t p
 
 let rec equal t1 t2 =
   match (t1, t2) with
@@ -21,6 +27,4 @@ let rec equal t1 t2 =
   | `Array t1', `Array t2' -> equal t1' t2'
   | _ -> false
 
-let is_array = function
-  | `Array _ -> true
-  | `Poly | `Int | `Bool -> false
+let is_array = function `Array _ -> true | #primitive -> false
