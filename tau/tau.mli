@@ -1,10 +1,6 @@
 open Core
 
-type nonrec primitive =
-  [ `Int
-  | `Bool
-  ]
-[@@deriving sexp_of]
+type primitive = Primitive.t [@@deriving sexp_of]
 (** A [primitive] is the type of a primitive value in Xi: either an
     integer or a boolean *)
 

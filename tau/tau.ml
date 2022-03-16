@@ -1,17 +1,13 @@
 open Core
 
-type nonrec primitive =
-  [ `Int
-  | `Bool
-  ]
-[@@deriving sexp]
+type primitive = Primitive.t [@@deriving sexp_of]
 
 type t =
   [ primitive
   | `Poly
   | `Array of t
   ]
-[@@deriving sexp]
+[@@deriving sexp_of]
 
 let rec to_string = function
   | `Int -> "Int"
