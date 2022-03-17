@@ -8,7 +8,6 @@ module B = struct
 
   let get { value } = value
   let set ~value node = { node with value }
-  let foo = 5
 end
 
 include Factory.Make (B)
