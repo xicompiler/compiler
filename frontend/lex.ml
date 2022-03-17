@@ -37,7 +37,7 @@ module Diagnostic = struct
 
   (** [string_of_char_token c] is the string representing char token [c] *)
   let string_of_char_token u =
-    u |> Unicode.string_of_uchar |> Printf.sprintf "character %s"
+    u |> Unicode.to_string |> Printf.sprintf "character %s"
 
   (** [string_of_string_token s] is the string representing string token
       [s] *)
@@ -93,8 +93,7 @@ module Diagnostic = struct
     | ID x -> string_of_id_token x
     | WILDCARD -> "_"
     | EOF -> "EOF"
-    | TYPE `Int -> "int"
-    | TYPE `Bool -> "bool"
+    | TYPE p -> Type.Tau.Primitive.to_string p
 
   let read_result lexbuf =
     try Ok (read lexbuf) with Error e -> Result.Error e
