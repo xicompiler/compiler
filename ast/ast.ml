@@ -583,3 +583,4 @@ let type_check ?(find_intf = find_intf_default) = function
   | Intf intf -> type_check_intf intf
 
 module Decorated = Decorated
+module Op = Op
