@@ -200,8 +200,8 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
     and node = t Node.t
     and block = node list
 
-    let empty = Block []
     (** [empty] is an empty block of statements *)
+    let empty = Block []
 
     (** [sexp_of_decl_type typ lengths] is the s-expression
         serialization of the array type [t\[l1\]\[l2\]...] where each
@@ -359,6 +359,18 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
         expression of [es] has been constant folded *)
     let const_fold_return es = Return (Expr.const_fold_nodes es)
 
+    (** [const_fold_cond2 ~t ~f ~default e] is [t ()] if [e] wraps a
+        [true] literal, [f ()] if it wraps a [false] literal, and
+        [default ()] otherwise *)
+    let const_fold_cond2 ~t ~f ~default e =
+      match Ex.get e with
+      | Expr.Primitive (`Bool b) -> (if b then t else f) ()
+      | _ -> default ()
+
+    (** Same as [const_fold_cond2], but [empty] if the provided
+        expression wraps a [false] literal. *)
+    let const_fold_cond ~t = const_fold_cond2 ~t ~f:(fun () -> empty)
+
     (** [const_fold s] is the statement [s] where each expression
         contained in [s] has been recursively constant folded *)
     let rec const_fold = function
@@ -390,21 +402,29 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
     and const_fold_if e s =
       let e = Expr.const_fold_node e in
       let s = const_fold_node s in
-      match Ex.get e with
-      | Primitive (`Bool true)  -> s
-      | Primitive (`Bool false) -> 
+      let t () = St.get s in
+      let default () = If (e, s) in
+      const_fold_cond ~t ~default e
 
     (** [const_fold_if_else e s1 s2] is the statement
         [IfElse (e, s1, s2)] where [e] and each expression in [s1] and
         [s2] has been constant folded *)
     and const_fold_if_else e s1 s2 =
       let e = Expr.const_fold_node e in
-      IfElse (e, const_fold_node s1, const_fold_node s2)
+      let s1 = const_fold_node s1 in
+      let s2 = const_fold_node s2 in
+      let t () = St.get s1 in
+      let f () = St.get s2 in
+      let default () = IfElse (e, s1, s2) in
+      const_fold_cond2 ~t ~f ~default e
 
     (** [const_fold_while e s] is the statement [If (e, s)] where [e]
         and each expression in [s] has been constant folded *)
     and const_fold_while e s =
-      While (Expr.const_fold_node e, const_fold_node s)
+      let e = Expr.const_fold_node e in
+      let s = const_fold_node s in
+      let default () = While (e, s) in
+      const_fold_cond ~t:default ~default e
 
     (** [const_fold_block stmts] is [Block stmts] where each statement
         in [stmts] has been recursively constant folded *)
