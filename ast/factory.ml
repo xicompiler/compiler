@@ -3,6 +3,7 @@ open Option.Let_syntax
 open Option.Monad_infix
 open Abstract
 open Op
+open Util.Option
 
 (** [sexp_of_id id] is [Sexp.Atom id]*)
 let sexp_of_id id = Sexp.Atom (Node.Position.get id)
@@ -148,8 +149,8 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
       let enode2 = const_fold_node enode2 in
       let e1 = Node.get enode1 in
       let e2 = Node.get enode2 in
-      let default = Bop (bop, enode1, enode2) in
-      Option.value ~default (const_fold_bop_opt bop e1 e2)
+      let default () = Bop (bop, enode1, enode2) in
+      Lazy.value ~default (const_fold_bop_opt bop e1 e2)
 
     (** [const_fold_uop uop e] is the AST node [Uop (uop, e1)] where all
         constant expressions have been folded recursive in [e], folding
@@ -157,8 +158,8 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
     and const_fold_uop uop enode =
       let enode = const_fold_node enode in
       let e = Node.get enode in
-      let default = Uop (uop, enode) in
-      Option.value ~default (const_fold_uop_opt uop e)
+      let default () = Uop (uop, enode) in
+      Lazy.value ~default (const_fold_uop_opt uop e)
 
     (** [const_fold_fn_call bop e1 e2] is the AST node [FnCall (id, es)]
         where all constant expressions of each expression in [es] have
