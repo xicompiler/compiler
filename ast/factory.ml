@@ -200,6 +200,9 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
     and node = t Node.t
     and block = node list
 
+    let empty = Block []
+    (** [empty] is an empty block of statements *)
+
     (** [sexp_of_decl_type typ lengths] is the s-expression
         serialization of the array type [t\[l1\]\[l2\]...] where each
         length is optional *)
@@ -385,7 +388,11 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
     (** [const_fold_if e s] is the statement [If (e, s)] where [e] and
         each expression in [s] has been constant folded *)
     and const_fold_if e s =
-      If (Expr.const_fold_node e, const_fold_node s)
+      let e = Expr.const_fold_node e in
+      let s = const_fold_node s in
+      match Ex.get e with
+      | Primitive (`Bool true)  -> s
+      | Primitive (`Bool false) -> 
 
     (** [const_fold_if_else e s1 s2] is the statement
         [IfElse (e, s1, s2)] where [e] and each expression in [s1] and
