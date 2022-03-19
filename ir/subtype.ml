@@ -15,9 +15,18 @@ type 'expr expr =
   | 'expr dest
   ]
 
-type 'expr stmt =
-  [ `Move of 'expr dest * 'expr
-  | `Jump of 'expr
-  | `Label of label
-  | `Return of 'expr list
-  ]
+module Stmt = struct
+  type 'expr base =
+    [ `Move of 'expr dest * 'expr
+    | `Jump of 'expr
+    | `Label of label
+    | `Return of 'expr list
+    ]
+
+  type 'expr t =
+    [ 'expr base
+    | `CJump of 'expr * label * label
+    ]
+end
+
+type 'expr stmt = 'expr Stmt.t

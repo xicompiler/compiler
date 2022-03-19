@@ -6,10 +6,7 @@ type expr =
   | expr Subtype.expr
   ]
 
-and stmt =
-  [ expr Subtype.stmt
-  | `CJump of expr * label * label
-  ]
+and stmt = expr Subtype.stmt
 
 let one : expr = `Const Int64.one
 let sixty_four : expr = `Const (Int64.of_int 64)

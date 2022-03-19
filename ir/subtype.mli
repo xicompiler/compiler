@@ -13,9 +13,23 @@ type 'expr expr =
   | 'expr dest
   ]
 
-type 'expr stmt =
-  [ `Move of 'expr dest * 'expr
-  | `Jump of 'expr
-  | `Label of label
-  | `Return of 'expr list
-  ]
+(** [Stmt] represents the subtype of an IR statement *)
+module Stmt : sig
+  type 'expr base =
+    [ `Move of 'expr dest * 'expr
+    | `Jump of 'expr
+    | `Label of label
+    | `Return of 'expr list
+    ]
+  (** [base] represents a base IR statement, excluding CJump's *)
+
+  type 'expr t =
+    [ 'expr base
+    | `CJump of 'expr * label * label
+    ]
+  (** [t] represents the subtype of an IR statement, including a CJump
+      with true label and false label*)
+end
+
+type 'expr stmt = 'expr Stmt.t
+(** [stmt] is an alias for [Stmt.t] *)
