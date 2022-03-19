@@ -1,16 +1,16 @@
 open Ast.Op
 
-type binop = Bop
 type label = string
 
 type 'expr dest =
-  [ `Mem of 'expr * 'expr
+  [ `Mem of 'expr
   | `Temp of label
   ]
 
 type 'expr expr =
   [ `Const of int64
-  | `Bop of binop * 'expr * 'expr
+  | `Bop of Op.t * 'expr * 'expr
+  | `Not of 'expr
   | `Name of label
   | 'expr dest
   ]

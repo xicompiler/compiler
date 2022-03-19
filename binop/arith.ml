@@ -1,13 +1,17 @@
 open Core
 open Int64
 
-type t =
+type base =
   [ `Mult
-  | `HighMult
   | `Plus
   | `Minus
   | `Div
   | `Mod
+  ]
+
+type t =
+  [ base
+  | `HighMult
   ]
 
 let high_mult i1 i2 =
