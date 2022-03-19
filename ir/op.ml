@@ -1,9 +1,4 @@
-type log =
-  [ Binop.log
-  | `Xor
-  ]
-
-type arith = Binop.Arith.base
+type bitwise = [ `Xor ]
 
 type shift =
   [ `LShift
@@ -19,8 +14,10 @@ type unsigned =
   ]
 
 type t =
-  [ log
-  | arith
+  [ bitwise
+  | shift
   | unsigned
-  | Binop.cmp
+  | Binop.t
   ]
+
+let coerce bop = (bop :> t)

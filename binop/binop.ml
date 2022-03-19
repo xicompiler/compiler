@@ -21,15 +21,10 @@ type cmp = Cmp.t
 
 module Cmp = Cmp
 
-type base =
-  [ Arith.base
+type t =
+  [ arith
   | cmp
   | log
-  ]
-
-type t =
-  [ base
-  | arith
   ]
 
 let to_string = function

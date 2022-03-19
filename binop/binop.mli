@@ -40,16 +40,10 @@ module Cmp : module type of struct
   include Cmp
 end
 
-type base =
-  [ Arith.base
+type t =
+  [ arith
   | cmp
   | log
-  ]
-(** [base] represents a binary operation executable on a processor *)
-
-type t =
-  [ base
-  | arith
   ]
 (** A [t] represents a binary operator *)
 

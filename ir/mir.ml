@@ -18,9 +18,5 @@ let translate_uop uop e =
   | `IntNeg -> `Bop (`Add, `Not e, one)
   | `LogNeg -> `Bop (`Xor, e, one)
 
-let translate_bop bop e1 e2 =
-  let e1 = translate_enode e1 in
-  let e2 = translate_enode e2 in
-  match bop with
-  | #Binop.base as bop -> `Bop ((bop :> Op.t), e1, e2)
-  | `HighMult -> `ARShift (`Bop (`Mult, e1, e2), sixty_four)
+let translate_bop (bop : Binop.t) e1 e2 : expr =
+  `Bop (Op.coerce bop, translate_enode e1, translate_enode e2)

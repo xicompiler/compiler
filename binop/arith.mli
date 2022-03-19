@@ -1,17 +1,12 @@
 open Core
 
-type base =
+type t =
   [ `Mult
+  | `HighMult
   | `Plus
   | `Minus
   | `Div
   | `Mod
-  ]
-(** [base] represents all operations executable on a processor *)
-
-type t =
-  [ base
-  | `HighMult
   ]
 (** A [t] is the type of an arithemtic binop *)
 

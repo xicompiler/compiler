@@ -1,11 +1,5 @@
-type log =
-  [ Binop.log
-  | `Xor
-  ]
-(** [log] is the type of a logical operator in IR *)
-
-type arith = Binop.Arith.base
-(** [arith] is the type of an arithmetic operator in IR *)
+type bitwise = [ `Xor ]
+(** [bitwise] is the type of a bitwise operator in IR *)
 
 type shift =
   [ `LShift
@@ -23,9 +17,12 @@ type unsigned =
 (** [unsigned] is the type of an unsigned comparison operator *)
 
 type t =
-  [ log
-  | arith
+  [ bitwise
+  | shift
   | unsigned
-  | Binop.cmp
+  | Binop.t
   ]
 (** [t] is the type of an operator in IR *)
+
+val coerce : [< t ] -> t
+(** [coerce bop] coerces [bop] to a [t] *)
