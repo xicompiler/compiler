@@ -13,9 +13,14 @@ module type S = sig
     type ('v, 'e) t = ('v, 'e) vertex
 
     val incoming : ('v, 'e) t -> ('v, 'e) edge list
+    val pred : ('v, 'e) t -> ('v, 'e) t list
     val outgoing : ('v, 'e) t -> ('v, 'e) edge list
+    val succ : ('v, 'e) t -> ('v, 'e) t list
     val key : ('v, 'e) t -> key
     val value : ('v, 'e) t -> 'v
+    val marked : ('v, 'e) t -> bool
+    val mark : ('v, 'e) t -> unit
+    val marked_pred : ('v, 'e) t -> bool
     val add_edge : src:('v, 'e) t -> dst:('v, 'e) t -> weight:'e -> unit
   end
 

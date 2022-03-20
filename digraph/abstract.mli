@@ -28,14 +28,30 @@ module type S = sig
     val incoming : ('v, 'e) t -> ('v, 'e) edge list
     (** [incoming vertex] is the list of edges entering [vertex] *)
 
+    val pred : ('v, 'e) t -> ('v, 'e) t list
+    (** [pred vertex] is the list of predecessor nodes of [vertex] *)
+
     val outgoing : ('v, 'e) t -> ('v, 'e) edge list
     (** [outgoing vertex] is the list of exiting [vertex] *)
+
+    val succ : ('v, 'e) t -> ('v, 'e) t list
+    (** [succ vertex] is the list of successor nodes of [vertex] *)
 
     val key : ('v, 'e) t -> key
     (** [key vertex] is the index of [vertex] *)
 
     val value : ('v, 'e) t -> 'v
     (** [value vertex] is the value stored by [vertex] *)
+
+    val marked : ('v, 'e) t -> bool
+    (** [marked vertex] is [true] iff [vertex] has been marked *)
+
+    val mark : ('v, 'e) t -> unit
+    (** [mark vertex] marks [vertex] *)
+
+    val marked_pred : ('v, 'e) t -> bool
+    (** [marked_pred vertex] is [true] iff each of the predecessor
+        vertices of [vertex] are marked *)
 
     val add_edge : src:('v, 'e) t -> dst:('v, 'e) t -> weight:'e -> unit
     (** [add_edge ~src ~dst ~weight] adds an edge [(src, dst)] with
@@ -68,7 +84,8 @@ module type S = sig
 
   val set_vertex : ('v, 'e) t -> key:key -> value:'v -> unit
   (** [add_vertex g ~key ~value] sets the vertex with index [key] to a
-      fresh vertex with value [value] in [g] with no incident edges *)
+      fresh unmarked vertex with value [value] in [g] with no incident
+      edges *)
 
   val find_vertex : ('v, 'e) t -> key:key -> ('v, 'e) vertex option
   (** [find_vertex ~key g] is [Some v] where [v] is the vertex bound to
