@@ -240,3 +240,25 @@ and ir_stmt_of_block stmts = `Seq (List.map ~f:ir_stmt_of_snode stmts)
 
 and ir_of_fn_defn signature block = failwith "unimplemented"
 (*`Seq [ `Label signature.id; ir_stmt_of_block block ]*)
+
+and ir_stmt_of_control enode t f = 
+  match PosNode.get enode with
+  | Primitive (Bool true) -> `Jump (`Name t)
+  | Primitive (Bool false) -> `Jump (`Name f)
+  | Uop (LogicalNeg, e) -> ir_stmt_of_control e f t
+  | Bop (And, e1, e2) -> let label = make_fresh_label () in
+    `Seq
+      [
+        ir_stmt_of_control e1 label f;
+        `Label label;
+        ir_stmt_of_control e2 t f;
+      ]
+  | Bop (Or, e1, e2) -> let label = make_fresh_label () in
+    `Seq
+      [
+        ir_stmt_of_control e1 t label;
+        `Label label;
+        ir_stmt_of_control e2 t f;
+      ]
+  | _ -> let expr = ir_expr_of_enode enode in
+    `CJump (expr, t, f)
