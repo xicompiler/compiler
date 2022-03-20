@@ -7,4 +7,7 @@ type t = {
   lex : bool;
   parse : bool;
   typecheck : bool;
+  irgen : bool;
+  irrun : bool;
+  optimize : bool;
 }

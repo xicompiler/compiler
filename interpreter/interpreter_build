@@ -1,0 +1,3 @@
+#!/bin/bash
+
+javac -d build -classpath "lib/java_cup.jar:lib/jflex.jar:${CLASSPATH}" @interpreter_files.txt

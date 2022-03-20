@@ -30,7 +30,7 @@ output
 *.typed
 
 # executable
-xic
+/xic
 
 # deliverable
 *.zip
