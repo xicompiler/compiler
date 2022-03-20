@@ -3,6 +3,7 @@ open Subtype
 type expr =
   [ `Call of expr * expr list
   | `ESeq of stmt * expr
+  | `Seq of stmt list
   | expr Subtype.expr
   ]
 
