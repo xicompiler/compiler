@@ -10,19 +10,16 @@ open Primitive
 open Type
 
 type expr =
-  [ `Call of expr * expr list
-  | `ESeq of stmt * expr
-  | expr Subtype.expr
-  ]
+  [ `Call of expr * expr list | `ESeq of stmt * expr | expr Subtype.expr ]
 
 and stmt = expr Subtype.stmt
 
-let eight = 8L
-
+let one = `Const one
+let zero = `Const zero
+let eight = `Const 8L
 let length lst = lst |> List.length |> Int64.of_int
-
+let to_addr n = (8L * n) + 8L
 let label_counter = ref 0
-
 let temp_counter = ref 0
 
 let make_fresh pre counter =
@@ -43,10 +40,10 @@ let mangle fn = failwith "unimplemented"
 let ir_expr_of_primitive p =
   match p with
   | `Int i -> `Const i
-  | `Bool b -> if b then `Const one else `Const zero
+  | `Bool b -> if b then one else zero
   | `Char c -> `Const (c |> Uchar.to_scalar |> Int64.of_int)
 
-let ir_expr_of_id id = 
+let ir_expr_of_id id =
   let name = PosNode.get id in
   `Temp name
 
@@ -70,20 +67,16 @@ and ir_expr_of_arr_lst lst =
   let n = length lst in
   let tm = make_fresh_temp () in
   let f acc e =
-    let index = eight * (length acc) + eight in
+    let index = acc |> length |> to_addr in
     `Move (`Mem (`Bop (`Plus, `Temp tm, `Const index)), e) :: acc
   in
   let add_elts = List.rev (List.fold_left ~f ~init:[] lst) in
   `ESeq
     ( `Seq
-        (`Move
-            ( `Temp tm,
-              `Call
-                ( `Name "_xi_alloc",
-                  [ `Const (eight * n + eight) ] ) )
+        (`Move (`Temp tm, `Call (`Name "_xi_alloc", [ `Const (to_addr n) ]))
         :: `Move (`Mem (`Temp tm), `Const n)
         :: add_elts),
-      `Bop (`Plus, `Temp tm, `Const eight) )
+      `Bop (`Plus, `Temp tm, eight) )
 
 and ir_expr_of_string str =
   let arr =
@@ -96,8 +89,8 @@ and ir_expr_of_string str =
 and ir_expr_of_uop uop e =
   let ir = ir_expr_of_enode e in
   match uop with
-  | `IntNeg -> `Bop (`Plus, `Not ir, `Const one)
-  | `LogNeg -> `Bop (`Xor, ir, `Const one)
+  | `IntNeg -> `Bop (`Plus, `Not ir, one)
+  | `LogNeg -> `Bop (`Xor, ir, one)
 
 and ir_expr_of_bop bop e1 e2 =
   let ir1 = ir_expr_of_enode e1 in
@@ -106,7 +99,8 @@ and ir_expr_of_bop bop e1 e2 =
   | `HighMult -> `Bop (`ARShift, `Bop (`Mult, ir1, ir2), `Const 32L)
   | `And -> ir_expr_of_and ir1 ir2
   | `Or -> ir_expr_of_or ir1 ir2
-  | #Ast.Op.binop -> `Bop (Op.coerce bop, ir_expr_of_enode e1, ir_expr_of_enode e2)
+  | #Ast.Op.binop ->
+      `Bop (Op.coerce bop, ir_expr_of_enode e1, ir_expr_of_enode e2)
 (* TODO fix highmult *)
 
 and ir_expr_of_and ir1 ir2 =
@@ -117,12 +111,12 @@ and ir_expr_of_and ir1 ir2 =
   `ESeq
     ( `Seq
         [
-          `Move (`Temp x, `Const zero);
+          `Move (`Temp x, zero);
           `CJump (ir1, `Label l1, `Label lf);
           `Label l1;
           `CJump (ir2, `Label l2, `Label lf);
           `Label l2;
-          `Move (`Temp x, `Const one);
+          `Move (`Temp x, one);
           `Label lf;
         ],
       `Temp x )
@@ -135,12 +129,12 @@ and ir_expr_of_or ir1 ir2 =
   `ESeq
     ( `Seq
         [
-          `Move (`Temp x, `Const one);
+          `Move (`Temp x, one);
           `CJump (ir1, `Label lt, `Label l1);
           `Label l1;
           `CJump (ir2, `Label lt, `Label l2);
           `Label l2;
-          `Move (`Temp x, `Const zero);
+          `Move (`Temp x, zero);
           `Label lt;
         ],
       `Temp x )
@@ -151,7 +145,7 @@ and ir_expr_of_fncall id es =
 
 and ir_expr_of_length node =
   let e = ir_expr_of_enode node in
-  `Mem (`Bop (`Minus, e, `Const eight))
+  `Mem (`Bop (`Minus, e, eight))
 
 and ir_expr_of_index e1 e2 =
   let expr1 = ir_expr_of_enode e1 in
@@ -166,17 +160,14 @@ and ir_expr_of_index e1 e2 =
           `Move (`Temp ta, expr1);
           `Move (`Temp ti, expr2);
           `CJump
-            ( `Bop
-                ( `ULt,
-                  `Temp ti,
-                  `Mem (`Bop (`Minus, `Temp ta, `Const eight)) ),
+            ( `Bop (`ULt, `Temp ti, `Mem (`Bop (`Minus, `Temp ta, eight))),
               `Label lok,
               `Label lerr );
           `Label lerr;
           `Call (`Name "_xi_out_of_bounds", []);
           `Label lok;
         ],
-      `Mem (`Bop (`Plus, ta, `Bop (`Mult, ti, `Const eight))) )
+      `Mem (`Bop (`Plus, ta, `Bop (`Mult, ti, eight))) )
 
 and ir_stmt_of_snode snode =
   match PosNode.get snode with
@@ -198,13 +189,7 @@ and ir_stmt_of_if e s =
   let stmt = ir_stmt_of_snode s in
   let t_label = make_fresh_label () in
   let f_label = make_fresh_label () in
-  `Seq
-    [
-      c_stmt e t_label f_label;
-      `Label t_label;
-      stmt;
-      `Label f_label;
-    ]
+  `Seq [ c_stmt e t_label f_label; `Label t_label; stmt; `Label f_label ]
 
 and ir_stmt_of_while e s =
   let stmt = ir_stmt_of_snode s in
@@ -234,32 +219,23 @@ and ir_stmt_of_prcall id es =
   `Call (`Name (PosNode.get id), expr_lst)
 
 and ir_stmt_of_return es = `Return (List.map ~f:ir_expr_of_enode es)
-
 and ir_stmt_of_block stmts = `Seq (List.map ~f:ir_stmt_of_snode stmts)
-
 and ir_of_fn_defn signature block = failwith "unimplemented"
 (*`Seq [ `Label signature.id; ir_stmt_of_block block ]*)
 
 (** [c_stmt enode t f] is the translation for translating booleans
     to control flow *)
-and c_stmt enode t f = 
+and c_stmt enode t f =
   match PosNode.get enode with
   | Primitive (`Bool true) -> `Jump (`Name t)
   | Primitive (`Bool false) -> `Jump (`Name f)
   | Uop (`LogNeg, e) -> c_stmt e f t
-  | Bop (`And, e1, e2) -> let label = make_fresh_label () in
-    `Seq
-      [
-        c_stmt e1 label f;
-        `Label label;
-        c_stmt e2 t f;
-      ]
-  | Bop (`Or, e1, e2) -> let label = make_fresh_label () in
-    `Seq
-      [
-        c_stmt e1 t label;
-        `Label label;
-        c_stmt e2 t f;
-      ]
-  | _ -> let expr = ir_expr_of_enode enode in
-    `CJump (expr, t, f)
+  | Bop (`And, e1, e2) ->
+      let label = make_fresh_label () in
+      `Seq [ c_stmt e1 label f; `Label label; c_stmt e2 t f ]
+  | Bop (`Or, e1, e2) ->
+      let label = make_fresh_label () in
+      `Seq [ c_stmt e1 t label; `Label label; c_stmt e2 t f ]
+  | _ ->
+      let expr = ir_expr_of_enode enode in
+      `CJump (expr, t, f)
