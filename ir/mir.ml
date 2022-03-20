@@ -9,7 +9,6 @@ type expr =
 and stmt = expr Subtype.stmt
 
 let one : expr = `Const Int64.one
-let sixty_four : expr = `Const (Int64.of_int 64)
 let translate_enode e = failwith "unimplemented"
 
 let translate_uop uop e =
