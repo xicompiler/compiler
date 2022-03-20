@@ -10,11 +10,11 @@ let print_no_files () =
 
 (** [try_compile args] attempts to compile a program described by
     arguments [args], exiting with code 1 on error. *)
-let try_compile ({ files; lex; parse; typecheck; _ } as args) =
+let try_compile ({ files; lex; parse; typecheck; irgen; irrun; _ } as args) =
   if List.is_empty files then print_no_files ();
   let iter_errors es =
     List.iter ~f:print_endline es;
-    if not (lex || parse || typecheck) then exit 1
+    if not (lex || parse || typecheck || irgen || irrun) then exit 1
   in
   args |> compile |> Result.iter_error ~f:iter_errors
 
@@ -44,6 +44,15 @@ let command =
       and typecheck =
         flag "--typecheck" no_arg
           ~doc:" Generate output from semantic analysis."
+      and irgen =
+        flag "--irgen" no_arg
+          ~doc:" Generate intermediate code."
+      and irrun =
+        flag "--irrun" no_arg
+          ~doc:" Generate and interpret immediate code."
+      and optimize =
+        flag "-O" no_arg
+          ~doc:" Disable optimizations."
       in
       let args =
         {
@@ -55,6 +64,9 @@ let command =
           lex;
           parse;
           typecheck;
+          irgen;
+          irrun;
+          optimize = true;
         }
       in
       fun () -> try_compile args)
