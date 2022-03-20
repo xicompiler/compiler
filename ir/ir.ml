@@ -60,7 +60,7 @@ and ir_expr_of_arr_lst lst =
       acc |> List.length |> Int64.of_int |> Int64.( * ) 8L
       |> Int64.( + ) 8L
     in
-    `Move (`Mem (`Bop (`IR_ADD, `Temp tm, `Const index)), e) :: acc
+    `Move (`Mem (`Bop (`Plus, `Temp tm, `Const index)), e) :: acc
   in
   let add_elts = List.rev (List.fold_left ~f ~init:[] lst) in
   `ESeq
@@ -72,7 +72,7 @@ and ir_expr_of_arr_lst lst =
                  [ `Const (n |> Int64.( * ) 8L |> Int64.( + ) 8L) ] ) )
         :: `Move (`Mem (`Temp tm), `Const n)
         :: add_elts),
-      `Bop (`IR_ADD, `Temp tm, `Const 8L) )
+      `Bop (`Plus, `Temp tm, `Const 8L) )
 
 and ir_expr_of_string str =
   let arr =
@@ -86,25 +86,25 @@ and ir_expr_of_string str =
 and ir_expr_of_uop uop e =
   let ir = ir_expr_of_enode e in
   match uop with
-  | `IntNeg -> `Bop (`IR_SUB, `Const 0L, ir)
-  | `LogNeg -> `Bop (`IR_XOR, ir, `Const 1L)
+  | `IntNeg -> `Bop (`Minus, `Const 0L, ir)
+  | `LogNeg -> `Bop (`Xor, ir, `Const 1L)
 
 and ir_expr_of_bop bop e1 e2 =
   let ir1 = ir_expr_of_enode e1 in
   let ir2 = ir_expr_of_enode e2 in
   match bop with
-  | `Mult -> `Bop (`IR_MUL, ir1, ir2)
-  | `HighMult -> `Bop (`IR_ARSHIFT, `Bop (`IR_MUL, ir1, ir2), `Const 32L)
-  | `Div -> `Bop (`IR_DIV, ir1, ir2)
-  | `Mod -> `Bop (`IR_MOD, ir1, ir2)
-  | `Plus -> `Bop (`IR_ADD, ir1, ir2)
-  | `Minus -> `Bop (`IR_SUB, ir1, ir2)
-  | `Lt -> `Bop (`IR_LT, ir1, ir2)
-  | `Leq -> `Bop (`IR_LEQ, ir1, ir2)
-  | `Geq -> `Bop (`IR_GEQ, ir1, ir2)
-  | `Gt -> `Bop (`IR_GT, ir1, ir2)
-  | `Eq -> `Bop (`IR_EQ, ir1, ir2)
-  | `Neq -> `Bop (`IR_NEQ, ir1, ir2)
+  | `Mult -> `Bop (`Mult, ir1, ir2)
+  | `HighMult -> `Bop (`ARShift, `Bop (`Mult, ir1, ir2), `Const 32L)
+  | `Div -> `Bop (`Div, ir1, ir2)
+  | `Mod -> `Bop (`Mod, ir1, ir2)
+  | `Plus -> `Bop (`Plus, ir1, ir2)
+  | `Minus -> `Bop (`Minus, ir1, ir2)
+  | `Lt -> `Bop (`Lt, ir1, ir2)
+  | `Leq -> `Bop (`Leq, ir1, ir2)
+  | `Geq -> `Bop (`Geq, ir1, ir2)
+  | `Gt -> `Bop (`Gt, ir1, ir2)
+  | `Eq -> `Bop (`Eq, ir1, ir2)
+  | `Neq -> `Bop (`Neq, ir1, ir2)
   | `And -> ir_expr_of_and ir1 ir2
   | `Or -> ir_expr_of_or ir1 ir2
 
@@ -150,7 +150,7 @@ and ir_expr_of_fncall id es =
 
 and ir_expr_of_length node =
   let e = ir_expr_of_enode node in
-  `Mem (`Bop (`IR_SUB, e, `Const 8L))
+  `Mem (`Bop (`Minus, e, `Const 8L))
 
 and ir_expr_of_index e1 e2 =
   let expr1 = ir_expr_of_enode e1 in
@@ -166,16 +166,16 @@ and ir_expr_of_index e1 e2 =
           `Move (`Temp ti, expr2);
           `CJump
             ( `Bop
-                ( `IR_ULT,
+                ( `ULt,
                   `Temp ti,
-                  `Mem (`Bop (`IR_SUB, `Temp ta, `Const 8L)) ),
+                  `Mem (`Bop (`Minus, `Temp ta, `Const 8L)) ),
               `Label lok,
               `Label lerr );
           `Label lerr;
           `Call (`Name "_xi_out_of_bounds", []);
           `Label lok;
         ],
-      `Mem (`Bop (`IR_ADD, ta, `Bop (`IR_MUL, ti, `Const 8L))) )
+      `Mem (`Bop (`Plus, ta, `Bop (`Mult, ti, `Const 8L))) )
 
 and ir_stmt_of_snode snode =
   match PosNode.get snode with
@@ -200,14 +200,13 @@ and ir_stmt_of_if e s =
   let f_label = make_fresh_label () in
   `Seq
     [
-      `CJump (expr, `Label t_label, `Label f_label);
+      c_stmt e t_label f_label;
       `Label t_label;
       stmt;
       `Label f_label;
     ]
 
 and ir_stmt_of_while e s =
-  let expr = ir_expr_of_enode e in
   let stmt = ir_stmt_of_snode s in
   let h_label = make_fresh_label () in
   let t_label = make_fresh_label () in
@@ -215,7 +214,7 @@ and ir_stmt_of_while e s =
   `Seq
     [
       `Label h_label;
-      `CJump (expr, `Label t_label, `Label f_label);
+      c_stmt e t_label f_label;
       `Label t_label;
       stmt;
       `Jump (`Name h_label);
@@ -241,24 +240,26 @@ and ir_stmt_of_block stmts = `Seq (List.map ~f:ir_stmt_of_snode stmts)
 and ir_of_fn_defn signature block = failwith "unimplemented"
 (*`Seq [ `Label signature.id; ir_stmt_of_block block ]*)
 
-and ir_stmt_of_control enode t f = 
+(** [c_stmt enode t f] is the translation for translating booleans
+    to control flow *)
+and c_stmt enode t f = 
   match PosNode.get enode with
   | Primitive (`Bool true) -> `Jump (`Name t)
   | Primitive (`Bool false) -> `Jump (`Name f)
-  | Uop (`LogNeg, e) -> ir_stmt_of_control e f t
+  | Uop (`LogNeg, e) -> c_stmt e f t
   | Bop (`And, e1, e2) -> let label = make_fresh_label () in
     `Seq
       [
-        ir_stmt_of_control e1 label f;
+        c_stmt e1 label f;
         `Label label;
-        ir_stmt_of_control e2 t f;
+        c_stmt e2 t f;
       ]
   | Bop (`Or, e1, e2) -> let label = make_fresh_label () in
     `Seq
       [
-        ir_stmt_of_control e1 t label;
+        c_stmt e1 t label;
         `Label label;
-        ir_stmt_of_control e2 t f;
+        c_stmt e2 t f;
       ]
   | _ -> let expr = ir_expr_of_enode enode in
     `CJump (expr, t, f)
