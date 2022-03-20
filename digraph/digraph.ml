@@ -1,7 +1,7 @@
 type ('v, 'e) vertex = {
   value : 'v;
-  incoming : ('v, 'e) edge list;
-  outgoing : ('v, 'e) edge list;
+  mutable incoming : ('v, 'e) edge list;
+  mutable outgoing : ('v, 'e) edge list;
 }
 
 and ('v, 'e) edge = {
