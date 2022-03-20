@@ -7,8 +7,6 @@ type expr =
   ]
 (** An [expr] is a mid-level intermediate representation expression *)
 
-and stmt =
-  [ expr Subtype.stmt
-  | `CJump of expr * label * label
-  ]
+and stmt = expr Subtype.stmt
+
 (** A [stmt] is a mid-level intermediate representation statement *)

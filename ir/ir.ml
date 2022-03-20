@@ -6,7 +6,7 @@ module PosNode = Node.Position
 open Ast.Expr
 open Ast.Stmt
 open Ast.Toplevel
-open Ast.Primitive
+open Primitive
 open Type
 
 let label_counter = ref 0
@@ -30,9 +30,9 @@ let mangle fn = failwith "unimplemented"
 
 let ir_expr_of_primitive p =
   match p with
-  | Int i -> `Const i
-  | Bool b -> if b then `Const 1L else `Const 0L
-  | Char c -> `Const (c |> Uchar.to_scalar |> Int64.of_int)
+  | `Int i -> `Const i
+  | `Bool b -> if b then `Const 1L else `Const 0L
+  | `Char c -> `Const (c |> Uchar.to_scalar |> Int64.of_int)
 
 let ir_expr_of_id id = `Temp id
 
@@ -49,7 +49,7 @@ let rec ir_expr_of_enode enode =
   | Index (e1, e2) -> ir_expr_of_index e1 e2
 
 and ir_expr_of_arr arr =
-  let e_nodes = List.map ~f:ir_expr_of_enode (Array.to_list arr) in
+  let e_nodes = List.map ~f:ir_expr_of_enode arr in
   ir_expr_of_arr_lst e_nodes
 
 and ir_expr_of_arr_lst lst =
@@ -86,27 +86,27 @@ and ir_expr_of_string str =
 and ir_expr_of_uop uop e =
   let ir = ir_expr_of_enode e in
   match uop with
-  | IntNeg -> `Bop (`IR_SUB, `Const 0L, ir)
-  | LogicalNeg -> `Bop (`IR_XOR, ir, `Const 1L)
+  | `IntNeg -> `Bop (`IR_SUB, `Const 0L, ir)
+  | `LogNeg -> `Bop (`IR_XOR, ir, `Const 1L)
 
 and ir_expr_of_bop bop e1 e2 =
   let ir1 = ir_expr_of_enode e1 in
   let ir2 = ir_expr_of_enode e2 in
   match bop with
-  | Mult -> `Bop (`IR_MUL, ir1, ir2)
-  | HighMult -> `Bop (`IR_ARSHIFT, `Bop (`IR_MUL, ir1, ir2), `Const 32L)
-  | Div -> `Bop (`IR_DIV, ir1, ir2)
-  | Mod -> `Bop (`IR_MOD, ir1, ir2)
-  | Plus -> `Bop (`IR_ADD, ir1, ir2)
-  | Minus -> `Bop (`IR_SUB, ir1, ir2)
-  | Lt -> `Bop (`IR_LT, ir1, ir2)
-  | Leq -> `Bop (`IR_LEQ, ir1, ir2)
-  | Geq -> `Bop (`IR_GEQ, ir1, ir2)
-  | Gt -> `Bop (`IR_GT, ir1, ir2)
-  | Eq -> `Bop (`IR_EQ, ir1, ir2)
-  | Neq -> `Bop (`IR_NEQ, ir1, ir2)
-  | And -> ir_expr_of_and ir1 ir2
-  | Or -> ir_expr_of_or ir1 ir2
+  | `Mult -> `Bop (`IR_MUL, ir1, ir2)
+  | `HighMult -> `Bop (`IR_ARSHIFT, `Bop (`IR_MUL, ir1, ir2), `Const 32L)
+  | `Div -> `Bop (`IR_DIV, ir1, ir2)
+  | `Mod -> `Bop (`IR_MOD, ir1, ir2)
+  | `Plus -> `Bop (`IR_ADD, ir1, ir2)
+  | `Minus -> `Bop (`IR_SUB, ir1, ir2)
+  | `Lt -> `Bop (`IR_LT, ir1, ir2)
+  | `Leq -> `Bop (`IR_LEQ, ir1, ir2)
+  | `Geq -> `Bop (`IR_GEQ, ir1, ir2)
+  | `Gt -> `Bop (`IR_GT, ir1, ir2)
+  | `Eq -> `Bop (`IR_EQ, ir1, ir2)
+  | `Neq -> `Bop (`IR_NEQ, ir1, ir2)
+  | `And -> ir_expr_of_and ir1 ir2
+  | `Or -> ir_expr_of_or ir1 ir2
 
 and ir_expr_of_and ir1 ir2 =
   let x = make_fresh_temp () in
@@ -243,17 +243,17 @@ and ir_of_fn_defn signature block = failwith "unimplemented"
 
 and ir_stmt_of_control enode t f = 
   match PosNode.get enode with
-  | Primitive (Bool true) -> `Jump (`Name t)
-  | Primitive (Bool false) -> `Jump (`Name f)
-  | Uop (LogicalNeg, e) -> ir_stmt_of_control e f t
-  | Bop (And, e1, e2) -> let label = make_fresh_label () in
+  | Primitive (`Bool true) -> `Jump (`Name t)
+  | Primitive (`Bool false) -> `Jump (`Name f)
+  | Uop (`LogNeg, e) -> ir_stmt_of_control e f t
+  | Bop (`And, e1, e2) -> let label = make_fresh_label () in
     `Seq
       [
         ir_stmt_of_control e1 label f;
         `Label label;
         ir_stmt_of_control e2 t f;
       ]
-  | Bop (Or, e1, e2) -> let label = make_fresh_label () in
+  | Bop (`Or, e1, e2) -> let label = make_fresh_label () in
     `Seq
       [
         ir_stmt_of_control e1 t label;

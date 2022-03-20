@@ -12,16 +12,16 @@ type signature = {
 
 module type S = sig
   module Expr : sig
-    include module type of Op
+    open Op
 
-    include module type of Primitive
+    type primitive = Primitive.t
 
     module Node : Node.S
 
     type t =
       | Primitive of primitive
       | Id of id
-      | Array of node array
+      | Array of nodes
       | String of string
       | Bop of binop * node * node
       | Uop of unop * node
@@ -36,6 +36,8 @@ module type S = sig
     and call = id * nodes
 
     and index = node * node
+
+    include Term.S with type t := t and type node := node
   end
 
   type expr = Expr.t
@@ -61,6 +63,8 @@ module type S = sig
     and node = t Node.t
 
     and block = node list
+
+    include Term.S with type t := t and type node := node
   end
 
   type stmt = Stmt.t
@@ -91,4 +95,5 @@ module type S = sig
   [@@deriving variants]
 
   val sexp_of_t : t -> Sexp.t
+  val const_fold : t -> t
 end

@@ -1,0 +1,3 @@
+#!/bin/bash
+
+./irrun test/cli/helloworld.ir

@@ -14,42 +14,8 @@ type t = {
 }
 [@@deriving sexp_of]
 
-(** [init context] is a context with context [context] and [`Unit]
-    return type *)
-let init context = { context; ret = `Unit }
-
-let empty = init Map.empty
-
-let pr_int_array = Bound.fn_decl ~arg:Tau.int_array ()
-
-(** [io_bindings] describe the context created by the [io] module*)
-let io_bindings =
-  [
-    ("print", pr_int_array);
-    ("println", pr_int_array);
-    ("readln", Bound.fn_decl ~ret:Tau.int_array ());
-    ("getchar", Bound.fn_decl ~ret:`Int ());
-    ("eof", Bound.fn_decl ~ret:`Bool ());
-  ]
-
-(** [of_list bindings] is a context with return type [`Unit] and
-    bindings from identifiers to [term]s described by [bindings] *)
-let of_list bindings = bindings |> Map.of_alist_exn |> init
-
-let io = of_list io_bindings
-
-let int_bool = `Tuple [ `Int; `Bool ]
-
-let conv_bindings =
-  [
-    ("parseInt", Bound.fn_decl ~arg:Tau.int_array ~ret:int_bool ());
-    ("unparseInt", Bound.fn_decl ~arg:`Int ~ret:Tau.int_array ());
-  ]
-
-let conv = of_list conv_bindings
-
+let empty = { context = Map.empty; ret = `Unit }
 let ret { ret } = ret
-
 let with_ret ~ret ctx = { ctx with ret = (ret :> term) }
 
 let find ~id { context } =
@@ -128,17 +94,4 @@ let of_args f ~id ~arg ~ret =
   f ~id ~fn
 
 let add_fn_decl ~id ~arg ~ret = of_args add_fn_decl ~id ~arg ~ret
-
 let add_fn_defn ~id ~arg ~ret = of_args add_fn_defn ~id ~arg ~ret
-
-(** [of_list f ~id ~arg:args ~ret:rets] is [f ~id ~arg ~ret] where [arg]
-    is the [term] representation of [args] and [ret] is the [term]
-    representation of [rets] *)
-let of_list f ~id ~arg ~ret =
-  let arg = term_of_tau_list arg in
-  let ret = term_of_tau_list ret in
-  f ~id ~arg ~ret
-
-let add_fn_decl_list = of_list add_fn_decl
-
-let add_fn_defn_list = of_list add_fn_defn
