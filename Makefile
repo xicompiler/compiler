@@ -3,11 +3,17 @@
 build:
 	dune build
 
+build-interpreter:
+	cd interpreter && ./interpreter_build
+
 test: build
 	dune exec ./test/main.exe
 
-test-cli:
-	test/cli/test-cli
+test-cli: xic
+	./test/cli/irrun_tests
+
+xic:
+	./xic-build
 
 clean: bisect-clean
 	dune clean
