@@ -21,17 +21,6 @@ let eight = 8L
 
 let length lst = lst |> List.length |> Int64.of_int
 
-let translate_enode e = failwith "unimplemented"
-
-let translate_uop uop e =
-  let e = translate_enode e in
-  match uop with
-  | `IntNeg -> `Bop (`Plus, `Not e, `Const one)
-  | `LogNeg -> `Bop (`Xor, e, `Const one)
-
-let translate_bop (bop : Binop.t) e1 e2 : expr =
-  `Bop (Op.coerce bop, translate_enode e1, translate_enode e2)
-
 let label_counter = ref 0
 
 let temp_counter = ref 0
@@ -104,31 +93,21 @@ and ir_expr_of_string str =
   in
   ir_expr_of_arr_lst arr
 
-(* TODO: fix ops *)
 and ir_expr_of_uop uop e =
   let ir = ir_expr_of_enode e in
   match uop with
-  | `IntNeg -> `Bop (`Minus, `Const zero, ir)
+  | `IntNeg -> `Bop (`Plus, `Not ir, `Const one)
   | `LogNeg -> `Bop (`Xor, ir, `Const one)
 
 and ir_expr_of_bop bop e1 e2 =
   let ir1 = ir_expr_of_enode e1 in
   let ir2 = ir_expr_of_enode e2 in
   match bop with
-  | `Mult -> `Bop (`Mult, ir1, ir2)
   | `HighMult -> `Bop (`ARShift, `Bop (`Mult, ir1, ir2), `Const 32L)
-  | `Div -> `Bop (`Div, ir1, ir2)
-  | `Mod -> `Bop (`Mod, ir1, ir2)
-  | `Plus -> `Bop (`Plus, ir1, ir2)
-  | `Minus -> `Bop (`Minus, ir1, ir2)
-  | `Lt -> `Bop (`Lt, ir1, ir2)
-  | `Leq -> `Bop (`Leq, ir1, ir2)
-  | `Geq -> `Bop (`Geq, ir1, ir2)
-  | `Gt -> `Bop (`Gt, ir1, ir2)
-  | `Eq -> `Bop (`Eq, ir1, ir2)
-  | `Neq -> `Bop (`Neq, ir1, ir2)
   | `And -> ir_expr_of_and ir1 ir2
   | `Or -> ir_expr_of_or ir1 ir2
+  | #Ast.Op.binop -> `Bop (Op.coerce bop, ir_expr_of_enode e1, ir_expr_of_enode e2)
+(* TODO fix highmult *)
 
 and ir_expr_of_and ir1 ir2 =
   let x = make_fresh_temp () in
