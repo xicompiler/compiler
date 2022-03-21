@@ -4,9 +4,7 @@ open Int64
 module PosNode = Node.Position
 module DecNode = Context.Node.Decorated
 open Ast.Op
-open Ast.Expr
-open Ast.Stmt
-open Ast.Toplevel
+open Ast.Decorated
 open Primitive
 open Type
 
@@ -22,17 +20,11 @@ and stmt =
   ]
 
 let one = `Const one
-
 let zero = `Const zero
-
 let eight = `Const 8L
-
 let length lst = lst |> List.length |> Int64.of_int
-
 let to_addr n = (8L * n) + 8L
-
 let label_counter = ref 0
-
 let temp_counter = ref 0
 
 let make_fresh pre counter =
@@ -65,7 +57,6 @@ let encode_term = function
   | #Expr.t as t -> encode_expr t
 
 let encode_name = String.substr_replace_all ~pattern:"_" ~with_:"__"
-
 let encode_args args = args |> List.map ~f:encode_expr |> String.concat
 
 let mangle id ~ctx =
@@ -318,17 +309,13 @@ and translate_return es = `Return (List.map ~f:translate_expr es)
 and translate_block stmts =
   `Seq (List.filter_map ~f:translate_stmt stmts)
 
-and translate_fn_defn signature block =
-  `Seq
-    [
-      `Label signature.id;
-      block |> DecNode.Toplevel.get |> translate_block;
-    ]
+and translate_fn_defn (signature : Ast.signature) block =
+  `Seq [ `Label (PosNode.get signature.id); translate_block block ]
 
 and translate_global_init id typ prim =
   `Move (`Temp (PosNode.get id), prim)
 
-and translate_defn def =
+and translate_defn (def : Toplevel.node) =
   match DecNode.Toplevel.get def with
   | FnDefn (signature, block) ->
       Some (translate_fn_defn signature block)
@@ -336,8 +323,7 @@ and translate_defn def =
   | GlobalInit (id, typ, prim) ->
       Some (translate_global_init id typ prim)
 
-and translate_source src =
-  let { uses; definitions } = DecNode.Toplevel.get src in
+and translate_source ({ uses; definitions } : Toplevel.source) =
   `Seq (List.filter_map ~f:translate_defn definitions)
 
 and translate_toplevel (tnode : Ast.Decorated.t) =
