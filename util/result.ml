@@ -9,5 +9,9 @@ module Lazy = struct
 end
 
 let compose_ok f x = Ok (f x)
+
 let join_error = function Error e -> e | Ok _ as ok -> ok
+
+let ok = function Ok v -> v | Error e -> failwith "expected Ok"
+
 let ( >>? ) r f = Core.Result.map_error r ~f

@@ -2,6 +2,7 @@ open Subtype
 open Core
 open Int64
 module PosNode = Node.Position
+module DecNode = Context.Node.Decorated
 open Ast.Op
 open Ast.Expr
 open Ast.Stmt
@@ -46,8 +47,33 @@ let make_fresh_label () = make_fresh "l" label_counter
     prefix "x" and integer based on [temp_counter] *)
 let make_fresh_temp () = make_fresh "x" temp_counter
 
-(* TODO: mangling function names *)
-let mangle fn = failwith "unimplemented"
+let rec encode_tau = function
+  | `Int -> "i"
+  | `Bool -> "b"
+  | `Array t -> "a" ^ encode_tau t
+  | `Poly -> failwith "Unexpected <poly>"
+
+let rec encode_expr = function
+  | `Tuple ts ->
+      let len = ts |> List.length |> string_of_int in
+      let types = ts |> List.map ~f:encode_tau |> String.concat in
+      "t" ^ len ^ types
+  | #Tau.t as t -> encode_tau t
+
+let encode_term = function
+  | `Unit -> "p"
+  | #Expr.t as t -> encode_expr t
+
+let encode_name = String.substr_replace_all ~pattern:"_" ~with_:"__"
+
+let encode_args args = args |> List.map ~f:encode_expr |> String.concat
+
+let mangle id ~ctx =
+  let arg, ret = Context.find_fn_exn ~id ctx in
+  let name = id |> PosNode.get |> encode_name in
+  let return = encode_term ret in
+  let args = arg |> tau_list_of_term |> encode_args in
+  Printf.sprintf "_I%s_%s%s" name return args
 
 let translate_primitive p =
   match p with
@@ -57,15 +83,16 @@ let translate_primitive p =
 
 let translate_id id = `Temp (PosNode.get id)
 
-let rec translate_expr enode =
-  match PosNode.get enode with
+let rec translate_expr (enode : Ast.Decorated.expr DecNode.expr) =
+  let ctx = DecNode.Expr.context enode in
+  match DecNode.Expr.get enode with
   | Primitive p -> translate_primitive p
   | Id id -> translate_id id
   | Array arr -> translate_arr arr
   | String s -> translate_string s
   | Bop (op, e1, e2) -> translate_bop op e1 e2
   | Uop (op, e) -> translate_uop op e
-  | FnCall (id, es) -> translate_fncall id es
+  | FnCall (id, es) -> translate_fncall ~ctx id es
   | Length node -> translate_length node
   | Index (e1, e2) -> translate_index e1 e2
 
@@ -146,9 +173,10 @@ and translate_or e1 e2 =
         ],
       `Temp x )
 
-and translate_fncall id es =
+and translate_fncall ~ctx id es =
+  let name = mangle id ~ctx in
   let expr_lst = List.map ~f:translate_expr es in
-  `Call (`Name (PosNode.get id), expr_lst)
+  `Call (`Name name, expr_lst)
 
 and translate_length node =
   let ir = translate_expr node in
@@ -175,8 +203,9 @@ and translate_index e1 e2 =
         ],
       `Mem (`Bop (`Plus, ta, `Bop (`Mult, ti, eight))) )
 
-and translate_stmt snode =
-  match PosNode.get snode with
+and translate_stmt (snode : Ast.Decorated.stmt DecNode.stmt) =
+  let ctx = DecNode.Stmt.context snode in
+  match DecNode.Stmt.get snode with
   | If (e, s) -> translate_if e s
   | IfElse (e, s1, s2) -> translate_if_else e s1 s2
   | While (e, s) -> translate_while e s
@@ -184,10 +213,10 @@ and translate_stmt snode =
   | ArrayDecl (id, typ, es) -> failwith "unimplemented"
   | Assign (id, e) -> translate_assign id e
   | ArrAssign (e1, e2, e3) -> translate_arr_assign e1 e2 e3
-  | ExprStmt (id, es) -> translate_expr_stmt id es
+  | ExprStmt (id, es) -> translate_expr_stmt ~ctx id es
   | VarInit (id, typ, e) -> failwith "unimplemented"
-  | MultiAssign (ds, id, es) -> translate_multi_assign ds id es
-  | PrCall (id, es) -> translate_prcall id es
+  | MultiAssign (ds, id, es) -> translate_multi_assign ~ctx ds id es
+  | PrCall (id, es) -> translate_prcall ~ctx id es
   | Return es -> translate_return es
   | Block stmts -> translate_block stmts
 
@@ -256,29 +285,34 @@ and translate_arr_assign e1 e2 e3 =
           translate_expr e3 );
     ]
 
-and translate_expr_stmt id es =
+and translate_expr_stmt ~ctx id es =
+  (* TODO: fix mangling expr stmt *)
+  let name = mangle id ~ctx in
   let expr_lst = List.map ~f:translate_expr es in
-  `CallStmt (`Name (PosNode.get id), expr_lst)
+  `CallStmt (`Name name, expr_lst)
 
-and translate_multi_assign ds id es =
+and translate_multi_assign ~ctx ds id es =
+  (* TODO: fix mangling multi assign *)
+  let name = mangle id ~ctx in
   let expr_lst = List.map ~f:translate_expr es in
-  let call = `CallStmt (`Name (PosNode.get id), expr_lst) in
+  let call = `CallStmt (`Name name, expr_lst) in
   let rv = ref 0 in
   let f acc = function
     | None ->
         Int.incr rv;
         acc
-    | Some (id, _) ->
+    | Some (v, _) ->
         Int.incr rv;
         let t = "_RV" ^ Int.to_string !rv in
-        `Move (`Temp (PosNode.get id), `Temp t) :: acc
+        `Move (`Temp (PosNode.get v), `Temp t) :: acc
   in
   let assign = List.rev (List.fold ~f ~init:[] ds) in
   `Seq (call :: assign)
 
-and translate_prcall id es =
+and translate_prcall ~ctx id es =
+  let name = mangle id ~ctx in
   let expr_lst = List.map ~f:translate_expr es in
-  `CallStmt (`Name (PosNode.get id), expr_lst)
+  `CallStmt (`Name name, expr_lst)
 
 and translate_return es = `Return (List.map ~f:translate_expr es)
 
@@ -290,7 +324,7 @@ and translate_fn_defn signature block = failwith "unimplemented"
 (** [translate_control enode t f] is the translation for translating
     booleans to control flow *)
 and translate_control enode t f =
-  match PosNode.get enode with
+  match DecNode.Expr.get enode with
   | Primitive (`Bool true) -> `Jump (`Name t)
   | Primitive (`Bool false) -> `Jump (`Name f)
   | Uop (`LogNeg, e) -> translate_control e f t
