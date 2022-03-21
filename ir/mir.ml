@@ -206,59 +206,63 @@ and translate_index e1 e2 =
 and translate_stmt (snode : Ast.Decorated.stmt DecNode.stmt) =
   let ctx = DecNode.Stmt.context snode in
   match DecNode.Stmt.get snode with
-  | If (e, s) -> translate_if e s
-  | IfElse (e, s1, s2) -> translate_if_else e s1 s2
-  | While (e, s) -> translate_while e s
-  | VarDecl (id, typ) -> failwith "unimplemented"
-  | ArrayDecl (id, typ, es) -> failwith "unimplemented"
-  | Assign (id, e) -> translate_assign id e
-  | ArrAssign (e1, e2, e3) -> translate_arr_assign e1 e2 e3
-  | ExprStmt (id, es) -> translate_expr_stmt ~ctx id es
-  | VarInit (id, typ, e) -> failwith "unimplemented"
-  | MultiAssign (ds, id, es) -> translate_multi_assign ~ctx ds id es
-  | PrCall (id, es) -> translate_prcall ~ctx id es
-  | Return es -> translate_return es
-  | Block stmts -> translate_block stmts
+  | If (e, s) -> Some (translate_if e s)
+  | IfElse (e, s1, s2) -> Some (translate_if_else e s1 s2)
+  | While (e, s) -> Some (translate_while e s)
+  | VarDecl _ -> None
+  | ArrayDecl _ -> None
+  | Assign (id, e) -> Some (translate_assign id e)
+  | ArrAssign (e1, e2, e3) -> Some (translate_arr_assign e1 e2 e3)
+  | ExprStmt (id, es) -> Some (translate_expr_stmt ~ctx id es)
+  | VarInit (id, _, e) -> Some (translate_assign id e)
+  | MultiAssign (ds, id, es) ->
+      Some (translate_multi_assign ~ctx ds id es)
+  | PrCall (id, es) -> Some (translate_prcall ~ctx id es)
+  | Return es -> Some (translate_return es)
+  | Block stmts -> Some (translate_block stmts)
 
 and translate_if e s =
   let t_label = make_fresh_label () in
   let f_label = make_fresh_label () in
   `Seq
-    [
-      translate_control e t_label f_label;
-      `Label t_label;
-      translate_stmt s;
-      `Label f_label;
-    ]
+    (List.filter_opt
+       [
+         Some (translate_control e t_label f_label);
+         Some (`Label t_label);
+         translate_stmt s;
+         Some (`Label f_label);
+       ])
 
 and translate_if_else e s1 s2 =
   let t_label = make_fresh_label () in
   let f_label = make_fresh_label () in
   let end_label = make_fresh_label () in
   `Seq
-    [
-      translate_control e t_label f_label;
-      `Label t_label;
-      translate_stmt s1;
-      `Jump (`Name end_label);
-      `Label f_label;
-      translate_stmt s2;
-      `Label end_label;
-    ]
+    (List.filter_opt
+       [
+         Some (translate_control e t_label f_label);
+         Some (`Label t_label);
+         translate_stmt s1;
+         Some (`Jump (`Name end_label));
+         Some (`Label f_label);
+         translate_stmt s2;
+         Some (`Label end_label);
+       ])
 
 and translate_while e s =
   let h_label = make_fresh_label () in
   let t_label = make_fresh_label () in
   let f_label = make_fresh_label () in
   `Seq
-    [
-      `Label h_label;
-      translate_control e t_label f_label;
-      `Label t_label;
-      translate_stmt s;
-      `Jump (`Name h_label);
-      `Label f_label;
-    ]
+    (List.filter_opt
+       [
+         Some (`Label h_label);
+         Some (translate_control e t_label f_label);
+         Some (`Label t_label);
+         translate_stmt s;
+         Some (`Jump (`Name h_label));
+         Some (`Label f_label);
+       ])
 
 and translate_assign id e =
   let expr = translate_expr e in
@@ -311,10 +315,35 @@ and translate_prcall ~ctx id es =
 
 and translate_return es = `Return (List.map ~f:translate_expr es)
 
-and translate_block stmts = `Seq (List.map ~f:translate_stmt stmts)
+and translate_block stmts =
+  `Seq (List.filter_map ~f:translate_stmt stmts)
 
-and translate_fn_defn signature block = failwith "unimplemented"
-(*`Seq [ `Label signature.id; ir_stmt_of_block block ]*)
+and translate_fn_defn signature block =
+  `Seq
+    [
+      `Label signature.id;
+      block |> DecNode.Toplevel.get |> translate_block;
+    ]
+
+and translate_global_init id typ prim =
+  `Move (`Temp (PosNode.get id), prim)
+
+and translate_defn def =
+  match DecNode.Toplevel.get def with
+  | FnDefn (signature, block) ->
+      Some (translate_fn_defn signature block)
+  | GlobalDecl _ -> None
+  | GlobalInit (id, typ, prim) ->
+      Some (translate_global_init id typ prim)
+
+and translate_source src =
+  let { uses; definitions } = DecNode.Toplevel.get src in
+  `Seq (List.filter_map ~f:translate_defn definitions)
+
+and translate_toplevel (tnode : Ast.Decorated.t) =
+  match tnode with
+  | Source src -> translate_source src
+  | Intf intf -> failwith "unimplemented"
 
 (** [translate_control enode t f] is the translation for translating
     booleans to control flow *)
