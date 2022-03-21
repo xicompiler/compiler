@@ -26,16 +26,23 @@ end
 module Make (Args : Params) = struct
   include Args
 
-  type 'a t = {
-    value : 'a;
-    context : Ctx.t;
-    typ : typ;
-    position : Position.t;
-  }
+  module B = struct
+    type 'a t = {
+      value : 'a;
+      context : Ctx.t;
+      typ : typ;
+      position : Position.t;
+    }
+
+    let get { value } = value
+    let set ~value node = { node with value }
+  end
+
+  include Node.Make (B)
+  open B
 
   let context { context } = context
   let typ { typ } = typ
-  let get { value } = value
 
   let make value ~ctx ~typ ~pos =
     { value; context = ctx; typ; position = pos }
@@ -93,13 +100,20 @@ module Stmt = struct
 end
 
 module Toplevel = struct
-  type 'a t = {
-    value : 'a;
-    context : Ctx.t;
-    position : Position.t;
-  }
+  module B = struct
+    type 'a t = {
+      value : 'a;
+      context : Ctx.t;
+      position : Position.t;
+    }
 
-  let get { value } = value
+    let get { value } = value
+    let set ~value node = { node with value }
+  end
+
+  include Node.Make (B)
+  open B
+
   let context { context } = context
   let position { position } = position
   let make ~ctx ~pos value = { value; context = ctx; position = pos }

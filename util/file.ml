@@ -28,4 +28,4 @@ let create_out_path ~dir ~file ext =
   Unix.mkdir_p (Filename.dirname path);
   path
 
-let diagnostic ext dir ~file = create_out_path ~dir ~file ext
+let diagnostic = create_out_path

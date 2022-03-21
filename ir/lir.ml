@@ -6,7 +6,6 @@ type expr = expr Subtype.expr
 type stmt =
   [ expr Subtype.stmt
   | `Call of expr * expr list
-  | `CJump of expr * label
   ]
 
 let make_fresh_temp () = failwith "unimplemented"

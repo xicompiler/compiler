@@ -1,6 +1,17 @@
 (library
  (name frontend)
- (libraries ast unicode position core file sexpPrinter node type util)
+ (libraries
+  ast
+  unicode
+  position
+  core
+  file
+  op
+  primitive
+  sexpPrinter
+  node
+  type
+  util)
  (preprocess
   (pps ppx_jane -allow-unannotated-ignores))
  (instrumentation

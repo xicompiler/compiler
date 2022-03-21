@@ -44,7 +44,6 @@ module Positioned = struct
   include Position.Error
 
   type nonrec error = error t
-
   type nonrec 'a result = ('a, error) result
 
   let mismatch pos ~expect got =
@@ -52,11 +51,8 @@ module Positioned = struct
     make ~pos cause
 
   let count_mismatch pos = make ~pos CountMismatch
-
   let illegal_arr_decl pos = make ~pos IllegalArrayDecl
-
   let expected_unit pos = make ~pos ExpectedUnit
-
   let expected_array pos = make ~pos ExpectedArray
 end
 

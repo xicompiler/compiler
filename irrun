@@ -1,0 +1,8 @@
+#!/bin/bash
+
+if [[ ! $# -eq 1 ]] ; then
+    echo "Invalid number of arguments: $#"
+    exit 1
+fi
+
+java -cp ./interpreter/build/:./interpreter/lib/java_cup.jar:/interpreter/lib/jflex.jar edu.cornell.cs.cs4120.xic.ir.interpret.Cli $1

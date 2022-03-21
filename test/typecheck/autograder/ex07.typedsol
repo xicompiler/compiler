@@ -1,1 +1,1 @@
-4:7 error:Expression mismatch, types Array Bool and Array Int
+4:7 error:Expression mismatch, types bool[] and int[]

@@ -19,8 +19,10 @@ type signature = {
 module type S = sig
   (** An [Expr] represents an expression in the Xi langauge *)
   module Expr : sig
-    include module type of Op
-    include module type of Primitive
+    open Op
+
+    type primitive = Primitive.t
+    (** [primitive] is the type of a primitive value *)
 
     module Node : Node.S
     (** [Node] wraps an expression node *)
@@ -29,7 +31,7 @@ module type S = sig
     type t =
       | Primitive of primitive
       | Id of id
-      | Array of node array
+      | Array of nodes
       | String of string
       | Bop of binop * node * node
       | Uop of unop * node
@@ -51,6 +53,8 @@ module type S = sig
     and index = node * node
     (** [index] represents an index expression [e1\[e2\]] as a pair
         [(e1, e2)]*)
+
+    include Term.S with type t := t and type node := node
   end
 
   type expr = Expr.t
@@ -86,6 +90,8 @@ module type S = sig
     (** A [block] is the type of a possible empty block of statements in
         Xi, represented as a list of statements possibly followed by a
         return statement *)
+
+    include Term.S with type t := t and type node := node
   end
 
   type stmt = Stmt.t
@@ -134,4 +140,8 @@ module type S = sig
 
   val sexp_of_t : t -> Sexp.t
   (** [sexp_of_t ast] is the s-expression serialization of [ast]. *)
+
+  val const_fold : t -> t
+  (** [const_fold ast] is [ast] where all constants expressions have
+      been fully evaluated. Conditionals are also folded, if possible. *)
 end
