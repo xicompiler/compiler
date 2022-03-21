@@ -27,20 +27,21 @@ let zero = `Const zero
 let eight = `Const 8L
 let length lst = lst |> List.length |> Int64.of_int
 let to_addr n = (8L * n) + 8L
-let label_counter = ref 0
-let temp_counter = ref 0
 
 let make_fresh pre counter =
   Int.incr counter;
   pre ^ Int.to_string !counter
 
+let label_gen = GenSym.create "l%d"
+let temp_gen = GenSym.create "x%d"
+
 (** [make_fresh_label ()] makes a fresh (unused elsewhere) label with
     prefix "l" and integer based on [label_counter] *)
-let make_fresh_label () = make_fresh "l" label_counter
+let make_fresh_label () = GenSym.generate label_gen
 
 (** [make_fresh_temp ()] makes a fresh (unused elsewhere) temp name with
     prefix "x" and integer based on [temp_counter] *)
-let make_fresh_temp () = make_fresh "x" temp_counter
+let make_fresh_temp () = GenSym.generate temp_gen
 
 let rec encode_tau = function
   | `Int -> "i"
@@ -334,8 +335,7 @@ and translate_toplevel tnode =
   | Source src -> translate_source src
   | Intf intf -> failwith "unimplemented"
 
-(** [translate_control enode t f] is the translation for translating
-    booleans to control flow *)
+(** [translate_control enode t f] translates booleans to control flow *)
 and translate_control enode t f =
   match DecNode.Expr.get enode with
   | Primitive (`Bool true) -> `Jump (`Name t)
