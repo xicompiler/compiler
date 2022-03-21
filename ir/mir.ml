@@ -53,7 +53,7 @@ let rec encode_tau = function
   | `Array t -> "a" ^ encode_tau t
   | `Poly -> failwith "Unexpected <poly>"
 
-let rec encode_expr = function
+let encode_expr = function
   | `Tuple ts ->
       let len = ts |> List.length |> string_of_int in
       let types = ts |> List.map ~f:encode_tau |> String.concat in
@@ -286,27 +286,22 @@ and translate_arr_assign e1 e2 e3 =
     ]
 
 and translate_expr_stmt ~ctx id es =
-  (* TODO: fix mangling expr stmt *)
   let name = mangle id ~ctx in
   let expr_lst = List.map ~f:translate_expr es in
   `CallStmt (`Name name, expr_lst)
 
 and translate_multi_assign ~ctx ds id es =
-  (* TODO: fix mangling multi assign *)
   let name = mangle id ~ctx in
   let expr_lst = List.map ~f:translate_expr es in
   let call = `CallStmt (`Name name, expr_lst) in
-  let rv = ref 0 in
-  let f acc = function
-    | None ->
-        Int.incr rv;
-        acc
+  let f (rv, acc) = function
+    | None -> (Int.succ rv, acc)
     | Some (v, _) ->
-        Int.incr rv;
-        let t = "_RV" ^ Int.to_string !rv in
-        `Move (`Temp (PosNode.get v), `Temp t) :: acc
+        let t = "_RV" ^ Int.to_string rv in
+        let lst = `Move (`Temp (PosNode.get v), `Temp t) :: acc in
+        (Int.succ rv, lst)
   in
-  let assign = List.rev (List.fold ~f ~init:[] ds) in
+  let assign = ds |> List.fold ~f ~init:(1, []) |> snd |> List.rev in
   `Seq (call :: assign)
 
 and translate_prcall ~ctx id es =
