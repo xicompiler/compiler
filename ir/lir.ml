@@ -1,3 +1,4 @@
+open Core
 open Subtype
 
 type expr = expr Subtype.expr
@@ -10,7 +11,6 @@ type stmt =
 
 let make_fresh_temp () = failwith "unimplemented"
 
-(* need to reverse the list *)
 let rec lower_expr expr =
   match expr with
   | (`Const _ | `Name _ | `Temp _) as e -> ([], e)
@@ -20,25 +20,22 @@ let rec lower_expr expr =
   | `Mem e -> lower_mem e
 
 and lower_call e es =
-  let sv1, e1 = lower_expr e in
-  let t = make_fresh_temp () in
-  let translated_e = sv1 @ [ `Move (`Temp t, e1) ] in
-  let translated_calls =
-    List.fold_right es
-      (fun el acc ->
-        let sv, e' = lower_expr el in
-        List.concat
-          [ acc; sv; [ `Move (`Temp (make_fresh_temp ()), e') ] ])
-      []
+  let sv0, e0 = lower_expr e in
+  let t0 = make_fresh_temp () in
+  let f (ts, acc) el =
+    let sv, e' = lower_expr el in
+    let t = make_fresh_temp () in
+    (t :: ts, List.concat [ acc; sv; [ `Move (`Temp t, e') ] ])
   in
-  let new_temp = `Temp (make_fresh_temp ()) in
+  let ts, args = List.fold ~init:([], []) es ~f in
+  let tr = make_fresh_temp () in
   ( List.concat
       [
-        translated_e;
-        translated_calls;
-        [ `Call (e1temp, temps); `Move (new_temp, `Temp "_RV1") ];
+        sv0 @ [ `Move (`Temp t0, e0) ];
+        args;
+        [ `Call (t0, List.rev ts); `Move (`Temp tr, `Temp "_RV1") ];
       ],
-    new_temp )
+    tr )
 
 and lower_eseq s e =
   let sv = lower_stmt s in
@@ -48,8 +45,9 @@ and lower_eseq s e =
 and lower_bop op e1 e2 =
   let sv1, e1' = lower_expr e1 in
   let sv2, e2' = lower_expr e2 in
-  let t = `Temp (make_fresh_temp ()) in
-  (List.concat [ sv1; [ `IRMove (t, e1') ]; sv2 ], `Bop (op, t, e2'))
+  let t = make_fresh_temp () in
+  ( List.concat [ sv1; [ `Move (`Temp t, e1') ]; sv2 ],
+    `Bop (op, `Temp t, e2') )
 
 and lower_mem e =
   let sv, e' = lower_expr e in
@@ -65,19 +63,22 @@ and lower_stmt stmt =
   | `Seq sv -> lower_seq sv
 
 and lower_move dest e =
-  let sv2', e2' = lower_expr e in
+  let sv2, e2 = lower_expr e in
   match dest with
-  | `Temp _ -> sv2' @ [ `Move (dest, e2') ] (* commute rule *)
+  | `Temp _ as t ->
+      (* commute rule *)
+      let sv1, dest' = lower_expr t in
+      List.concat [ sv1; sv2; [ `Move (dest', e2) ] ]
   | `Mem e1 ->
-      let sv1', e1' = lower_expr e1 in
       (* general rule *)
-      let new_temp = `Temp (make_fresh_temp ()) in
+      let sv1, e1' = lower_expr e1 in
+      let t = make_fresh_temp () in
       List.concat
         [
-          sv1';
-          [ `Move (new_temp, e1') ];
-          sv2';
-          [ `Move (`Mem new_temp, e2') ];
+          sv1;
+          [ `Move (`Temp t, e1') ];
+          sv2;
+          [ `Move (`Mem (`Temp t), e2) ];
         ]
 
 and lower_jump e =
@@ -85,17 +86,19 @@ and lower_jump e =
   sv @ [ `Jump e' ]
 
 and lower_return es =
-  let sv, ev =
-    List.fold_right list
-      (fun (sl, el) expr ->
-        let s, e = lower_expr expr in
-        (sl @ s, e1 @ e))
-      ([], [])
+  let f (ts_rev, moves_rev) el =
+    let t = make_fresh_temp () in
+    let sv, e = lower_expr el in
+    let move = lower_move t e in
+    (t :: ts_rev, move :: moves_rev)
   in
-  sv @ ev
+  let ts_rev, moves_rev = List.fold es ~f ~init:([], []) in
+  let ts = List.rev ts_rev in
+  let moves = moves_rev |> List.rev |> List.concat in
+  List.concat [ moves; [ `Return ts ] ]
 
 and lower_cjump e l1 l2 =
   let sv, e' = lower_expr e in
   sv @ [ `CJump (e', l1, l2) ]
 
-and lower_seq sv = List.map lower_stmt sv |> List.concat
+and lower_seq sv = sv |> List.map ~f:lower_stmt |> List.concat
