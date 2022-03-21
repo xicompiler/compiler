@@ -12,7 +12,6 @@ type 'expr dest =
 type 'expr expr =
   [ `Const of int64
   | `Bop of Op.t * 'expr * 'expr
-  | `Not of 'expr
   | `Name of label
   | 'expr dest
   ]

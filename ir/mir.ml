@@ -89,7 +89,7 @@ and ir_expr_of_string str =
 and ir_expr_of_uop uop e =
   let ir = ir_expr_of_enode e in
   match uop with
-  | `IntNeg -> `Bop (`Plus, `Not ir, one)
+  | `IntNeg -> `Bop (`Plus, `Bop (`Xor, ir, one), one)
   | `LogNeg -> `Bop (`Xor, ir, one)
 
 and ir_expr_of_bop bop e1 e2 =
