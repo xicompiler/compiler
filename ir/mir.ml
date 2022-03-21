@@ -104,17 +104,13 @@ and translate_uop uop e =
   | `LogNeg -> `Bop (`Xor, ir, one)
 
 and translate_bop bop e1 e2 =
-  let ir1 = translate_expr e1 in
-  let ir2 = translate_expr e2 in
   match bop with
-  | `HighMult -> `Bop (`ARShift, `Bop (`Mult, ir1, ir2), `Const 32L)
-  | `And -> translate_and ir1 ir2
-  | `Or -> translate_or ir1 ir2
+  | `And -> translate_and e1 e2
+  | `Or -> translate_or e1 e2
   | #Ast.Op.binop ->
       `Bop (Op.coerce bop, translate_expr e1, translate_expr e2)
-(* TODO fix highmult *)
 
-and translate_and ir1 ir2 =
+and translate_and e1 e2 =
   let x = make_fresh_temp () in
   let l1 = make_fresh_label () in
   let l2 = make_fresh_label () in
@@ -123,16 +119,16 @@ and translate_and ir1 ir2 =
     ( `Seq
         [
           `Move (`Temp x, zero);
-          `CJump (ir1, l1, lf);
+          translate_control e1 l1 lf;
           `Label l1;
-          `CJump (ir2, l2, lf);
+          translate_control e2 l2 lf;
           `Label l2;
           `Move (`Temp x, one);
           `Label lf;
         ],
       `Temp x )
 
-and translate_or ir1 ir2 =
+and translate_or e1 e2 =
   let x = make_fresh_temp () in
   let l1 = make_fresh_label () in
   let l2 = make_fresh_label () in
@@ -141,9 +137,9 @@ and translate_or ir1 ir2 =
     ( `Seq
         [
           `Move (`Temp x, one);
-          `CJump (ir1, lt, l1);
+          translate_control e1 lt l1;
           `Label l1;
-          `CJump (ir2, lt, l2);
+          translate_control e2 lt l2;
           `Label l2;
           `Move (`Temp x, zero);
           `Label lt;
