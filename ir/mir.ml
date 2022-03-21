@@ -10,12 +10,15 @@ open Primitive
 open Type
 
 type expr =
-  [ `Call of expr * expr list
+  [ expr Subtype.expr
+  | `Call of expr * expr list
   | `ESeq of stmt * expr
-  | expr Subtype.expr
   ]
 
-and stmt = expr Subtype.stmt
+and stmt =
+  [ expr Subtype.stmt
+  | `CallStmt of expr * expr list
+  ]
 
 let one = `Const one
 
@@ -46,38 +49,38 @@ let make_fresh_temp () = make_fresh "x" temp_counter
 (* TODO: mangling function names *)
 let mangle fn = failwith "unimplemented"
 
-let ir_expr_of_primitive p =
+let translate_primitive p =
   match p with
   | `Int i -> `Const i
   | `Bool b -> if b then one else zero
   | `Char c -> `Const (c |> Uchar.to_scalar |> Int64.of_int)
 
-let ir_expr_of_id id = `Temp (PosNode.get id)
+let translate_id id = `Temp (PosNode.get id)
 
-let rec ir_expr_of_enode enode =
+let rec translate_expr enode =
   match PosNode.get enode with
-  | Primitive p -> ir_expr_of_primitive p
-  | Id id -> ir_expr_of_id id
-  | Array arr -> ir_expr_of_arr arr
-  | String s -> ir_expr_of_string s
-  | Bop (op, e1, e2) -> ir_expr_of_bop op e1 e2
-  | Uop (op, e) -> ir_expr_of_uop op e
-  | FnCall (id, es) -> ir_expr_of_fncall id es
-  | Length node -> ir_expr_of_length node
-  | Index (e1, e2) -> ir_expr_of_index e1 e2
+  | Primitive p -> translate_primitive p
+  | Id id -> translate_id id
+  | Array arr -> translate_arr arr
+  | String s -> translate_string s
+  | Bop (op, e1, e2) -> translate_bop op e1 e2
+  | Uop (op, e) -> translate_uop op e
+  | FnCall (id, es) -> translate_fncall id es
+  | Length node -> translate_length node
+  | Index (e1, e2) -> translate_index e1 e2
 
-and ir_expr_of_arr arr =
-  let expr_lst = List.map ~f:ir_expr_of_enode arr in
-  ir_expr_of_arr_lst expr_lst
+and translate_arr arr =
+  let expr_lst = List.map ~f:translate_expr arr in
+  translate_arr_lst expr_lst
 
-and ir_expr_of_arr_lst lst =
+and translate_arr_lst lst =
   let n = length lst in
   let tm = make_fresh_temp () in
   let f acc e =
     let index = acc |> length |> to_addr in
     `Move (`Mem (`Bop (`Plus, `Name tm, `Const index)), e) :: acc
   in
-  let add_elts = List.rev (List.fold_left ~f ~init:[] lst) in
+  let add_elts = List.rev (List.fold ~f ~init:[] lst) in
   `ESeq
     ( `Seq
         (`Move
@@ -86,32 +89,32 @@ and ir_expr_of_arr_lst lst =
         :: add_elts),
       `Bop (`Plus, `Temp tm, eight) )
 
-and ir_expr_of_string str =
+and translate_string str =
   let expr_lst =
     List.map
       ~f:(fun s -> `Const (s |> int_of_char |> Int64.of_int))
       (String.to_list str)
   in
-  ir_expr_of_arr_lst expr_lst
+  translate_arr_lst expr_lst
 
-and ir_expr_of_uop uop e =
-  let ir = ir_expr_of_enode e in
+and translate_uop uop e =
+  let ir = translate_expr e in
   match uop with
   | `IntNeg -> `Bop (`Plus, `Bop (`Xor, ir, one), one)
   | `LogNeg -> `Bop (`Xor, ir, one)
 
-and ir_expr_of_bop bop e1 e2 =
-  let ir1 = ir_expr_of_enode e1 in
-  let ir2 = ir_expr_of_enode e2 in
+and translate_bop bop e1 e2 =
+  let ir1 = translate_expr e1 in
+  let ir2 = translate_expr e2 in
   match bop with
   | `HighMult -> `Bop (`ARShift, `Bop (`Mult, ir1, ir2), `Const 32L)
-  | `And -> ir_expr_of_and ir1 ir2
-  | `Or -> ir_expr_of_or ir1 ir2
+  | `And -> translate_and ir1 ir2
+  | `Or -> translate_or ir1 ir2
   | #Ast.Op.binop ->
-      `Bop (Op.coerce bop, ir_expr_of_enode e1, ir_expr_of_enode e2)
+      `Bop (Op.coerce bop, translate_expr e1, translate_expr e2)
 (* TODO fix highmult *)
 
-and ir_expr_of_and ir1 ir2 =
+and translate_and ir1 ir2 =
   let x = make_fresh_temp () in
   let l1 = make_fresh_label () in
   let l2 = make_fresh_label () in
@@ -129,7 +132,7 @@ and ir_expr_of_and ir1 ir2 =
         ],
       `Temp x )
 
-and ir_expr_of_or ir1 ir2 =
+and translate_or ir1 ir2 =
   let x = make_fresh_temp () in
   let l1 = make_fresh_label () in
   let l2 = make_fresh_label () in
@@ -147,15 +150,15 @@ and ir_expr_of_or ir1 ir2 =
         ],
       `Temp x )
 
-and ir_expr_of_fncall id es =
-  let expr_lst = List.map ~f:ir_expr_of_enode es in
+and translate_fncall id es =
+  let expr_lst = List.map ~f:translate_expr es in
   `Call (`Name (PosNode.get id), expr_lst)
 
-and ir_expr_of_length node =
-  let ir = ir_expr_of_enode node in
+and translate_length node =
+  let ir = translate_expr node in
   `Mem (`Bop (`Minus, ir, eight))
 
-and ir_expr_of_index e1 e2 =
+and translate_index e1 e2 =
   let ta = make_fresh_temp () in
   let ti = make_fresh_temp () in
   let lok = make_fresh_label () in
@@ -163,11 +166,11 @@ and ir_expr_of_index e1 e2 =
   `ESeq
     ( `Seq
         [
-          `Move (`Temp ta, ir_expr_of_enode e1);
-          `Move (`Temp ti, ir_expr_of_enode e2);
+          `Move (`Temp ta, translate_expr e1);
+          `Move (`Temp ti, translate_expr e2);
           `CJump
             ( `Bop
-                (`ULt, `Temp ti, `Mem (`Bop (`Minus, `Temp ta, eight))),
+                (`ULt, `Temp ti, `Mem (`Bop (`Minus, `Name ta, eight))),
               lok,
               lerr );
           `Label lerr;
@@ -176,75 +179,75 @@ and ir_expr_of_index e1 e2 =
         ],
       `Mem (`Bop (`Plus, ta, `Bop (`Mult, ti, eight))) )
 
-and ir_stmt_of_snode snode =
+and translate_stmt snode =
   match PosNode.get snode with
-  | If (e, s) -> ir_stmt_of_if e s
-  | IfElse (e, s1, s2) -> ir_stmt_of_if_else e s1 s2
-  | While (e, s) -> ir_stmt_of_while e s
+  | If (e, s) -> translate_if e s
+  | IfElse (e, s1, s2) -> translate_if_else e s1 s2
+  | While (e, s) -> translate_while e s
   | VarDecl (id, typ) -> failwith "unimplemented"
   | ArrayDecl (id, typ, es) -> failwith "unimplemented"
-  | Assign (id, e) -> ir_stmt_of_assign id e
-  | ArrAssign (e1, e2, e3) -> ir_stmt_of_arr_assign e1 e2 e3
-  | ExprStmt (id, es) -> failwith "unimplemented"
+  | Assign (id, e) -> translate_assign id e
+  | ArrAssign (e1, e2, e3) -> translate_arr_assign e1 e2 e3
+  | ExprStmt (id, es) -> translate_expr_stmt id es
   | VarInit (id, typ, e) -> failwith "unimplemented"
-  | MultiAssign (ds, id, es) -> failwith "unimplemented"
-  | PrCall (id, es) -> ir_stmt_of_prcall id es
-  | Return es -> ir_stmt_of_return es
-  | Block stmts -> ir_stmt_of_block stmts
+  | MultiAssign (ds, id, es) -> translate_multi_assign ds id es
+  | PrCall (id, es) -> translate_prcall id es
+  | Return es -> translate_return es
+  | Block stmts -> translate_block stmts
 
-and ir_stmt_of_if e s =
+and translate_if e s =
   let t_label = make_fresh_label () in
   let f_label = make_fresh_label () in
   `Seq
     [
-      c_stmt e t_label f_label;
+      translate_control e t_label f_label;
       `Label t_label;
-      ir_stmt_of_snode s;
+      translate_stmt s;
       `Label f_label;
     ]
 
-and ir_stmt_of_if_else e s1 s2 =
+and translate_if_else e s1 s2 =
   let t_label = make_fresh_label () in
   let f_label = make_fresh_label () in
   let end_label = make_fresh_label () in
   `Seq
     [
-      c_stmt e t_label f_label;
+      translate_control e t_label f_label;
       `Label t_label;
-      ir_stmt_of_snode s1;
+      translate_stmt s1;
       `Jump (`Name end_label);
       `Label f_label;
-      ir_stmt_of_snode s2;
+      translate_stmt s2;
       `Label end_label;
     ]
 
-and ir_stmt_of_while e s =
+and translate_while e s =
   let h_label = make_fresh_label () in
   let t_label = make_fresh_label () in
   let f_label = make_fresh_label () in
   `Seq
     [
       `Label h_label;
-      c_stmt e t_label f_label;
+      translate_control e t_label f_label;
       `Label t_label;
-      ir_stmt_of_snode s;
+      translate_stmt s;
       `Jump (`Name h_label);
       `Label f_label;
     ]
 
-and ir_stmt_of_assign id e =
-  let expr = ir_expr_of_enode e in
+and translate_assign id e =
+  let expr = translate_expr e in
   `Move (`Temp (PosNode.get id), expr)
 
-and ir_stmt_of_arr_assign e1 e2 e3 =
+and translate_arr_assign e1 e2 e3 =
   let ta = make_fresh_temp () in
   let ti = make_fresh_temp () in
   let lok = make_fresh_label () in
   let lerr = make_fresh_label () in
   `Seq
     [
-      `Move (`Temp ta, ir_expr_of_enode e1);
-      `Move (`Temp ti, ir_expr_of_enode e2);
+      `Move (`Temp ta, translate_expr e1);
+      `Move (`Temp ti, translate_expr e2);
       `CJump
         ( `Bop (`ULt, `Temp ti, `Mem (`Bop (`Minus, `Name ta, eight))),
           lok,
@@ -254,33 +257,63 @@ and ir_stmt_of_arr_assign e1 e2 e3 =
       `Label lok;
       `Move
         ( `Mem (`Bop (`Plus, `Name ta, `Bop (`Mul, `Name ti, eight))),
-          ir_expr_of_enode e3 );
+          translate_expr e3 );
     ]
 
-and ir_stmt_of_prcall id es =
-  let expr_lst = List.map ~f:ir_expr_of_enode es in
-  `Call (`Name (PosNode.get id), expr_lst)
+and translate_expr_stmt id es =
+  let expr_lst = List.map ~f:translate_expr es in
+  `CallStmt (`Name (PosNode.get id), expr_lst)
 
-and ir_stmt_of_return es = `Return (List.map ~f:ir_expr_of_enode es)
+and translate_multi_assign ds id es =
+  let expr_lst = List.map ~f:translate_expr es in
+  let call = `CallStmt (`Name (PosNode.get id), expr_lst) in
+  let rv = ref 0 in
+  let f acc = function
+    | None ->
+        Int.incr rv;
+        acc
+    | Some (id, _) ->
+        Int.incr rv;
+        let t = "_RV" ^ Int.to_string !rv in
+        `Move (`Temp (PosNode.get id), `Temp t) :: acc
+  in
+  let assign = List.rev (List.fold ~f ~init:[] ds) in
+  `Seq (call :: assign)
 
-and ir_stmt_of_block stmts = `Seq (List.map ~f:ir_stmt_of_snode stmts)
+and translate_prcall id es =
+  let expr_lst = List.map ~f:translate_expr es in
+  `CallStmt (`Name (PosNode.get id), expr_lst)
 
-and ir_of_fn_defn signature block = failwith "unimplemented"
+and translate_return es = `Return (List.map ~f:translate_expr es)
+
+and translate_block stmts = `Seq (List.map ~f:translate_stmt stmts)
+
+and translate_fn_defn signature block = failwith "unimplemented"
 (*`Seq [ `Label signature.id; ir_stmt_of_block block ]*)
 
-(** [c_stmt enode t f] is the translation for translating booleans to
-    control flow *)
-and c_stmt enode t f =
+(** [translate_control enode t f] is the translation for translating
+    booleans to control flow *)
+and translate_control enode t f =
   match PosNode.get enode with
   | Primitive (`Bool true) -> `Jump (`Name t)
   | Primitive (`Bool false) -> `Jump (`Name f)
-  | Uop (`LogNeg, e) -> c_stmt e f t
+  | Uop (`LogNeg, e) -> translate_control e f t
   | Bop (`And, e1, e2) ->
       let label = make_fresh_label () in
-      `Seq [ c_stmt e1 label f; `Label label; c_stmt e2 t f ]
+      `Seq
+        [
+          translate_control e1 label f;
+          `Label label;
+          translate_control e2 t f;
+        ]
   | Bop (`Or, e1, e2) ->
       let label = make_fresh_label () in
-      `Seq [ c_stmt e1 t label; `Label label; c_stmt e2 t f ]
+      `Seq
+        [
+          translate_control e1 t label;
+          `Label label;
+          translate_control e2 t f;
+        ]
   | _ ->
-      let expr = ir_expr_of_enode enode in
+      let expr = translate_expr enode in
       `CJump (expr, t, f)
