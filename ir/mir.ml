@@ -5,6 +5,9 @@ module PosNode = Node.Position
 module DecNode = Context.Node.Decorated
 open Ast.Op
 open Ast.Decorated
+open Expr
+open Stmt
+open Toplevel
 open Primitive
 open Type
 
@@ -74,7 +77,7 @@ let translate_primitive p =
 
 let translate_id id = `Temp (PosNode.get id)
 
-let rec translate_expr (enode : Ast.Decorated.expr DecNode.expr) =
+let rec translate_expr enode =
   let ctx = DecNode.Expr.context enode in
   match DecNode.Expr.get enode with
   | Primitive p -> translate_primitive p
@@ -194,7 +197,7 @@ and translate_index e1 e2 =
         ],
       `Mem (`Bop (`Plus, ta, `Bop (`Mult, ti, eight))) )
 
-and translate_stmt (snode : Ast.Decorated.stmt DecNode.stmt) =
+and translate_stmt snode =
   let ctx = DecNode.Stmt.context snode in
   match DecNode.Stmt.get snode with
   | If (e, s) -> Some (translate_if e s)
@@ -309,13 +312,13 @@ and translate_return es = `Return (List.map ~f:translate_expr es)
 and translate_block stmts =
   `Seq (List.filter_map ~f:translate_stmt stmts)
 
-and translate_fn_defn (signature : Ast.signature) block =
-  `Seq [ `Label (PosNode.get signature.id); translate_block block ]
+and translate_fn_defn ({ id } : Ast.signature) block =
+  `Seq [ `Label (PosNode.get id); translate_block block ]
 
 and translate_global_init id typ prim =
   `Move (`Temp (PosNode.get id), prim)
 
-and translate_defn (def : Toplevel.node) =
+and translate_defn def =
   match DecNode.Toplevel.get def with
   | FnDefn (signature, block) ->
       Some (translate_fn_defn signature block)
@@ -323,10 +326,10 @@ and translate_defn (def : Toplevel.node) =
   | GlobalInit (id, typ, prim) ->
       Some (translate_global_init id typ prim)
 
-and translate_source ({ uses; definitions } : Toplevel.source) =
+and translate_source { uses; definitions } =
   `Seq (List.filter_map ~f:translate_defn definitions)
 
-and translate_toplevel (tnode : Ast.Decorated.t) =
+and translate_toplevel tnode =
   match tnode with
   | Source src -> translate_source src
   | Intf intf -> failwith "unimplemented"
