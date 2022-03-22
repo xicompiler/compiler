@@ -31,6 +31,9 @@ val find_fn : id:id -> t -> (term * term) Positioned.result
     input [t1] and output [t2] [ctx], [Error ExpectedFn] if [id] is
     bound to a tau type, or [Error (Unbound id)] if [id] is not bound. *)
 
+val find_fn_exn : id:id -> t -> term * term
+(** [find_fn_exn ~id ctx] is [find_fn ~id ctx] or raises an exn. *)
+
 val add_var : id:id -> typ:tau -> t -> t Positioned.result
 (** [add ~id ~typ ctx] is [Ok ctx'] where [ctx'] is
     [ctx :: (id, Var typ)] if [id] is unbound in [ctx], or

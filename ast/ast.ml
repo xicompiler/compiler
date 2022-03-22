@@ -584,3 +584,4 @@ let type_check ?(find_intf = find_intf_default) = function
 
 module Decorated = Decorated
 module Op = Op
+module Primitive = Primitive

@@ -15,7 +15,9 @@ type t = {
 [@@deriving sexp_of]
 
 let empty = { context = Map.empty; ret = `Unit }
+
 let ret { ret } = ret
+
 let with_ret ~ret ctx = { ctx with ret = (ret :> term) }
 
 let find ~id { context } =
@@ -32,6 +34,8 @@ let find_fn ~id ctx =
   match%bind find ~id ctx with
   | `Var _ -> Error (expected_fn id)
   | `FnDecl { arg; ret } | `FnDefn { arg; ret } -> Ok (arg, ret)
+
+let find_fn_exn ~id ctx = ok (find_fn ~id ctx)
 
 let add_var ~id ~typ ctx =
   let key = Node.Position.get id in
@@ -94,4 +98,5 @@ let of_args f ~id ~arg ~ret =
   f ~id ~fn
 
 let add_fn_decl ~id ~arg ~ret = of_args add_fn_decl ~id ~arg ~ret
+
 let add_fn_defn ~id ~arg ~ret = of_args add_fn_defn ~id ~arg ~ret

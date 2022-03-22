@@ -1,6 +1,7 @@
 open Core
 
 type id = string Node.Position.t
+
 type decl = id * Type.tau
 
 type signature = {
@@ -29,8 +30,11 @@ module type S = sig
       | Index of index
 
     and node = t Node.t
+
     and nodes = node list
+
     and call = id * nodes
+
     and index = node * node
 
     include Term.S with type t := t and type node := node
@@ -57,6 +61,7 @@ module type S = sig
       | Block of block
 
     and node = t Node.t
+
     and block = node list
 
     include Term.S with type t := t and type node := node

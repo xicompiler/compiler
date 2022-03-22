@@ -35,3 +35,7 @@ end
 module Op : module type of struct
   include Op
 end
+
+module Primitive : module type of struct
+  include Primitive
+end

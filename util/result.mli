@@ -18,5 +18,8 @@ val join_error : ('a, ('a, 'err) result) result -> ('a, 'err) result
 val compose_ok : ('a -> 'b) -> 'a -> ('b, 'err) result
 (** [compose_ok f x] is [Ok (f x)]*)
 
+val ok : ('a, 'b) result -> 'a
+(** [ok res] is [v] if [res] is [Ok v] or raises an exn *)
+
 val ( >>? ) : ('a, 'b) result -> ('b -> 'c) -> ('a, 'c) result
 (** [r >>? f] is [Core.Result.map_error ~f r] *)
