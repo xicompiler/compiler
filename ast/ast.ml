@@ -488,36 +488,31 @@ let type_check_signature ~ctx signode =
   let pos = PosNode.position signode in
   let f = Context.add_fn_decl in
   let%bind ctx = get_sig_context ~pos ~ctx ~f signature in
-  let%map fn_ctx = fold_decls ~ctx ~pos signature.params in
+  fold_decls ~ctx ~pos signature.params >>| fun _ ->
   DecNode.Toplevel.make ~ctx ~pos signature
-
-(** [fold_intf ctx sigs] is [Ok (ctx', sigs')] where [ctx'] is the
-    context resulting from adding [sigs], and [sigs'] are the decorated
-    nodes of [sigs]. Otherwise, it is [Error type_error] where
-    [type_error] describes the type error *)
-let fold_intf = fold_context ~f:type_check_signature
 
 (** [fold_intf_map ~f ~ctx sigs] is [Ok res] where [res] is the result
     of applying [f] to a call of [fold_intf ~ctx sigs], or
     [Error type_error] where [type_error] describes the type error
     otherwise*)
-let fold_intf_map ~f ~ctx sigs = fold_intf ~ctx sigs >>| f
+let fold_intf_map ~f ~ctx sigs =
+  fold_context ~f:type_check_signature ~ctx sigs >>| f
 
-(** [intf_context ctx sigs] is [Ok ctx'] where [ctx'] is the context
-    after adding signatures in [sigs], or [Error type_error] where
-    [type_error] describes the type error otherwise *)
-let intf_context = fold_intf_map ~f:fst
-
+(** [fold_sig ctx signode] is [Ok ctx'] where [ctx'] is the result of
+    adding the function declaration of [signode] to [ctx], or
+    [Error type_error] where [type_error] describes the type error
+    otherwise *)
 let fold_sig ctx signode =
   let signature = PosNode.get signode in
   let pos = PosNode.position signode in
   get_sig_context ~pos ~ctx ~f:Context.add_fn_decl signature
 
-(** [first_pass_sigs ~ctx sigs] is [Ok ctx'] where [ctx'] is [ctx]
-    updated with the signature in [sigs], or [Error type_error] where
+(** [check_intf ~ctx sigs] is [Ok ctx'] where [ctx'] is [ctx] updated
+    with the signature in [sigs], or [Error type_error] where
     [type_error] describes the type error, otherwise. *)
-let first_pass_intf ~ctx intf =
-  List.fold_result ~init:ctx ~f:fold_sig intf
+let check_intf ~ctx intf =
+  let%bind ctx = List.fold_result ~init:ctx ~f:fold_sig intf in
+  fold_intf_map ~f:fst ~ctx intf
 
 (** [check_use ~find_intf ~ctx use] is [Ok use'] where [use'] is the
     decorated node of [use], or [Error type_error] where [type_error]
@@ -527,8 +522,7 @@ let check_use ~find_intf ~ctx use =
   let error () = Context.Error.unbound_intf id in
   let intf = find_intf (PosNode.get id) in
   let%bind intf = Lazy.of_option ~error intf in
-  let%bind ctx = first_pass_intf ~ctx intf in
-  let%map ctx = intf_context ~ctx intf in
+  let%map ctx = check_intf ~ctx intf in
   DecNode.Toplevel.of_pos_node ~ctx ~node:use id
 
 (** [check_uses ~find_intf ~ctx uses] is [Ok (uses', ctx')] where
@@ -575,7 +569,7 @@ let type_check_source ~find_intf source =
     decorated nodes of [sigs], or [Error type_error] where [type_error]
     describes the type error otherwise *)
 let type_check_intf intf =
-  let%bind ctx = first_pass_intf ~ctx:Context.empty intf in
+  let%bind ctx = check_intf ~ctx:Context.empty intf in
   fold_intf_map ~f:snd ~ctx intf >>| Decorated.intf
 
 let type_check ?(find_intf = find_intf_default) = function
