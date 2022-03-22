@@ -361,7 +361,7 @@ and translate_control enode t f =
       `CJump (expr, t, f)
 
 (** [translate_short_circuit e1 e2 l1 l2 t f] translates the short
-    circuit operators and or or to control flow *)
+    circuit operators [`And] or [`Or] to control flow *)
 and translate_short_circuit e1 e2 l1 l2 t f =
   let label = generate_label () in
   `Seq
@@ -398,4 +398,4 @@ let translate_source { uses; definitions } =
 let translate_toplevel tnode =
   match tnode with
   | Source src -> translate_source src
-  | Intf intf -> failwith "unimplemented"
+  | Intf intf -> failwith "no IR for an interface"

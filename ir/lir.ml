@@ -8,7 +8,10 @@ type stmt =
   | `Call of expr * expr list
   ]
 
-let generate_temp () = failwith "unimplemented"
+(** [temp_gen] is the symbol generator for temps *)
+let temp_gen = GenSym.create "x%d"
+
+let generate_temp () = GenSym.generate temp_gen
 
 (** [lower_expr expr] is the lowered form of mir expression [expr] *)
 let rec lower_expr expr =
