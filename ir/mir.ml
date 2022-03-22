@@ -31,6 +31,15 @@ let zero = `Const zero
 (** [eight] is an mir expression representing the constant eight *)
 let eight = `Const 8L
 
+(** [xi_alloc] is the xi function for allocating space *)
+let xi_alloc = `Name "_xi_alloc"
+
+(** [xi_out_of_bounds] is the xi function for an out-of-bounds array
+    index *)
+let xi_out_of_bounds = `Name "_xi_out_of_bounds"
+
+let ir_pr_call name = `Call (name, [])
+
 (** [length lst] is the length of a list represented in int64 *)
 let length lst = lst |> List.length |> Int64.of_int
 
@@ -105,7 +114,7 @@ let rec translate_expr enode =
   | String s -> translate_string s
   | Bop (op, e1, e2) -> translate_bop op e1 e2
   | Uop (op, e) -> translate_uop op e
-  | FnCall (id, es) -> translate_fncall ~ctx id es
+  | FnCall (id, es) -> translate_fn_call ~ctx id es
   | Length e -> translate_length e
   | Index (e1, e2) -> translate_index e1 e2
 
@@ -118,26 +127,26 @@ and translate_arr arr =
 and translate_arr_lst lst =
   let n = length lst in
   let tm = generate_temp () in
-  let f acc e =
-    let index = acc |> length |> to_addr in
-    `Move (`Mem (`Bop (`Plus, `Name tm, `Const index)), e) :: acc
+  let f (len, acc) e =
+    let index = len |> to_addr in
+    ( Int64.succ len,
+      `Move (`Mem (`Bop (`Plus, `Name tm, `Const index)), e) :: acc )
   in
-  let add_elts = List.rev (List.fold ~f ~init:[] lst) in
+  let add_elts =
+    lst |> List.fold ~f ~init:(0L, []) |> snd |> List.rev
+  in
+  let alloc_arr =
+    `Move (`Temp tm, `Call (xi_alloc, [ `Const (to_addr n) ]))
+  in
+  let add_len = `Move (`Mem (`Temp tm), `Const n) in
   `ESeq
-    ( `Seq
-        (`Move
-           (`Temp tm, `Call (`Name "_xi_alloc", [ `Const (to_addr n) ]))
-        :: `Move (`Mem (`Temp tm), `Const n)
-        :: add_elts),
+    ( `Seq (alloc_arr :: add_len :: add_elts),
       `Bop (`Plus, `Temp tm, eight) )
 
 (** [translate_string str] is the mir representation of [str] *)
 and translate_string str =
-  let expr_lst =
-    List.map
-      ~f:(fun s -> `Const (s |> int_of_char |> Int64.of_int))
-      (String.to_list str)
-  in
+  let f s = `Const (s |> int_of_char |> Int64.of_int) in
+  let expr_lst = str |> String.to_list_rev |> List.rev_map ~f in
   translate_arr_lst expr_lst
 
 (** [translate_uop uop e] is the mir representation of unary operator
@@ -152,52 +161,19 @@ and translate_uop uop e =
     operator expression [bop e1 e2] *)
 and translate_bop bop e1 e2 =
   match bop with
-  | `And -> translate_and e1 e2
-  | `Or -> translate_or e1 e2
+  | `And ->
+      let t, f, label = Tuple3.map ~f:generate_label ((), (), ()) in
+      translate_short_circuit e1 e2 label f t f
+  | `Or ->
+      let t, f, label = Tuple3.map ~f:generate_label ((), (), ()) in
+      translate_short_circuit e1 e2 t label t f
   | #Ast.Op.binop ->
       `Bop (Op.coerce bop, translate_expr e1, translate_expr e2)
 
-(** [translate_and e1 e2] is the mir representation of [e1 and e2] *)
-and translate_and e1 e2 =
-  let x = generate_temp () in
-  let l1 = generate_label () in
-  let l2 = generate_label () in
-  let lf = generate_label () in
-  `ESeq
-    ( `Seq
-        [
-          `Move (`Temp x, zero);
-          translate_control e1 l1 lf;
-          `Label l1;
-          translate_control e2 l2 lf;
-          `Label l2;
-          `Move (`Temp x, one);
-          `Label lf;
-        ],
-      `Temp x )
-
-(** [translate_or e1 e2] is the mir representation of [e1 or e2] *)
-and translate_or e1 e2 =
-  let x = generate_temp () in
-  let l1 = generate_label () in
-  let l2 = generate_label () in
-  let lt = generate_label () in
-  `ESeq
-    ( `Seq
-        [
-          `Move (`Temp x, one);
-          translate_control e1 lt l1;
-          `Label l1;
-          translate_control e2 lt l2;
-          `Label l2;
-          `Move (`Temp x, zero);
-          `Label lt;
-        ],
-      `Temp x )
-
-(** [translate_fncall ctx id es] is the mir representation of a function
-    call with function id [id], arguments [es], and context [ctx] *)
-and translate_fncall ~ctx id es =
+(** [translate_fn_call ctx id es] is the mir representation of a
+    function call with function id [id], arguments [es], and context
+    [ctx] *)
+and translate_fn_call ~ctx id es =
   let name = mangle id ~ctx in
   let expr_lst = List.map ~f:translate_expr es in
   `Call (`Name name, expr_lst)
@@ -211,10 +187,8 @@ and translate_length e =
 (** [translate_index e1 e2] is the mir representation of an indexing of
     [e1] at position [e2] *)
 and translate_index e1 e2 =
-  let ta = generate_temp () in
-  let ti = generate_temp () in
-  let lok = generate_label () in
-  let lerr = generate_label () in
+  let ta, ti = Tuple2.map ~f:generate_temp ((), ()) in
+  let lok, lerr = Tuple2.map ~f:generate_label ((), ()) in
   `ESeq
     ( `Seq
         [
@@ -226,7 +200,7 @@ and translate_index e1 e2 =
               lok,
               lerr );
           `Label lerr;
-          `Call (`Name "_xi_out_of_bounds", []);
+          ir_pr_call xi_out_of_bounds;
           `Label lok;
         ],
       `Mem (`Bop (`Plus, ta, `Bop (`Mult, ti, eight))) )
@@ -247,48 +221,51 @@ and translate_stmt snode =
   | VarInit (id, _, e) -> Some (translate_assign id e)
   | MultiAssign (ds, id, es) ->
       Some (translate_multi_assign ~ctx ds id es)
-  | PrCall (id, es) -> Some (translate_prcall ~ctx id es)
+  | PrCall (id, es) -> Some (translate_pr_call ~ctx id es)
   | Return es -> Some (translate_return es)
   | Block stmts -> Some (translate_block stmts)
+
+(** [translate_if_stmt e s] is the first three IR instructions in if and
+    if else statements, reversed*)
+and translate_if_stmt e s =
+  let t_label, f_label = Tuple2.map ~f:generate_label ((), ()) in
+  [
+    translate_stmt s;
+    Some (`Label t_label);
+    Some (translate_control e t_label f_label);
+  ]
 
 (** [translate_if e s] is the mir representation of an if statement with
     condition [e] and body [s] *)
 and translate_if e s =
-  let t_label = generate_label () in
   let f_label = generate_label () in
-  `Seq
-    (List.filter_opt
-       [
-         Some (translate_control e t_label f_label);
-         Some (`Label t_label);
-         translate_stmt s;
-         Some (`Label f_label);
-       ])
+  let if_stmt = translate_if_stmt e s in
+  let stmts =
+    Some (`Label f_label) :: if_stmt |> List.rev |> List.filter_opt
+  in
+  `Seq stmts
 
 (** [translate_if_else e s1 s2] is the mir representation of an if-else
     statement with condition [e] and statements [s1] and [s2] *)
 and translate_if_else e s1 s2 =
-  let t_label = generate_label () in
-  let f_label = generate_label () in
-  let end_label = generate_label () in
-  `Seq
-    (List.filter_opt
-       [
-         Some (translate_control e t_label f_label);
-         Some (`Label t_label);
-         translate_stmt s1;
-         Some (`Jump (`Name end_label));
-         Some (`Label f_label);
-         translate_stmt s2;
-         Some (`Label end_label);
-       ])
+  let f_label, end_label = Tuple2.map ~f:generate_label ((), ()) in
+  let if_stmt = translate_if_stmt e s1 in
+  let stmts =
+    Some (`Label end_label)
+    :: translate_stmt s2
+    :: Some (`Label f_label)
+    :: Some (`Jump (`Name end_label))
+    :: if_stmt
+    |> List.rev |> List.filter_opt
+  in
+  `Seq stmts
 
 (** [translate_while e s] is the mir representation of a while loop with
     condition [e] and loop body [s] *)
 and translate_while e s =
-  let h_label = generate_label () in
-  let t_label = generate_label () in
-  let f_label = generate_label () in
+  let h_label, t_label, f_label =
+    Tuple3.map ~f:generate_label ((), (), ())
+  in
   `Seq
     (List.filter_opt
        [
@@ -309,10 +286,8 @@ and translate_assign id e =
 (** [translate_arr_assign e1 e2 e3] is the mir representation of a array
     assignment statement with *)
 and translate_arr_assign e1 e2 e3 =
-  let ta = generate_temp () in
-  let ti = generate_temp () in
-  let lok = generate_label () in
-  let lerr = generate_label () in
+  let ta, ti = Tuple2.map ~f:generate_temp ((), ()) in
+  let lok, lerr = Tuple2.map ~f:generate_label ((), ()) in
   `Seq
     [
       `Move (`Temp ta, translate_expr e1);
@@ -322,7 +297,7 @@ and translate_arr_assign e1 e2 e3 =
           lok,
           lerr );
       `Label lerr;
-      `Call (`Name "_xi_out_of_bounds", []);
+      ir_pr_call xi_out_of_bounds;
       `Label lok;
       `Move
         ( `Mem (`Bop (`Plus, `Name ta, `Bop (`Mul, `Name ti, eight))),
@@ -353,9 +328,9 @@ and translate_multi_assign ~ctx ds id es =
   let assign = ds |> List.fold ~f ~init:(1, []) |> snd |> List.rev in
   `Seq (call :: assign)
 
-(** [translate_prcall ctx id es] is the mir representation of a
+(** [translate_pr_call ctx id es] is the mir representation of a
     procedure call on function [id] with arguments [es] *)
-and translate_prcall ~ctx id es =
+and translate_pr_call ~ctx id es =
   let name = mangle id ~ctx in
   let expr_lst = List.map ~f:translate_expr es in
   `CallStmt (`Name name, expr_lst)
@@ -377,23 +352,22 @@ and translate_control enode t f =
   | Uop (`LogNeg, e) -> translate_control e f t
   | Bop (`And, e1, e2) ->
       let label = generate_label () in
-      `Seq
-        [
-          translate_control e1 label f;
-          `Label label;
-          translate_control e2 t f;
-        ]
+      translate_short_circuit e1 e2 label f t f
   | Bop (`Or, e1, e2) ->
       let label = generate_label () in
-      `Seq
-        [
-          translate_control e1 t label;
-          `Label label;
-          translate_control e2 t f;
-        ]
+      translate_short_circuit e1 e2 t label t f
   | _ ->
       let expr = translate_expr enode in
       `CJump (expr, t, f)
+
+(** [translate_short_circuit e1 e2 l1 l2 t f] translates the short
+    circuit operators and or or to control flow *)
+and translate_short_circuit e1 e2 l1 l2 t f =
+  let label = generate_label () in
+  `Seq
+    [
+      translate_control e1 l1 l2; `Label label; translate_control e2 t f;
+    ]
 
 (** [translate_fn_defn sign] is the mir representation of a function
     definition with signature [sign] *)
@@ -403,7 +377,8 @@ let translate_fn_defn ({ id } : Ast.signature) block =
 (** [translate_global_init id typ p] is the mir representation of a
     global initialization of [id] with type [typ] and primitive [p] as
     its value *)
-let translate_global_init id typ p = `Move (`Temp (PosNode.get id), p)
+let translate_global_init id typ p =
+  `Move (`Temp (PosNode.get id), translate_primitive p)
 
 (** [translate_defn def] is the mir representation of source toplevel
     definition [def] *)
