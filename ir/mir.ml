@@ -22,33 +22,41 @@ and stmt =
   | `CallStmt of expr * expr list
   ]
 
+(** [one] is an mir expression representing the constant one *)
 let one = `Const one
+
+(** [zero] is an mir expression representing the constant zero *)
 let zero = `Const zero
+
+(** [eight] is an mir expression representing the constant eight *)
 let eight = `Const 8L
+
+(** [length lst] is the length of a list represented in int64 *)
 let length lst = lst |> List.length |> Int64.of_int
+
+(** [to_addr n] is [n] converted to a memory address *)
 let to_addr n = (8L * n) + 8L
 
-let make_fresh pre counter =
-  Int.incr counter;
-  pre ^ Int.to_string !counter
-
+(** [label_gen] is the symbol generator for labels *)
 let label_gen = GenSym.create "l%d"
+
+(** [temp_gen] is the symbol generator for temps *)
 let temp_gen = GenSym.create "x%d"
 
-(** [make_fresh_label ()] makes a fresh (unused elsewhere) label with
-    prefix "l" and integer based on [label_counter] *)
-let make_fresh_label () = GenSym.generate label_gen
+(** [generate_label ()] generates a unique label with prefix "l" *)
+let generate_label () = GenSym.generate label_gen
 
-(** [make_fresh_temp ()] makes a fresh (unused elsewhere) temp name with
-    prefix "x" and integer based on [temp_counter] *)
-let make_fresh_temp () = GenSym.generate temp_gen
+(** [generate_temp ()] generates a unique temp with prefix "x" *)
+let generate_temp () = GenSym.generate temp_gen
 
+(** [encode_tau t] is [t] encoded for function mangling *)
 let rec encode_tau = function
   | `Int -> "i"
   | `Bool -> "b"
   | `Array t -> "a" ^ encode_tau t
   | `Poly -> failwith "Unexpected <poly>"
 
+(** [encode_expr t] is [t] encoded for function mangling *)
 let encode_expr = function
   | `Tuple ts ->
       let len = ts |> List.length |> string_of_int in
@@ -56,13 +64,19 @@ let encode_expr = function
       "t" ^ len ^ types
   | #Tau.t as t -> encode_tau t
 
+(** [encode_term t] is [t] encoded for function mangling *)
 let encode_term = function
   | `Unit -> "p"
   | #Expr.t as t -> encode_expr t
 
+(** [encode_name s] is [s] encoded for function mangling *)
 let encode_name = String.substr_replace_all ~pattern:"_" ~with_:"__"
+
+(** [encode_args args] is [args] encoded for function mangling *)
 let encode_args args = args |> List.map ~f:encode_expr |> String.concat
 
+(** [mangle id ctx] is the mangled function name of [id] in context
+    [ctx] *)
 let mangle id ~ctx =
   let arg, ret = Context.find_fn_exn ~id ctx in
   let name = id |> PosNode.get |> encode_name in
@@ -70,14 +84,18 @@ let mangle id ~ctx =
   let args = arg |> tau_list_of_term |> encode_args in
   Printf.sprintf "_I%s_%s%s" name return args
 
+(** [translate_primitive p] is the mir representation of primitive [p] *)
 let translate_primitive p =
   match p with
   | `Int i -> `Const i
   | `Bool b -> if b then one else zero
   | `Char c -> `Const (c |> Uchar.to_scalar |> Int64.of_int)
 
+(** [translate_primitive id] is the mir representation of [id] *)
 let translate_id id = `Temp (PosNode.get id)
 
+(** [translate_expr enode] is the mir representation of expression node
+    [enode] *)
 let rec translate_expr enode =
   let ctx = DecNode.Expr.context enode in
   match DecNode.Expr.get enode with
@@ -88,16 +106,18 @@ let rec translate_expr enode =
   | Bop (op, e1, e2) -> translate_bop op e1 e2
   | Uop (op, e) -> translate_uop op e
   | FnCall (id, es) -> translate_fncall ~ctx id es
-  | Length node -> translate_length node
+  | Length e -> translate_length e
   | Index (e1, e2) -> translate_index e1 e2
 
+(** [translate_arr arr] is the mir representation of [arr] *)
 and translate_arr arr =
   let expr_lst = List.map ~f:translate_expr arr in
   translate_arr_lst expr_lst
 
+(** [translate_arr_lst lst] is the mir representation of a list [lst] *)
 and translate_arr_lst lst =
   let n = length lst in
-  let tm = make_fresh_temp () in
+  let tm = generate_temp () in
   let f acc e =
     let index = acc |> length |> to_addr in
     `Move (`Mem (`Bop (`Plus, `Name tm, `Const index)), e) :: acc
@@ -111,6 +131,7 @@ and translate_arr_lst lst =
         :: add_elts),
       `Bop (`Plus, `Temp tm, eight) )
 
+(** [translate_string str] is the mir representation of [str] *)
 and translate_string str =
   let expr_lst =
     List.map
@@ -119,12 +140,16 @@ and translate_string str =
   in
   translate_arr_lst expr_lst
 
+(** [translate_uop uop e] is the mir representation of unary operator
+    expression [uop e] *)
 and translate_uop uop e =
   let ir = translate_expr e in
   match uop with
   | `IntNeg -> `Bop (`Plus, `Bop (`Xor, ir, one), one)
   | `LogNeg -> `Bop (`Xor, ir, one)
 
+(** [translate_bop bop e1 e2] is the mir representation of binary
+    operator expression [bop e1 e2] *)
 and translate_bop bop e1 e2 =
   match bop with
   | `And -> translate_and e1 e2
@@ -132,11 +157,12 @@ and translate_bop bop e1 e2 =
   | #Ast.Op.binop ->
       `Bop (Op.coerce bop, translate_expr e1, translate_expr e2)
 
+(** [translate_and e1 e2] is the mir representation of [e1 and e2] *)
 and translate_and e1 e2 =
-  let x = make_fresh_temp () in
-  let l1 = make_fresh_label () in
-  let l2 = make_fresh_label () in
-  let lf = make_fresh_label () in
+  let x = generate_temp () in
+  let l1 = generate_label () in
+  let l2 = generate_label () in
+  let lf = generate_label () in
   `ESeq
     ( `Seq
         [
@@ -150,11 +176,12 @@ and translate_and e1 e2 =
         ],
       `Temp x )
 
+(** [translate_or e1 e2] is the mir representation of [e1 or e2] *)
 and translate_or e1 e2 =
-  let x = make_fresh_temp () in
-  let l1 = make_fresh_label () in
-  let l2 = make_fresh_label () in
-  let lt = make_fresh_label () in
+  let x = generate_temp () in
+  let l1 = generate_label () in
+  let l2 = generate_label () in
+  let lt = generate_label () in
   `ESeq
     ( `Seq
         [
@@ -168,20 +195,26 @@ and translate_or e1 e2 =
         ],
       `Temp x )
 
+(** [translate_fncall ctx id es] is the mir representation of a function
+    call with function id [id], arguments [es], and context [ctx] *)
 and translate_fncall ~ctx id es =
   let name = mangle id ~ctx in
   let expr_lst = List.map ~f:translate_expr es in
   `Call (`Name name, expr_lst)
 
-and translate_length node =
-  let ir = translate_expr node in
+(** [translate_length e] is the mir representation of a length function
+    call with argument [e] *)
+and translate_length e =
+  let ir = translate_expr e in
   `Mem (`Bop (`Minus, ir, eight))
 
+(** [translate_index e1 e2] is the mir representation of an indexing of
+    [e1] at position [e2] *)
 and translate_index e1 e2 =
-  let ta = make_fresh_temp () in
-  let ti = make_fresh_temp () in
-  let lok = make_fresh_label () in
-  let lerr = make_fresh_label () in
+  let ta = generate_temp () in
+  let ti = generate_temp () in
+  let lok = generate_label () in
+  let lerr = generate_label () in
   `ESeq
     ( `Seq
         [
@@ -198,6 +231,8 @@ and translate_index e1 e2 =
         ],
       `Mem (`Bop (`Plus, ta, `Bop (`Mult, ti, eight))) )
 
+(** [translate_stmt snode] is the mir representation of statement node
+    [snode] *)
 and translate_stmt snode =
   let ctx = DecNode.Stmt.context snode in
   match DecNode.Stmt.get snode with
@@ -216,9 +251,11 @@ and translate_stmt snode =
   | Return es -> Some (translate_return es)
   | Block stmts -> Some (translate_block stmts)
 
+(** [translate_if e s] is the mir representation of an if statement with
+    condition [e] and body [s] *)
 and translate_if e s =
-  let t_label = make_fresh_label () in
-  let f_label = make_fresh_label () in
+  let t_label = generate_label () in
+  let f_label = generate_label () in
   `Seq
     (List.filter_opt
        [
@@ -228,10 +265,12 @@ and translate_if e s =
          Some (`Label f_label);
        ])
 
+(** [translate_if_else e s1 s2] is the mir representation of an if-else
+    statement with condition [e] and statements [s1] and [s2] *)
 and translate_if_else e s1 s2 =
-  let t_label = make_fresh_label () in
-  let f_label = make_fresh_label () in
-  let end_label = make_fresh_label () in
+  let t_label = generate_label () in
+  let f_label = generate_label () in
+  let end_label = generate_label () in
   `Seq
     (List.filter_opt
        [
@@ -244,10 +283,12 @@ and translate_if_else e s1 s2 =
          Some (`Label end_label);
        ])
 
+(** [translate_while e s] is the mir representation of a while loop with
+    condition [e] and loop body [s] *)
 and translate_while e s =
-  let h_label = make_fresh_label () in
-  let t_label = make_fresh_label () in
-  let f_label = make_fresh_label () in
+  let h_label = generate_label () in
+  let t_label = generate_label () in
+  let f_label = generate_label () in
   `Seq
     (List.filter_opt
        [
@@ -259,15 +300,19 @@ and translate_while e s =
          Some (`Label f_label);
        ])
 
+(** [translate_assign id e] is the mir representation of an assignment
+    of [e] to [id] *)
 and translate_assign id e =
   let expr = translate_expr e in
   `Move (`Temp (PosNode.get id), expr)
 
+(** [translate_arr_assign e1 e2 e3] is the mir representation of a array
+    assignment statement with *)
 and translate_arr_assign e1 e2 e3 =
-  let ta = make_fresh_temp () in
-  let ti = make_fresh_temp () in
-  let lok = make_fresh_label () in
-  let lerr = make_fresh_label () in
+  let ta = generate_temp () in
+  let ti = generate_temp () in
+  let lok = generate_label () in
+  let lerr = generate_label () in
   `Seq
     [
       `Move (`Temp ta, translate_expr e1);
@@ -284,11 +329,16 @@ and translate_arr_assign e1 e2 e3 =
           translate_expr e3 );
     ]
 
+(** [translate_expr_stmt ctx id es] is the mir representation of an
+    expression statement with function [id] and arguments [es] *)
 and translate_expr_stmt ~ctx id es =
   let name = mangle id ~ctx in
   let expr_lst = List.map ~f:translate_expr es in
   `CallStmt (`Name name, expr_lst)
 
+(** [translate_multi_assign ctx ds id es] is the mir representation of a
+    multi-assignment with declarations [ds], and function [id], and
+    arguments [es] *)
 and translate_multi_assign ~ctx ds id es =
   let name = mangle id ~ctx in
   let expr_lst = List.map ~f:translate_expr es in
@@ -303,37 +353,21 @@ and translate_multi_assign ~ctx ds id es =
   let assign = ds |> List.fold ~f ~init:(1, []) |> snd |> List.rev in
   `Seq (call :: assign)
 
+(** [translate_prcall ctx id es] is the mir representation of a
+    procedure call on function [id] with arguments [es] *)
 and translate_prcall ~ctx id es =
   let name = mangle id ~ctx in
   let expr_lst = List.map ~f:translate_expr es in
   `CallStmt (`Name name, expr_lst)
 
+(** [translate_return es] is the mir representation of a return
+    statement with expressions [es] *)
 and translate_return es = `Return (List.map ~f:translate_expr es)
 
+(** [translate_block stmts] is the mir representation of a statement
+    block with statements [stmts] *)
 and translate_block stmts =
   `Seq (List.filter_map ~f:translate_stmt stmts)
-
-and translate_fn_defn ({ id } : Ast.signature) block =
-  `Seq [ `Label (PosNode.get id); translate_block block ]
-
-and translate_global_init id typ prim =
-  `Move (`Temp (PosNode.get id), prim)
-
-and translate_defn def =
-  match DecNode.Toplevel.get def with
-  | FnDefn (signature, block) ->
-      Some (translate_fn_defn signature block)
-  | GlobalDecl _ -> None
-  | GlobalInit (id, typ, prim) ->
-      Some (translate_global_init id typ prim)
-
-and translate_source { uses; definitions } =
-  `Seq (List.filter_map ~f:translate_defn definitions)
-
-and translate_toplevel tnode =
-  match tnode with
-  | Source src -> translate_source src
-  | Intf intf -> failwith "unimplemented"
 
 (** [translate_control enode t f] translates booleans to control flow *)
 and translate_control enode t f =
@@ -342,7 +376,7 @@ and translate_control enode t f =
   | Primitive (`Bool false) -> `Jump (`Name f)
   | Uop (`LogNeg, e) -> translate_control e f t
   | Bop (`And, e1, e2) ->
-      let label = make_fresh_label () in
+      let label = generate_label () in
       `Seq
         [
           translate_control e1 label f;
@@ -350,7 +384,7 @@ and translate_control enode t f =
           translate_control e2 t f;
         ]
   | Bop (`Or, e1, e2) ->
-      let label = make_fresh_label () in
+      let label = generate_label () in
       `Seq
         [
           translate_control e1 t label;
@@ -360,3 +394,33 @@ and translate_control enode t f =
   | _ ->
       let expr = translate_expr enode in
       `CJump (expr, t, f)
+
+(** [translate_fn_defn sign] is the mir representation of a function
+    definition with signature [sign] *)
+let translate_fn_defn ({ id } : Ast.signature) block =
+  `Seq [ `Label (PosNode.get id); translate_block block ]
+
+(** [translate_global_init id typ p] is the mir representation of a
+    global initialization of [id] with type [typ] and primitive [p] as
+    its value *)
+let translate_global_init id typ p = `Move (`Temp (PosNode.get id), p)
+
+(** [translate_defn def] is the mir representation of source toplevel
+    definition [def] *)
+let translate_defn def =
+  match DecNode.Toplevel.get def with
+  | FnDefn (signature, block) ->
+      Some (translate_fn_defn signature block)
+  | GlobalDecl _ -> None
+  | GlobalInit (id, typ, p) -> Some (translate_global_init id typ p)
+
+(** [translate_source source] is the mir representation of [source] *)
+let translate_source { uses; definitions } =
+  `Seq (List.filter_map ~f:translate_defn definitions)
+
+(** [translate_source tnode] is the mir representation of toplevel node
+    [tnode] *)
+let translate_toplevel tnode =
+  match tnode with
+  | Source src -> translate_source src
+  | Intf intf -> failwith "unimplemented"
