@@ -4,13 +4,14 @@ open Frontend
 module Mir = Mir
 module Lir = Lir
 module Reorder = Reorder
+open IrGensym
 
 let translate ast =
   let mir = Mir.translate ast in
   let lir = Lir.lower mir in
   (* TODO fix gensym *)
-  let gensym = Subtype.Label.generator () in
-  Reorder.reorder lir ~gensym
+  let gen = IrGensym.create () in
+  Reorder.reorder lir ~gensym:(Label.generator gen)
 
 (** [const_of_base b] is [`Const r] if [b] is [Some r] and [None]
     otherwise *)

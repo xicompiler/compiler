@@ -10,6 +10,7 @@ open Stmt
 open Toplevel
 open Primitive
 open Type
+open IrGensym
 
 type expr =
   [ expr Subtype.expr
@@ -48,20 +49,7 @@ let length lst = lst |> List.length |> Int64.of_int
 (** [to_addr n] is [n] converted to a memory address *)
 let to_addr n = (8L * n) + 8L
 
-(** [fresh_label ()] generates a unique label with prefix "l" *)
-let fresh_label = Label.generator ()
-
-(** [fresh_label2] is a pair of fresh labels *)
-let fresh_label2 () = Thunk.map2 fresh_label
-
-(** [fresh_label3 ()] is a triple of fresh labels *)
-let fresh_label3 () = Thunk.map3 fresh_label
-
-(** [fresh_temp ()] generates a unique temp with prefix "x" *)
-let fresh_temp = Temp.generator ()
-
-(** [fresh_temp2 ()] is a pair of fresh temporaries *)
-let fresh_temp2 () = Thunk.map2 fresh_temp
+let gensym = IrGensym.create ()
 
 (** [encode_tau t] is [t] encoded for function mangling *)
 let rec encode_tau = function
@@ -140,7 +128,7 @@ and translate_arr arr = arr |> translate_exprs |> translate_arr_lst
 (** [translate_arr_lst lst] is the mir representation of a list [lst] *)
 and translate_arr_lst lst =
   let n = length lst in
-  let tm = fresh_temp () in
+  let tm = Temp.fresh gensym in
   let f (len, acc) e =
     let index = to_addr len in
     ( Int64.succ len,
@@ -193,8 +181,8 @@ and translate_bop bop e1 e2 =
 
 (** [translate_and e1 e2] is the mir representation of [e1 and e2] *)
 and translate_and e1 e2 =
-  let x = fresh_temp () in
-  let l1, l2, lf = fresh_label3 () in
+  let x = Temp.fresh gensym in
+  let l1, l2, lf = Label.fresh3 gensym in
   `ESeq
     ( `Seq
         [
@@ -210,8 +198,8 @@ and translate_and e1 e2 =
 
 (** [translate_or e1 e2] is the mir representation of [e1 or e2] *)
 and translate_or e1 e2 =
-  let x = fresh_temp () in
-  let l1, l2, lt = fresh_label3 () in
+  let x = Temp.fresh gensym in
+  let l1, l2, lt = Label.fresh3 gensym in
   `ESeq
     ( `Seq
         [
@@ -232,8 +220,8 @@ and translate_length e = `Mem (`Bop (`Minus, translate_expr e, eight))
 (** [translate_index e1 e2] is the mir representation of an indexing of
     [e1] at position [e2] *)
 and translate_index e1 e2 =
-  let ta, ti = fresh_temp2 () in
-  let lok, lerr = fresh_label2 () in
+  let ta, ti = Temp.fresh2 gensym in
+  let lok, lerr = Label.fresh2 gensym in
   `ESeq
     ( `Seq
         [
@@ -268,19 +256,19 @@ and translate_stmt snode =
 (** [translate_if_stmt e s] is the first three IR instructions in if and
     if else statements, reversed*)
 and translate_if_stmt e s =
-  let t, f = fresh_label2 () in
+  let t, f = Label.fresh2 gensym in
   [ translate_stmt s; `Label t; translate_control e t f ]
 
 (** [translate_if e s] is the mir representation of an if statement with
     condition [e] and body [s] *)
 and translate_if e s =
-  let f = fresh_label () in
+  let f = Label.fresh gensym in
   s |> translate_if_stmt e |> List.cons (`Label f) |> List.rev |> seq
 
 (** [translate_if_else e s1 s2] is the mir representation of an if-else
     statement with condition [e] and statements [s1] and [s2] *)
 and translate_if_else e s1 s2 =
-  let f, l_end = fresh_label2 () in
+  let f, l_end = Label.fresh2 gensym in
   let open List in
   s1 |> translate_if_stmt e
   |> cons (`Jump (`Name l_end))
@@ -292,7 +280,7 @@ and translate_if_else e s1 s2 =
 (** [translate_while e s] is the mir representation of a while loop with
     condition [e] and loop body [s] *)
 and translate_while e s =
-  let header, t, f = fresh_label3 () in
+  let header, t, f = Label.fresh3 gensym in
   `Seq
     [
       `Label header;
@@ -311,8 +299,8 @@ and translate_assign id e =
 (** [translate_arr_assign e1 e2 e3] is the mir representation of a array
     assignment statement with *)
 and translate_arr_assign e1 e2 e3 =
-  let ta, ti = fresh_temp2 () in
-  let lok, lerr = fresh_label2 () in
+  let ta, ti = Temp.fresh2 gensym in
+  let lok, lerr = Label.fresh2 gensym in
   `Seq
     [
       `Move (ta, translate_expr e1);
@@ -359,17 +347,17 @@ and translate_control enode t f =
   | Primitive (`Bool b) -> `Jump (`Name (if b then t else f))
   | Uop (`LogNeg, e) -> translate_control e f t
   | Bop (`And, e1, e2) ->
-      let label = fresh_label () in
+      let label = Label.fresh gensym in
       translate_short_circuit e1 e2 label f t f
   | Bop (`Or, e1, e2) ->
-      let label = fresh_label () in
+      let label = Label.fresh gensym in
       translate_short_circuit e1 e2 t label t f
   | _ -> `CJump (translate_expr enode, t, f)
 
 (** [translate_short_circuit e1 e2 l1 l2 t f] translates the short
     circuit operators [`And] or [`Or] to control flow *)
 and translate_short_circuit e1 e2 l1 l2 t f =
-  let label = fresh_label () in
+  let label = Label.fresh gensym in
   `Seq
     [
       translate_control e1 l1 l2; `Label label; translate_control e2 t f;

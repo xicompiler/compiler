@@ -1,30 +1,12 @@
 open Ast.Op
 
-(** [label_fmt] is the format of labels, in accordance with the calling
-    convention*)
-let label_fmt = format_of_string "x%d"
-
-module Label = struct
-  type t = string
-
-  let generator () = GenSym.generate label_fmt
-end
-
-type label = Label.t
-
-let temp_fmt = format_of_string "l%d"
-
-module Temp = struct
-  type t = [ `Temp of string ] [@@deriving variants]
-
-  let generator () = GenSym.generate_map temp_fmt ~f:temp
-end
-
+type label = string
+type temp = [ `Temp of string ]
 type 'expr call = [ `Call of int * 'expr * 'expr list ]
 
 type 'expr dest =
   [ `Mem of 'expr
-  | Temp.t
+  | temp
   ]
 
 type 'expr expr =
@@ -48,9 +30,6 @@ type 'expr cjump2 =
   ]
 
 let zero = `Const Int64.zero
-
 let one = `Const Int64.one
-
 let eight = `Const 8L
-
 let log_neg e = `Bop (`Xor, e, one)

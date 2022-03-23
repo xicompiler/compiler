@@ -1,5 +1,6 @@
 open Core
 open Subtype
+open IrGensym
 
 type expr = expr Subtype.expr
 type stmt = expr Subtype.cjump2
@@ -13,8 +14,7 @@ let log_neg = Subtype.log_neg
 
 type t = toplevel list
 
-(** [fresh_temp ()] is the symbol generator for temps *)
-let fresh_temp = Temp.generator ()
+let gensym = IrGensym.create ()
 
 (** [rv1] is the virtual egister storing the first return value *)
 let rv1 = `Temp "_RV1"
@@ -35,7 +35,7 @@ let rec rev_lower_expr ~init : Mir.expr -> stmt list * expr = function
     IR statement [`Call (e, es)] and [e'] is the pure, lowered IR
     expression equivalent to the result computed by [`Call (e, es)] *)
 and rev_lower_call ~init i e es =
-  let t = fresh_temp () in
+  let t = Temp.fresh gensym in
   (`Move (t, rv1) :: rev_lower_call_stmt ~init i e es, t)
 
 (** [rev_lower_eseq ~init:\[sm; ...; s1\] s e] is
@@ -53,7 +53,7 @@ and rev_lower_eseq ~init s e =
     IR statement [`Bop (op, e1, e2)] and [e'] is the pure, lowered IR
     expression equivalent to the result computed by [`Bop (op, e1, e2)] *)
 and rev_lower_bop ~init op e1 e2 =
-  let t = fresh_temp () in
+  let t = Temp.fresh gensym in
   let s1, e1' = rev_lower_expr ~init e1 in
   let init = `Move (t, e1') :: s1 in
   let s2, e2' = rev_lower_expr ~init e2 in
@@ -103,7 +103,7 @@ and rev_lower_move_temp ~init t src =
     [`Move (`Mem addr, src)] *)
 and rev_lower_move_mem ~init addr src =
   let s_addr, addr' = rev_lower_expr ~init addr in
-  let t = fresh_temp () in
+  let t = Temp.fresh gensym in
   let init = `Move (t, addr') :: s_addr in
   let s_src, src' = rev_lower_expr ~init src in
   `Move (`Mem t, src') :: s_src
@@ -124,7 +124,7 @@ and rev_lower_jump ~init e =
     the lowering function *)
 and rev_lower_moves ~init es =
   let f (ts, init) e =
-    let t = fresh_temp () in
+    let t = Temp.fresh gensym in
     (t :: ts, rev_lower_move_temp ~init t e)
   in
   es |> List.fold ~f ~init:([], init) |> Tuple2.map_fst ~f:List.rev
