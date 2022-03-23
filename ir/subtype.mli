@@ -60,5 +60,8 @@ val zero : [> 'expr expr ]
 val one : [> 'expr expr ]
 (** [one] is the IR constant 1 *)
 
+val eight : [> 'expr expr ]
+(** [eight] is the IR constant 8 *)
+
 val log_neg : ([> 'expr expr ] as 'expr) -> 'expr
 (** [log_neg e] is the IR node representing the logical negation of [e] *)

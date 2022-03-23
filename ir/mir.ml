@@ -28,9 +28,6 @@ let seq lst = `Seq lst
 (** [empty] is an empty sequence of statements *)
 let empty : stmt = `Seq []
 
-(** [eight] is an mir expression representing the constant eight *)
-let eight = `Const 8L
-
 (** [xi_alloc] is the xi function for allocating space *)
 let xi_alloc = `Name "_xi_alloc"
 
@@ -123,10 +120,11 @@ let rec translate_expr enode =
   | Length e -> translate_length e
   | Index (e1, e2) -> translate_index e1 e2
 
+(** [translate_exprs es] is [es], each of which translated to IR *)
+and translate_exprs es = List.map ~f:translate_expr es
+
 (** [translate_arr arr] is the mir representation of [arr] *)
-and translate_arr arr =
-  let expr_lst = List.map ~f:translate_expr arr in
-  translate_arr_lst expr_lst
+and translate_arr arr = arr |> translate_exprs |> translate_arr_lst
 
 (** [translate_arr_lst lst] is the mir representation of a list [lst] *)
 and translate_arr_lst lst =
@@ -170,7 +168,7 @@ and translate_int_neg e =
     call with function id [id], arguments [es], and context [ctx] *)
 and translate_call ~ctx id es : expr Subtype.call =
   let name = mangle id ~ctx in
-  `Call (`Name name, List.map ~f:translate_expr es)
+  `Call (`Name name, translate_exprs es)
 
 (** [translate_bop bop e1 e2] is the mir representation of binary
     operator expression [bop e1 e2] *)
@@ -322,7 +320,7 @@ and translate_arr_assign e1 e2 e3 =
     arguments [es] *)
 and translate_multi_assign ~ctx ds id es =
   let name = mangle id ~ctx in
-  let expr_lst = List.map ~f:translate_expr es in
+  let expr_lst = translate_exprs es in
   let call = `Call (`Name name, expr_lst) in
   let f (rv, acc) = function
     | None -> (Int.succ rv, acc)
@@ -336,7 +334,7 @@ and translate_multi_assign ~ctx ds id es =
 
 (** [translate_return es] is the mir representation of a return
     statement with expressions [es] *)
-and translate_return es = `Return (List.map ~f:translate_expr es)
+and translate_return es = `Return (translate_exprs es)
 
 (** [translate_block stmts] is the mir representation of a statement
     block with statements [stmts] *)
