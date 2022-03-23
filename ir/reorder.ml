@@ -311,7 +311,7 @@ let reorder_stmts stmts ~gensym =
 
 let reorder_toplevel (top : Lir.toplevel) ~gensym : toplevel =
   match top with
-  | `Data (_, _) as d -> d
+  | `Data _ as d -> d
   | `Func (l, b) -> `Func (l, reorder_stmts b ~gensym)
 
 let reorder (prog : Lir.t) ~gensym : t =

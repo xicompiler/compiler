@@ -14,6 +14,7 @@ module Error = struct
     if String.is_empty cause then "Unable to parse program"
     else Printf.sprintf "Unexpected token %s" cause
 
+  (** [string_of_cause e] is the error message corresponding to [e] *)
   let string_of_cause cause = cause |> desc |> Printf.sprintf "error:%s"
 
   (** [fmt] is the format for a lexical error message *)
@@ -22,10 +23,7 @@ module Error = struct
   let to_string filename = function
     | `LexicalError e -> Lex.Error.to_string filename e
     | `SyntaxError e ->
-        let pos = Position.Error.position e in
-        e |> Position.Error.cause |> desc
-        |> Position.Error.format pos
-        |> Printf.sprintf fmt filename
+        Position.Error.format_last ~f:desc ~fmt ~msg:filename e
 end
 
 type error = Error.t
@@ -67,37 +65,40 @@ module Diagnostic = struct
     let to_string = function
       | `LexicalError e -> Lex.Diagnostic.Error.to_string e
       | `SyntaxError e ->
-          let pos = Position.Error.position e in
-          e |> Position.Error.cause |> Error.string_of_cause
-          |> Position.Error.format pos
+          Position.Error.format ~f:Error.string_of_cause e
   end
 
+  (** [print_error out e] prints the error [e] to out channel [out] *)
   let print_error out e = Printf.fprintf out "%s\n" (Error.to_string e)
 
   (** [print_result out] prints the valid ast S-expression or an error
       message into the [out] out channel. *)
-  let print_result out = function
+  let print_result ~out = function
     | Ok ast -> print_ast out ast
     | Error e -> print_error out e
 
   (** [to_channel ~start lexbuf out] parses lexer buffer [lexbuf] from
       start symbol [start] and writes the diagnostic output to [out] *)
   let to_channel ~start lexbuf out =
-    lexbuf |> parse ~start |> print_result out
+    lexbuf |> parse ~start |> print_result ~out
 
+  (** [to_file ~start lexbuf out] parses lexer buffer [lexbuf] from
+      start symbol [start] and writes the diagnostic output to file at
+      path [out] *)
   let to_file ~start lexbuf out =
     Out_channel.with_file ~f:(to_channel ~start lexbuf) out
 
   let file_to_file ~src ~out =
     let source lexbuf = to_file ~start:ast_of_source lexbuf out in
     let intf lexbuf = to_file ~start:ast_of_intf lexbuf out in
-    File.Xi.map ~source ~intf src
+    File.Xi.map_same ~source ~intf src
 end
 
 module File = struct
   type 'a source = Ast.Toplevel.source -> 'a
   type 'a intf = Ast.Toplevel.intf -> 'a
 
+  (** Same as [map] but both [source] and [intf] return the same type *)
   let map_same ~source ~intf file : 'a result File.Xi.result =
     let source buf = parse_source buf >>| source in
     let intf buf = parse_intf buf >>| intf in

@@ -19,20 +19,14 @@ module Error = struct
   let fmt = format_of_string "Lexical error beginning at %s:%s"
 
   let to_string filename error =
-    let pos = Position.Error.position error in
-    error |> Position.Error.cause |> desc
-    |> Position.Error.format pos
-    |> Printf.sprintf fmt filename
+    Position.Error.format_last ~f:desc ~msg:filename ~fmt error
 end
 
 module Diagnostic = struct
   type nonrec result = (Parser.token, error) result
 
   module Error = struct
-    let to_string error =
-      let pos = Position.Error.position error in
-      error |> Position.Error.cause |> Error.string_of_cause
-      |> Position.Error.format pos
+    let to_string = Position.Error.format ~f:Error.string_of_cause
   end
 
   (** [string_of_char_token c] is the string representing char token [c] *)
@@ -95,6 +89,9 @@ module Diagnostic = struct
     | EOF -> "EOF"
     | TYPE p -> Type.Tau.Primitive.to_string p
 
+  (** [read_result lexbuf] consumes the next lexeme in [lexbuf] and
+      returns the corresponding token [Ok tok] on success or
+      [LexicalError e] on error. *)
   let read_result lexbuf =
     try Ok (read lexbuf) with Error e -> Result.Error e
 
@@ -123,8 +120,7 @@ module Diagnostic = struct
   let print_result out res =
     let s =
       match res with
-      | Ok tok, pos ->
-          tok |> string_of_token |> Position.Error.format pos
+      | Ok tok, pos -> tok |> string_of_token |> Position.format pos
       | Error e, _ -> Error.to_string e
     in
     Printf.fprintf out "%s\n" s
@@ -134,6 +130,8 @@ module Diagnostic = struct
   let to_channel lexbuf out =
     lexbuf |> lex_pos |> List.iter ~f:(print_result out)
 
+  (** [to_file lexbuf out] lexes [lexbuf] and writes the results to file
+      at path [out] *)
   let to_file lexbuf out =
     Out_channel.with_file ~f:(to_channel lexbuf) out
 

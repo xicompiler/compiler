@@ -16,5 +16,6 @@ type toplevel =
   | `Data of Subtype.label * Int64.t
   ]
 
-val translate : Ast.Decorated.t -> toplevel list
-(** [translate ast] is decorated ast [ast] translated to mid-level IR *)
+val translate : Ast.Decorated.Toplevel.source -> toplevel list
+(** [translate src] is decorated ast source [src] translated to
+    mid-level IR *)

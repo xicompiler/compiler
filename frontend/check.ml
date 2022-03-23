@@ -21,10 +21,7 @@ module Error = struct
   let to_string filename = function
     | #Parse.error as e -> Parse.Error.to_string filename e
     | `SemanticError e ->
-        let pos = Position.Error.position e in
-        e |> Position.Error.cause |> desc
-        |> Position.Error.format pos
-        |> Printf.sprintf fmt filename
+        Position.Error.format_last ~f:desc ~msg:filename ~fmt e
 end
 
 type error = Error.t
@@ -96,24 +93,29 @@ module Diagnostic = struct
     let to_string = function
       | #Parse.error as e -> Parse.Diagnostic.Error.to_string e
       | `SemanticError e ->
-          let pos = Position.Error.position e in
-          e |> Position.Error.cause |> Error.string_of_cause
-          |> Position.Error.format pos
+          Position.Error.format ~f:Error.string_of_cause e
   end
 
   (** [valid_xi_program] is the diagnostic string printed if a program
       is semantically valid *)
   let valid_xi_program = "Valid Xi Program"
 
-  let print_result ~out = function
-    | Ok _ -> Printf.fprintf out "%s\n" valid_xi_program
-    | Error e -> e |> Error.to_string |> Printf.fprintf out "%s\n"
+  let print_error out e =
+    e |> Error.to_string |> Printf.fprintf out "%s\n"
 
-  let print_to_file ~out r =
-    Out_channel.with_file ~f:(fun oc -> print_result ~out:oc r) out
+  let print_result ~out ~f = function
+    | Ok ast -> f out ast
+    | Error e -> print_error out e
 
-  let file_to_file ?cache ~src ~out ~deps () =
+  let print_to_file ~out ~f r =
+    Out_channel.with_file ~f:(fun oc -> print_result ~out:oc ~f r) out
+
+  let file_to_file_iter ?cache ~src ~out ~deps ~f () =
     let r = type_check_file ?cache ~deps src in
-    Result.iter ~f:(print_to_file ~out) r;
+    Result.iter ~f:(print_to_file ~out ~f) r;
     Result.ignore_m r
+
+  let file_to_file ?cache ~src ~out ~deps =
+    let f out _ = Printf.fprintf out "%s\n" valid_xi_program in
+    file_to_file_iter ?cache ~src ~out ~deps ~f
 end

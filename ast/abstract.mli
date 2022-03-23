@@ -144,4 +144,8 @@ module type S = sig
   val const_fold : t -> t
   (** [const_fold ast] is [ast] where all constants expressions have
       been fully evaluated. Conditionals are also folded, if possible. *)
+
+  val iter_source : t -> f:(Toplevel.source -> unit) -> unit
+  (** [iter_source ast ~f] is [f src] if [ast] is [Source ast] and [()]
+      otherwise *)
 end

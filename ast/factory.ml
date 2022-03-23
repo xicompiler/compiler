@@ -523,4 +523,7 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
         let definitions = Toplevel.const_fold_defs src.definitions in
         Source { src with definitions }
     | intf -> intf
+
+  let iter_source ast ~f =
+    match ast with Source src -> f src | Intf _ -> ()
 end

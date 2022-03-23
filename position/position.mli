@@ -4,6 +4,9 @@ type t = {
 }
 (** [t] is the type of position, consisting of the line and column *)
 
+val format : t -> string -> string
+(** [format pos s] is a function that formats a string [s] with [pos] *)
+
 type position = t
 (** [position] is an alias for [t] *)
 
@@ -23,9 +26,16 @@ module Error : sig
   val position : 'a t -> position
   (** [position err] is the position at which [err] occurs *)
 
-  val format : position -> string -> string
-  (** [format pos s] is a function that formats an error string [s] with
-      [pos] *)
+  val format : 'a t -> f:('a -> string) -> string
+  (** [format err ~msg ~f] is a formatted error message [msg] using
+      [f x], where [x] is the value wrapped in [err] *)
+
+  val format_last :
+    'a t ->
+    f:('a -> string) ->
+    fmt:('b -> string -> 'c, unit, string) format ->
+    msg:'b ->
+    'c
 end
 
 type 'a error = 'a Error.t

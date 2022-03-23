@@ -16,6 +16,6 @@ val accessible : string -> bool
 val stdlib : string
 (** [stdlib] is the path to the [Xi] standard library *)
 
-val diagnostic : dir:string -> file:string -> string -> string
-(** [diagnostic dir file ext] is the out path of the diagnostic file for
-    [file] with extension [ext] in directory [dir] *)
+val diagnostic : dir:string -> src:string -> string -> string
+(** [diagnostic dir src ext] is the out path of the diagnostic file for
+    [src] with extension [ext] in directory [dir] *)

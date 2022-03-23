@@ -2,7 +2,6 @@ open Core
 open Subtype
 
 type expr = expr Subtype.expr
-
 type stmt = expr Subtype.cjump2
 
 type toplevel =
@@ -45,8 +44,8 @@ and rev_lower_call ~init i e es =
     IR statement [`ESeq (e, s)] and [e'] is the pure, lowered IR
     expression equivalent to the result computed by [`ESeq (e, s)] *)
 and rev_lower_eseq ~init s e =
-  let sv = rev_lower_stmt ~init s in
-  rev_lower_expr ~init:sv e
+  let s' = rev_lower_stmt ~init s in
+  rev_lower_expr ~init:s' e
 
 (** [rev_lower_bop ~init:\[sm; ...; s1\] op e1 e2] is
     ([sn; ...; sm-1; sm; ... s1], e') if [sm-1; ...; sn] are the
@@ -55,10 +54,10 @@ and rev_lower_eseq ~init s e =
     expression equivalent to the result computed by [`Bop (op, e1, e2)] *)
 and rev_lower_bop ~init op e1 e2 =
   let t = fresh_temp () in
-  let sv1, e1' = rev_lower_expr ~init e1 in
-  let init = `Move (t, e1') :: sv1 in
-  let sv2, e2' = rev_lower_expr ~init e2 in
-  (sv2, `Bop (op, t, e2'))
+  let s1, e1' = rev_lower_expr ~init e1 in
+  let init = `Move (t, e1') :: s1 in
+  let s2, e2' = rev_lower_expr ~init e2 in
+  (s2, `Bop (op, t, e2'))
 
 (** [rev_lower_mem ~init:\[sm; ...; s1\] e] is
     ([sn; ...; sm-1; sm; ... s1], e') if [sm-1; ...; sn] are the
@@ -81,31 +80,41 @@ and rev_lower_stmt ~init : Mir.stmt -> stmt list = function
   | `CJump (e, l1, l2) -> rev_lower_cjump ~init e l1 l2
   | `Seq sv -> rev_lower_seq ~init sv
 
-(** [rev_lower_move ~init:\[sm; ...; s1\] dest e] is
+(** [rev_lower_move ~init:\[sm; ...; s1\] dst e] is
     [sn; ...; sm-1; sm; ... s1] if [sm-1; ...; sn] are the sequence of
     lowered IR expressions having the same side effects as IR statement
-    [`Move (dest, e)] *)
-and rev_lower_move ~init dest e =
-  match dest with
-  | `Temp _ as t ->
-      (* commute rule *)
-      let sv2, e2 = rev_lower_expr ~init e in
-      `Move (t, e2) :: sv2
-  | `Mem e1 ->
-      (* general rule *)
-      let sv1, e1' = rev_lower_expr ~init e1 in
-      let t = fresh_temp () in
-      let init = `Move (t, e1') :: sv1 in
-      let sv2, e2 = rev_lower_expr ~init e in
-      `Move (`Mem t, e2) :: sv2
+    [`Move (dst, e)] *)
+and rev_lower_move ~init dst src =
+  match dst with
+  | `Temp _ as t -> rev_lower_move_temp ~init t src
+  | `Mem addr -> rev_lower_move_mem ~init addr src
+
+(** [rev_move_temp ~init:\[sm; ...; s1\] dst src] is
+    [sn; ...; sm-1; sm; ... s1] if [sm-1; ...; sn] are the sequence of
+    lowered IR expressions having the same side effects as IR statement
+    [`Move (t, src)], where [t] is a temporary *)
+and rev_lower_move_temp ~init t src =
+  let s, e = rev_lower_expr ~init src in
+  `Move (t, e) :: s
+
+(** [rev_lower_move_mem ~init:\[sm; ...; s1\] addr src] is
+    [sn; ...; sm-1; sm; ... s1] if [sm-1; ...; sn] are the sequence of
+    lowered IR expressions having the same side effects as IR statement
+    [`Move (`Mem addr, src)] *)
+and rev_lower_move_mem ~init addr src =
+  let s_addr, addr' = rev_lower_expr ~init addr in
+  let t = fresh_temp () in
+  let init = `Move (t, addr') :: s_addr in
+  let s_src, src' = rev_lower_expr ~init src in
+  `Move (`Mem t, src') :: s_src
 
 (** [rev_lower_move ~init:\[sm; ...; s1\] e] is
     [sn; ...; sm-1; sm; ... s1] if [sm-1; ...; sn] are the sequence of
     lowered IR expressions having the same side effects as IR statement
     [`Jump e] *)
 and rev_lower_jump ~init e =
-  let sv, e' = rev_lower_expr ~init e in
-  `Jump e' :: sv
+  let s, e' = rev_lower_expr ~init e in
+  `Jump e' :: s
 
 (** [rev_lower_moves ~init:\[sm; ...; s1\] \[e1; ...; ei\]] is
     ([t1; ...; ti], [sn; ...; sm-1; sm; ... s1] if each [tj] is a fresh
@@ -116,7 +125,7 @@ and rev_lower_jump ~init e =
 and rev_lower_moves ~init es =
   let f (ts, init) e =
     let t = fresh_temp () in
-    (t :: ts, rev_lower_move ~init t e)
+    (t :: ts, rev_lower_move_temp ~init t e)
   in
   es |> List.fold ~f ~init:([], init) |> Tuple2.map_fst ~f:List.rev
 
@@ -133,8 +142,8 @@ and rev_lower_return ~init es =
     lowered IR expressions having the same side effects as IR statement
     [`CJump (e, l1, l2)] *)
 and rev_lower_cjump ~init e l1 l2 =
-  let sv, e' = rev_lower_expr ~init e in
-  `CJump (e', l1, l2) :: sv
+  let s, e' = rev_lower_expr ~init e in
+  `CJump (e', l1, l2) :: s
 
 (** [rev_lower_call_stmt ~init:\[sm; ...; s1\] e0 \[e1; ...; ei\]] is
     [sn; ...; sm-1; sm; ... s1] if [sm-1; ...; sn] are the sequence of
@@ -152,13 +161,14 @@ and rev_lower_call_stmt ~init i e es =
 and rev_lower_seq ~init seq =
   List.fold ~f:(fun acc -> rev_lower_stmt ~init:acc) ~init seq
 
-let lower_stmt = Fn.compose List.rev (rev_lower_stmt ~init:[])
+(** [lower_seq seq] is the sequence of lowered ir statements having the
+    same effect as [seq] *)
+let lower_seq = Fn.compose List.rev (rev_lower_seq ~init:[])
 
-let lower_func l b = `Func (l, List.concat_map ~f:lower_stmt b)
+let lower_func l b = `Func (l, lower_seq b)
 
 let lower_toplevel = function
-  | `Data (_, _) as d -> d
+  | `Data _ as d -> d
   | `Func (l, b) -> lower_func l b
 
-let lower (prog : Mir.toplevel list) : toplevel list =
-  List.map ~f:lower_toplevel prog
+let lower = List.map ~f:lower_toplevel

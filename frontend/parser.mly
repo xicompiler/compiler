@@ -290,7 +290,7 @@ array_init:
   | base = typ; e = bracketed(enode); es = bracketed(enode?)*
     { 
       let es = Some e :: es in
-      (List.fold_left ~f:(fun acc _ -> `Array acc) ~init:base es, es)
+      (List.fold ~f:(fun acc _ -> `Array acc) ~init:base es, es)
     }
   ;
 

@@ -7,6 +7,8 @@ type t = {
   column : int;
 }
 
+let format { line; column } = Printf.sprintf "%d:%d %s" line column
+
 type position = t
 
 module Error = struct
@@ -18,7 +20,10 @@ module Error = struct
   let make ~pos cause = { cause; position = pos }
   let cause { cause } = cause
   let position { position } = position
-  let format { line; column } = Printf.sprintf "%d:%d %s" line column
+  let format { cause; position } ~f = cause |> f |> format position
+
+  let format_last e ~f ~fmt ~msg =
+    e |> format ~f |> Printf.sprintf fmt msg
 end
 
 type 'a error = 'a Error.t

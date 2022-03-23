@@ -12,9 +12,6 @@ module Error : sig
   (** A [t] is either a lexical error or a syntax error. Both variants
       carry the position at which they occur. *)
 
-  val string_of_cause : string -> string
-  (** [string_of_cause e] is the error message corresponding to [e] *)
-
   val to_string : string -> t -> string
   (** [to_string filename e] is the cli error message for the parsing
       error [e] in [filename] *)
@@ -61,25 +58,13 @@ val map : start:'a start -> f:('a -> 'b) -> Lexing.lexbuf -> 'b result
 (** The [Diagnostic] module cotains functions for generating diagnostic
     parsing output. *)
 module Diagnostic : sig
+  include File.Diagnostic
+
   (** [Error] represents a lexical or syntax diagnostic error *)
   module Error : sig
     val to_string : error -> string
     (** [to_string e] is the diagnostic error message for [e] *)
   end
-
-  val print_error : Out_channel.t -> error -> unit
-  (** [print_error out e] prints the error [e] to out channel [out] *)
-
-  val to_file : start:Ast.t start -> Lexing.lexbuf -> string -> unit
-  (** [to_file ~start lexbuf out] parses lexer buffer [lexbuf] from
-      start symbol [start] and writes the diagnostic output to file at
-      path [out] *)
-
-  val file_to_file :
-    src:string -> out:string -> (unit, unit) Either.t File.Xi.result
-  (** [file_to_file ~src ~out] writes parsing diagnostic information to
-      a file located at path [out], reading from file at path [src]. It
-      yields [Ok ()] on success and [Error e] on failure. *)
 end
 
 (** [File] contains functions for parsing files *)
@@ -94,13 +79,6 @@ module File : sig
   type 'a intf = Ast.Toplevel.intf -> 'a
   (** An ['a source] maps [Ast.Toplevel.source] to ['a] *)
 
-  val map_same :
-    source:'a source ->
-    intf:'a intf ->
-    string ->
-    'a result File.Xi.result
-  (** Same as [map] but both [source] and [intf] return the same type *)
-
   val map_ast : f:(Ast.t -> 'a) -> string -> 'a result File.Xi.result
-  (** [map_ast ~f file] applies [f] to the AST parsed from [file]*)
+  (** [map_ast ~f file] applies [f] to the AST parsed from [file] *)
 end

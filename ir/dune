@@ -1,6 +1,6 @@
 (library
  (name ir)
- (libraries ast binop core digraph genSym thunk)
+ (libraries ast binop frontend core digraph genSym thunk)
  (preprocess
   (pps ppx_jane -allow-unannotated-ignores))
  (instrumentation

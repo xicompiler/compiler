@@ -377,15 +377,16 @@ and translate_short_circuit e1 e2 l1 l2 t f =
 
 (** [translate_fn_defn sign] is the mir representation of a function
     definition with signature [sign] *)
-let translate_fn_defn ({ id } : Ast.signature) block =
-  `Func (PosNode.get id, [ translate_block block ])
+let translate_fn_defn ~ctx ({ id } : Ast.signature) block =
+  let name = mangle id ~ctx in
+  `Func (name, [ translate_block block ])
 
 (** [translate_global_init id typ p] is the mir representation of a
     global initialization of [id] with type [typ] and primitive [p] as
     its value *)
 let translate_global_init id p =
   match translate_primitive p with
-  | `Const i -> `Data (PosNode.get id, i)
+  | `Const i -> `Data ("_" ^ PosNode.get id, i)
   | _ -> failwith "Primitive not a const"
 
 (** [translate_defn def] is the mir representation of source toplevel
@@ -393,14 +394,10 @@ let translate_global_init id p =
 let translate_defn def =
   match DecNode.Toplevel.get def with
   | FnDefn (signature, block) ->
-      Some (translate_fn_defn signature block :> toplevel)
+      let ctx = DecNode.Toplevel.context def in
+      Some (translate_fn_defn ~ctx signature block :> toplevel)
   | GlobalDecl _ -> None
   | GlobalInit (id, _, p) -> Some (translate_global_init id p)
 
-(** [translate_source source] is the mir representation of [source] *)
-let translate_source { uses; definitions } =
+let translate { uses; definitions } =
   List.filter_map ~f:translate_defn definitions
-
-let translate : Ast.Decorated.t -> toplevel list = function
-  | Source src -> translate_source src
-  | Intf intf -> failwith "no IR for an interface"

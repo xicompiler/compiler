@@ -15,11 +15,27 @@ module Reorder : module type of struct
   include Reorder
 end
 
-val translate : Ast.Decorated.t -> Reorder.t
+val translate : Ast.Decorated.Toplevel.source -> Reorder.t
 (** [translate ast] is decorated ast [ast] translated to lowered
     (canonical) IR *)
+
+val sexp_of_t : name:string -> Reorder.t -> Sexp.t
+(** [sexp_of_t name tlist] is the s-expression representation of the
+    reordered toplevel list with COMPUNIT name [name] *)
 
 val const_fold : Reorder.t -> Reorder.t
 (** [const_fold stmts] is [stmts] constant folded at the IR level *)
 
-val sexp_of_t : string -> Reorder.t -> Sexp.t
+open Frontend
+
+module Diagnostic : sig
+  val file_to_file :
+    ?cache:Check.cache ->
+    src:string ->
+    out:string ->
+    deps:Check.dependencies ->
+    unit ->
+    unit File.Xi.result
+  (** [file_to_file ~start lexbuf out] parses and typechecks the
+      contents of file [src] and generates ir to file [out] *)
+end

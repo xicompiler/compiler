@@ -10,24 +10,32 @@ open Args
 
 (** [lex_out ~dir src] writes the lexing diagnostic file of [src] *)
 let lex_out ~dir ~src =
-  Lex.Diagnostic.file_to_file ~src
-    ~out:(Util.File.diagnostic dir src ".lexed")
+  let out = Util.File.diagnostic ~dir ~src ".lexed" in
+  Lex.Diagnostic.file_to_file ~src ~out
 
 (** [parse_out ~dir src] writes the parsing diagnostic file of [src] *)
 let parse_out ~dir ~src =
-  Parse.Diagnostic.file_to_file ~src
-    ~out:(Util.File.diagnostic dir src ".parsed")
+  let out = Util.File.diagnostic ~dir ~src ".parsed" in
+  Parse.Diagnostic.file_to_file ~src ~out
 
 (** [check_out ~dir src] writes the typechecking diagnostic file of
     [src] *)
 let check_out ?cache ~dir ~src ~deps () =
-  Check.Diagnostic.file_to_file ?cache ~src
-    ~out:(Util.File.diagnostic dir src ".typed")
-    ~deps ()
+  let out = Util.File.diagnostic ~dir ~src ".typed" in
+  Check.Diagnostic.file_to_file ?cache ~src ~out ~deps ()
 
-(** [irgen_out ~dir src] writes the irgen diagnostic file to [src]
-    and returns the file path *)
-let irgen_out ~dir ~src = "test/cli/helloworld.ir"
+(** [ir_run ir] interprets and executes the ir file at path [ir] *)
+let ir_run ir =
+  let command = Printf.sprintf "./irrun %s" ir in
+  ignore (Sys.command command)
+
+(** [ir_out ?cache ~args ~dir ~src ~deps ()] performs IR diagnostics on
+    file with path [src] writing the results to a file in directory
+    [dir] *)
+let ir_out ?cache ~args ~dir ~src ~deps () =
+  let out = Util.File.diagnostic ~dir ~src ".ir" in
+  ignore (Ir.Diagnostic.file_to_file ?cache ~src ~out ~deps ());
+  if args.irrun then ir_run out
 
 (** [deps_of_args args] are the semantic dependecies corresponding to
     [args] *)
@@ -47,21 +55,15 @@ let compile_file ?cache ~args file =
 
 (** [compile_file_options args file] compiles file [file] with command
     line arguments [args] *)
-let compile_file_options ?cache ~args file =
+let compile_file_options ?cache ~args src =
   let dir = args.out_dir in
   let deps = deps_of_args args in
-  if args.parse then ignore (parse_out ~dir ~src:file);
-  if args.lex then ignore (lex_out ~dir ~src:file);
-  if args.typecheck then
-    ignore (check_out ?cache ~dir ~src:file ~deps ());
+  if args.lex then ignore (lex_out ~dir ~src);
+  if args.parse then ignore (parse_out ~dir ~src);
+  if args.typecheck then ignore (check_out ?cache ~dir ~src ~deps ());
   if args.irgen || args.irrun then
-    ignore (
-      let ir_file = irgen_out ~dir ~src:file in
-      if args.irrun then
-        let command = Printf.sprintf "./irrun %s" ir_file in
-        ignore (Sys.command command);
-    );
-  compile_file ?cache ~args file
+    ir_out ?cache ~args ~dir ~src ~deps ();
+  compile_file ?cache ~args src
 
 (** [stringify res] is an error message string if [res] is an error *)
 let stringify = function

@@ -40,6 +40,15 @@ val type_check_file :
 (** same as [type_check] but takes a filename as argument *)
 
 module Diagnostic : sig
+  val file_to_file_iter :
+    ?cache:cache ->
+    src:string ->
+    out:string ->
+    deps:dependencies ->
+    f:(Out_channel.t -> Ast.Decorated.t -> unit) ->
+    unit ->
+    unit File.Xi.result
+
   val file_to_file :
     ?cache:cache ->
     src:string ->
@@ -53,4 +62,6 @@ module Diagnostic : sig
       [Error e] on failure. If not provided, [lib_dir] defaults to ".".
       If [cache] is [Some tbl], AST nodes are memoized in [tbl].
       [std_dir] is used to resolve references to the standard library. *)
+
+  val print_error : Out_channel.t -> error -> unit
 end
