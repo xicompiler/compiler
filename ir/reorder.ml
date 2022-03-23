@@ -10,8 +10,8 @@ type stmt =
   ]
 
 type toplevel =
-  [ `Func of Subtype.label * stmt list
-  | `Data of Subtype.label * Int64.t
+  [ `Func of label * stmt list
+  | `Data of label * Int64.t
   ]
 
 type t = toplevel list
@@ -160,7 +160,7 @@ let has_label ~label block =
     [t]. Returns: [`Inverted] on inversion, [`Unchanged] if unchanged *)
 let invert_cjump ~elt ~next e t f =
   if has_label ~label:t next then begin
-    let s = `CJump (Lir.log_neg e, f, t) in
+    let s = `CJump (log_neg e, f, t) in
     Doubly_linked.Elt.set elt s;
     `Inverted
   end

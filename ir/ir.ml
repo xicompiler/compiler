@@ -108,22 +108,21 @@ let sexp_of_jump e = Sexp.List [ Sexp.Atom "JUMP"; sexp_of_expr e ]
     [`Call i e es] *)
 let sexp_of_call_stmt i e es =
   Sexp.List
-    [
-      Sexp.Atom "CALL_STMT";
-      Sexp.Atom (Int.to_string i);
-      Sexp.List [ sexp_of_expr e ];
-      Sexp.List [ List.sexp_of_t sexp_of_expr es ];
-    ]
+    (Sexp.Atom "CALL_STMT"
+    :: Sexp.Atom (Int.to_string i)
+    :: sexp_of_expr e
+    :: List.map ~f:sexp_of_expr es)
 
 (** [sexp_of_jump e] is the sexp representation of [`CJump e l] *)
-and sexp_of_cjump e l = Sexp.List [ Sexp.Atom "CJUMP"; Sexp.Atom l ]
+and sexp_of_cjump e l =
+  Sexp.List [ Sexp.Atom "CJUMP"; sexp_of_expr e; Sexp.Atom l ]
 
 (** [sexp_of_label s] is the sexp representation of [`Label s] *)
 let sexp_of_label s = Sexp.List [ Sexp.Atom "LABEL"; Sexp.Atom s ]
 
 (** [sexp_of_return es] is the sexp representation of [`Return es] *)
 let sexp_of_return es =
-  Sexp.List [ Sexp.Atom "RETURN"; List.sexp_of_t sexp_of_expr es ]
+  Sexp.List (Sexp.Atom "RETURN" :: List.map ~f:sexp_of_expr es)
 
 (** [sexp_of_stmt stmt] is the sexp representation of [stmt] *)
 let sexp_of_stmt = function
@@ -136,7 +135,8 @@ let sexp_of_stmt = function
 
 (** [sexp_of_data l i] is the sexp representation of [`Data (l, i)] *)
 let sexp_of_data l i =
-  Sexp.List [ Sexp.Atom "DATA"; Sexp.Atom l; Int64.sexp_of_t i ]
+  Sexp.List
+    [ Sexp.Atom "DATA"; Sexp.Atom l; Sexp.List [ Int64.sexp_of_t i ] ]
 
 (** [sexp_of_func l b] is the sexp representation of [`Func l b] *)
 let sexp_of_func l b =
@@ -161,10 +161,10 @@ module Diagnostic = struct
   (** [print_source ~out source] prints [source] to [out] as an
       s-expression *)
   let print_source ~out ~name source =
-    source |> translate |> sexp_of_t ~name |> SexpPrinter.print out
+    source |> translate |> sexp_of_t ~name |> SexpPrinter.print_ppf out
 
   let file_to_file ?cache ~src ~out ~deps () =
-    let name = Filename.basename src in
+    let name = Util.File.base src in
     let open Ast.Decorated in
     let f out = iter_source ~f:(print_source ~out ~name) in
     Check.Diagnostic.file_to_file_iter ?cache ~src ~out ~deps ~f ()

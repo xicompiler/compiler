@@ -19,3 +19,7 @@ val stdlib : string
 val diagnostic : dir:string -> src:string -> string -> string
 (** [diagnostic dir src ext] is the out path of the diagnostic file for
     [src] with extension [ext] in directory [dir] *)
+
+val base : string -> string
+(** [base file_path] is [file] where [file] is the basename of
+    [file_path] without its extension *)

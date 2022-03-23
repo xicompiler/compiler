@@ -1,3 +1,5 @@
+open Subtype
+
 type expr =
   [ expr Subtype.expr
   | expr Subtype.call
@@ -6,14 +8,14 @@ type expr =
 (** An [expr] is a mid-level intermediate representation expression *)
 
 and stmt =
-  [ expr Subtype.cjump2
+  [ expr cjump2
   | `Seq of stmt list
   ]
 (** A [stmt] is a mid-level intermediate representation statement *)
 
 type toplevel =
-  [ `Func of Subtype.label * stmt list
-  | `Data of Subtype.label * Int64.t
+  [ `Func of label * stmt list
+  | `Data of label * Int64.t
   ]
 
 val translate : Ast.Decorated.Toplevel.source -> toplevel list

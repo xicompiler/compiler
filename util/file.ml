@@ -29,3 +29,4 @@ let create_out_path ~dir ~file ext =
   path
 
 let diagnostic ~dir ~src = create_out_path ~dir ~file:src
+let base = Fn.compose Filename.chop_extension Filename.basename

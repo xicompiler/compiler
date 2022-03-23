@@ -24,8 +24,8 @@ and stmt =
   ]
 
 type toplevel =
-  [ `Func of Subtype.label * stmt list
-  | `Data of Subtype.label * Int64.t
+  [ `Func of label * stmt list
+  | `Data of label * Int64.t
   ]
 
 (** [seq lst] is [`Seq lst] *)
@@ -48,6 +48,9 @@ let length lst = lst |> List.length |> Int64.of_int
 
 (** [to_addr n] is [n] converted to a memory address *)
 let to_addr n = (8L * n) + 8L
+
+(** [to_addr_expr p m] is [p + m * 8] as an IR expression *)
+let to_addr_expr p m = `Bop (`Plus, p, `Bop (`Mult, m, eight))
 
 let gensym = IrGensym.create ()
 
@@ -104,6 +107,10 @@ let translate_primitive = function
 (** [translate_primitive id] is the mir representation of [id] *)
 let translate_id id = `Temp (PosNode.get id)
 
+(** [translate_alloc space] is the mir representation of a call to
+    allocate space *)
+let translate_alloc space = `Call (0, xi_alloc, [ space ])
+
 (** [translate_expr enode] is the mir representation of expression node
     [enode] *)
 let rec translate_expr enode =
@@ -131,15 +138,12 @@ and translate_arr_lst lst =
   let tm = Temp.fresh gensym in
   let f (len, acc) e =
     let index = to_addr len in
-    ( Int64.succ len,
-      `Move (`Mem (`Bop (`Plus, tm, `Const index)), e) :: acc )
+    (succ len, `Move (`Mem (`Bop (`Plus, tm, `Const index)), e) :: acc)
   in
   let add_elts =
     lst |> List.fold ~f ~init:(Int64.zero, []) |> snd |> List.rev
   in
-  let alloc_arr =
-    `Move (tm, `Call (0, xi_alloc, [ `Const (to_addr n) ]))
-  in
+  let alloc_arr = `Move (tm, translate_alloc (`Const (to_addr n))) in
   let add_len = `Move (`Mem tm, `Const n) in
   `ESeq
     (`Seq (alloc_arr :: add_len :: add_elts), `Bop (`Plus, tm, eight))
@@ -173,10 +177,11 @@ and translate_call ~ctx id es : expr Subtype.call =
 (** [translate_bop bop e1 e2] is the mir representation of binary
     operator expression [bop e1 e2] *)
 and translate_bop bop e1 e2 =
-  match bop with
-  | `And -> translate_and e1 e2
-  | `Or -> translate_or e1 e2
-  | #Ast.Op.binop ->
+  match (bop, DecNode.Expr.get e1, DecNode.Expr.get e2) with
+  | `And, _, _ -> translate_and e1 e2
+  | `Or, _, _ -> translate_or e1 e2
+  | `Plus, Array a1, Array a2 -> translate_arr (a1 @ a2)
+  | #Ast.Op.binop, _, _ ->
       `Bop (Op.coerce bop, translate_expr e1, translate_expr e2)
 
 (** [translate_and e1 e2] is the mir representation of [e1 and e2] *)
@@ -233,7 +238,7 @@ and translate_index e1 e2 =
           ir_pr_call xi_out_of_bounds;
           `Label lok;
         ],
-      `Mem (`Bop (`Plus, ta, `Bop (`Mult, ti, eight))) )
+      `Mem (to_addr_expr ta ti) )
 
 (** [translate_stmt snode] is the mir representation of statement node
     [snode] *)
@@ -243,7 +248,8 @@ and translate_stmt snode =
   | If (e, s) -> translate_if e s
   | IfElse (e, s1, s2) -> translate_if_else e s1 s2
   | While (e, s) -> translate_while e s
-  | VarDecl _ | ArrayDecl _ -> empty
+  | VarDecl _ -> empty
+  | ArrayDecl (id, _, es) -> translate_array_decl id es
   | Assign (id, e) -> translate_assign id e
   | ArrAssign (e1, e2, e3) -> translate_arr_assign e1 e2 e3
   | ExprStmt (id, es) | PrCall (id, es) ->
@@ -253,24 +259,26 @@ and translate_stmt snode =
   | Return es -> translate_return es
   | Block stmts -> translate_block stmts
 
-(** [translate_if_stmt e s] is the first three IR instructions in if and
-    if else statements, reversed*)
+(** [translate_if_stmt e s] is [stmts, f] where [stmts] is the first
+    three IR instructions in if and if else statements, reversed, and
+    [f] is the false label *)
 and translate_if_stmt e s =
   let t, f = Label.fresh2 gensym in
-  [ translate_stmt s; `Label t; translate_control e t f ]
+  ([ translate_stmt s; `Label t; translate_control e t f ], f)
 
 (** [translate_if e s] is the mir representation of an if statement with
     condition [e] and body [s] *)
 and translate_if e s =
-  let f = Label.fresh gensym in
-  s |> translate_if_stmt e |> List.cons (`Label f) |> List.rev |> seq
+  let stmt, f = translate_if_stmt e s in
+  stmt |> List.cons (`Label f) |> List.rev |> seq
 
 (** [translate_if_else e s1 s2] is the mir representation of an if-else
     statement with condition [e] and statements [s1] and [s2] *)
 and translate_if_else e s1 s2 =
-  let f, l_end = Label.fresh2 gensym in
+  let l_end = Label.fresh gensym in
+  let stmt, f = translate_if_stmt e s1 in
   let open List in
-  s1 |> translate_if_stmt e
+  stmt
   |> cons (`Jump (`Name l_end))
   |> cons (`Label f)
   |> cons (translate_stmt s2)
@@ -291,6 +299,30 @@ and translate_while e s =
       `Label f;
     ]
 
+(** [translate_array_decl_shallow len] is [stmts, temp] where [stmts] is
+    the first three IR instructions in array decl statements, reversed,
+    and [temp] is the memory address of the allocated space *)
+and translate_array_decl_shallow len =
+  let e = translate_expr len in
+  let tn, tm = Temp.fresh2 gensym in
+  ( [
+      `Move (`Mem tm, tn);
+      `Move (tm, translate_alloc (to_addr_expr eight tn));
+      `Move (tn, e);
+    ],
+    tm )
+
+(** [translate_array_decl id es] is the mir representation of an array
+    declaration for variable [id] with lengths [es] *)
+and translate_array_decl id = function
+  | Some e :: es ->
+      let name = `Temp (PosNode.get id) in
+      let shallow, tm = translate_array_decl_shallow e in
+      shallow
+      |> List.cons (`Move (name, `Bop (`Plus, tm, eight)))
+      |> List.rev |> seq
+  | None :: _ | [] -> empty
+
 (** [translate_assign id e] is the mir representation of an assignment
     of [e] to [id] *)
 and translate_assign id e =
@@ -310,9 +342,7 @@ and translate_arr_assign e1 e2 e3 =
       `Label lerr;
       ir_pr_call xi_out_of_bounds;
       `Label lok;
-      `Move
-        ( `Mem (`Bop (`Plus, ta, `Bop (`Mult, ti, eight))),
-          translate_expr e3 );
+      `Move (`Mem (to_addr_expr ta ti), translate_expr e3);
     ]
 
 (** [translate_multi_assign ctx ds id es] is the mir representation of a
@@ -348,33 +378,45 @@ and translate_control enode t f =
   | Uop (`LogNeg, e) -> translate_control e f t
   | Bop (`And, e1, e2) ->
       let label = Label.fresh gensym in
-      translate_short_circuit e1 e2 label f t f
+      `Seq
+        [
+          translate_control e1 label f;
+          `Label label;
+          translate_control e2 t f;
+        ]
   | Bop (`Or, e1, e2) ->
       let label = Label.fresh gensym in
-      translate_short_circuit e1 e2 t label t f
+      `Seq
+        [
+          translate_control e1 t label;
+          `Label label;
+          translate_control e2 t f;
+        ]
   | _ -> `CJump (translate_expr enode, t, f)
 
-(** [translate_short_circuit e1 e2 l1 l2 t f] translates the short
-    circuit operators [`And] or [`Or] to control flow *)
-and translate_short_circuit e1 e2 l1 l2 t f =
-  let label = Label.fresh gensym in
-  `Seq
-    [
-      translate_control e1 l1 l2; `Label label; translate_control e2 t f;
-    ]
+(** [returns_unit ctx id] is true if the function associated with [id]
+    in [ctx] has a return of type Unit, false otherwise *)
+let returns_unit ~ctx id =
+  let _, ret = Context.find_fn_exn ~id ctx in
+  match ret with `Unit -> true | _ -> false
 
 (** [translate_fn_defn sign] is the mir representation of a function
     definition with signature [sign] *)
 let translate_fn_defn ~ctx ({ id } : Ast.signature) block =
   let name = mangle id ~ctx in
-  `Func (name, [ translate_block block ])
+  let body =
+    if returns_unit ~ctx id then
+      [ translate_block block; translate_return [] ]
+    else [ translate_block block ]
+  in
+  `Func (name, body)
 
 (** [translate_global_init id typ p] is the mir representation of a
     global initialization of [id] with type [typ] and primitive [p] as
     its value *)
 let translate_global_init id p =
   match translate_primitive p with
-  | `Const i -> `Data ("_" ^ PosNode.get id, i)
+  | `Const i -> `Data (PosNode.get id, i)
   | _ -> failwith "Primitive not a const"
 
 (** [translate_defn def] is the mir representation of source toplevel

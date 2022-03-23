@@ -6,8 +6,8 @@ type expr = expr Subtype.expr
 type stmt = expr Subtype.cjump2
 
 type toplevel =
-  [ `Func of Subtype.label * stmt list
-  | `Data of Subtype.label * Int64.t
+  [ `Func of label * stmt list
+  | `Data of label * Int64.t
   ]
 
 let log_neg = Subtype.log_neg
@@ -150,9 +150,9 @@ and rev_lower_cjump ~init e l1 l2 =
     lowered IR expressions having the same side effects as IR statement
     [Call(e0, e1,..., ei)] *)
 and rev_lower_call_stmt ~init i e es =
-  let ts, seq = rev_lower_moves ~init (e :: es) in
-  let t0, ts = Util.List.hd_tl_exn ts in
-  `Call (i, t0, ts) :: seq
+  let seq, e' = rev_lower_expr ~init e in
+  let ts, seq = rev_lower_moves ~init:seq es in
+  `Call (i, e', ts) :: seq
 
 (** [rev_lower_seq ~init:\[sm; ...; s1\] seq] is
     [sn; ...; sm-1; sm; ... s1] if [sm-1; ...; sn] are the sequence of
