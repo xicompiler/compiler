@@ -15,7 +15,7 @@ and stmt =
 
 type toplevel =
   [ `Func of label * stmt list
-  | `Data of label * Int64.t
+  | `Data of label * int64
   ]
 
 val translate : Ast.Decorated.Toplevel.source -> toplevel list
