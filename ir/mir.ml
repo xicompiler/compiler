@@ -1,6 +1,6 @@
-open Subtype
 open Core
 open Int64
+open Subtype
 module PosNode = Node.Position
 module DecNode = Context.Node.Decorated
 open Ast.Op
@@ -25,11 +25,8 @@ and stmt =
 (** [seq lst] is [`Seq lst] *)
 let seq lst = `Seq lst
 
-(** [one] is an mir expression representing the constant one *)
-let one = `Const one
-
-(** [zero] is an mir expression representing the constant zero *)
-let zero = `Const zero
+(** [empty] is an empty sequence of statements *)
+let empty : stmt = `Seq []
 
 (** [eight] is an mir expression representing the constant eight *)
 let eight = `Const 8L
@@ -90,6 +87,9 @@ let encode_name = String.substr_replace_all ~pattern:"_" ~with_:"__"
 (** [encode_args args] is [args] encoded for function mangling *)
 let encode_args args = args |> List.map ~f:encode_expr |> String.concat
 
+(** [mangle_fmt] is the format used to mangle identifiers *)
+let mangle_fmt = format_of_string "_I%s_%s%s"
+
 (** [mangle id ctx] is the mangled function name of [id] in context
     [ctx] *)
 let mangle id ~ctx =
@@ -97,11 +97,10 @@ let mangle id ~ctx =
   let name = id |> PosNode.get |> encode_name in
   let return = encode_term ret in
   let args = arg |> tau_list_of_term |> encode_args in
-  Printf.sprintf "_I%s_%s%s" name return args
+  Printf.sprintf mangle_fmt name return args
 
 (** [translate_primitive p] is the mir representation of primitive [p] *)
-let translate_primitive p =
-  match p with
+let translate_primitive = function
   | `Int i -> `Const i
   | `Bool b -> if b then one else zero
   | `Char c -> `Const (c |> Uchar.to_scalar |> Int64.of_int)
@@ -111,7 +110,7 @@ let translate_id id = `Temp (PosNode.get id)
 
 (** [translate_expr enode] is the mir representation of expression node
     [enode] *)
-let rec translate_expr enode : expr =
+let rec translate_expr enode =
   let ctx = DecNode.Expr.context enode in
   match DecNode.Expr.get enode with
   | Primitive p -> translate_primitive p
@@ -120,7 +119,7 @@ let rec translate_expr enode : expr =
   | String s -> translate_string s
   | Bop (op, e1, e2) -> translate_bop op e1 e2
   | Uop (op, e) -> translate_uop op e
-  | FnCall (id, es) -> translate_fn_call ~ctx id es
+  | FnCall (id, es) -> (translate_call ~ctx id es :> expr)
   | Length e -> translate_length e
   | Index (e1, e2) -> translate_index e1 e2
 
@@ -134,12 +133,12 @@ and translate_arr_lst lst =
   let n = length lst in
   let tm = fresh_temp () in
   let f (len, acc) e =
-    let index = len |> to_addr in
+    let index = to_addr len in
     ( Int64.succ len,
       `Move (`Mem (`Bop (`Plus, tm, `Const index)), e) :: acc )
   in
   let add_elts =
-    lst |> List.fold ~f ~init:(0L, []) |> snd |> List.rev
+    lst |> List.fold ~f ~init:(Int64.zero, []) |> snd |> List.rev
   in
   let alloc_arr =
     `Move (tm, `Call (xi_alloc, [ `Const (to_addr n) ]))
@@ -151,8 +150,7 @@ and translate_arr_lst lst =
 (** [translate_string str] is the mir representation of [str] *)
 and translate_string str =
   let f s = `Const (s |> int_of_char |> Int64.of_int) in
-  let expr_lst = str |> String.to_list_rev |> List.rev_map ~f in
-  translate_arr_lst expr_lst
+  str |> String.to_list_rev |> List.rev_map ~f |> translate_arr_lst
 
 (** [translate_uop uop e] is the mir representation of unary operator
     expression [uop e] *)
@@ -161,6 +159,12 @@ and translate_uop uop e =
   match uop with
   | `IntNeg -> `Bop (`Plus, log_neg ir, one)
   | `LogNeg -> log_neg ir
+
+(** [translate_call ctx id es] is the mir representation of a function
+    call with function id [id], arguments [es], and context [ctx] *)
+and translate_call ~ctx id es : expr Subtype.call =
+  let name = mangle id ~ctx in
+  `Call (`Name name, List.map ~f:translate_expr es)
 
 (** [translate_bop bop e1 e2] is the mir representation of binary
     operator expression [bop e1 e2] *)
@@ -205,19 +209,9 @@ and translate_or e1 e2 =
         ],
       x )
 
-(** [translate_fn_call ctx id es] is the mir representation of a
-    function call with function id [id], arguments [es], and context
-    [ctx] *)
-and translate_fn_call ~ctx id es =
-  let name = mangle id ~ctx in
-  let expr_lst = List.map ~f:translate_expr es in
-  `Call (`Name name, expr_lst)
-
 (** [translate_length e] is the mir representation of a length function
     call with argument [e] *)
-and translate_length e =
-  let ir = translate_expr e in
-  `Mem (`Bop (`Minus, ir, eight))
+and translate_length e = `Mem (`Bop (`Minus, translate_expr e, eight))
 
 (** [translate_index e1 e2] is the mir representation of an indexing of
     [e1] at position [e2] *)
@@ -239,70 +233,64 @@ and translate_index e1 e2 =
 
 (** [translate_stmt snode] is the mir representation of statement node
     [snode] *)
-and translate_stmt snode : stmt option =
+and translate_stmt snode =
   let ctx = DecNode.Stmt.context snode in
   match DecNode.Stmt.get snode with
-  | If (e, s) -> Some (translate_if e s)
-  | IfElse (e, s1, s2) -> Some (translate_if_else e s1 s2)
-  | While (e, s) -> Some (translate_while e s)
-  | VarDecl _ -> None
-  | ArrayDecl _ -> None
-  | Assign (id, e) -> Some (translate_assign id e)
-  | ArrAssign (e1, e2, e3) -> Some (translate_arr_assign e1 e2 e3)
-  | ExprStmt (id, es) -> Some (translate_expr_stmt ~ctx id es)
-  | VarInit (id, _, e) -> Some (translate_assign id e)
-  | MultiAssign (ds, id, es) ->
-      Some (translate_multi_assign ~ctx ds id es)
-  | PrCall (id, es) -> Some (translate_pr_call ~ctx id es)
-  | Return es -> Some (translate_return es)
-  | Block stmts -> Some (translate_block stmts)
+  | If (e, s) -> translate_if e s
+  | IfElse (e, s1, s2) -> translate_if_else e s1 s2
+  | While (e, s) -> translate_while e s
+  | VarDecl _ | ArrayDecl _ -> empty
+  | Assign (id, e) -> translate_assign id e
+  | ArrAssign (e1, e2, e3) -> translate_arr_assign e1 e2 e3
+  | ExprStmt (id, es) | PrCall (id, es) ->
+      (translate_call ~ctx id es :> stmt)
+  | VarInit (id, _, e) -> translate_assign id e
+  | MultiAssign (ds, id, es) -> translate_multi_assign ~ctx ds id es
+  | Return es -> translate_return es
+  | Block stmts -> translate_block stmts
 
 (** [translate_if_stmt e s] is the first three IR instructions in if and
     if else statements, reversed*)
 and translate_if_stmt e s =
   let t, f = fresh_label2 () in
-  [ translate_stmt s; Some (`Label t); Some (translate_control e t f) ]
+  [ translate_stmt s; `Label t; translate_control e t f ]
 
 (** [translate_if e s] is the mir representation of an if statement with
     condition [e] and body [s] *)
 and translate_if e s =
-  let f = `Label (fresh_label ()) in
-  s |> translate_if_stmt e |> List.cons (Some f)
-  |> Util.List.rev_filter_opt |> seq
+  let f = fresh_label () in
+  s |> translate_if_stmt e |> List.cons (`Label f) |> List.rev |> seq
 
 (** [translate_if_else e s1 s2] is the mir representation of an if-else
     statement with condition [e] and statements [s1] and [s2] *)
 and translate_if_else e s1 s2 =
   let f, l_end = fresh_label2 () in
-  let if_stmt = translate_if_stmt e s1 in
-  `Seq
-    (Some (`Label l_end)
-     :: translate_stmt s2
-     :: Some (`Label f)
-     :: Some (`Jump (`Name l_end))
-     :: if_stmt
-    |> Util.List.rev_filter_opt)
+  let open List in
+  s1 |> translate_if_stmt e
+  |> cons (`Jump (`Name l_end))
+  |> cons (`Label f)
+  |> cons (translate_stmt s2)
+  |> cons (`Label l_end)
+  |> rev |> seq
 
 (** [translate_while e s] is the mir representation of a while loop with
     condition [e] and loop body [s] *)
 and translate_while e s =
   let header, t, f = fresh_label3 () in
   `Seq
-    (List.filter_opt
-       [
-         Some (`Label header);
-         Some (translate_control e t f);
-         Some (`Label t);
-         translate_stmt s;
-         Some (`Jump (`Name header));
-         Some (`Label f);
-       ])
+    [
+      `Label header;
+      translate_control e t f;
+      `Label t;
+      translate_stmt s;
+      `Jump (`Name header);
+      `Label f;
+    ]
 
 (** [translate_assign id e] is the mir representation of an assignment
     of [e] to [id] *)
 and translate_assign id e =
-  let expr = translate_expr e in
-  `Move (`Temp (PosNode.get id), expr)
+  `Move (`Temp (PosNode.get id), translate_expr e)
 
 (** [translate_arr_assign e1 e2 e3] is the mir representation of a array
     assignment statement with *)
@@ -323,12 +311,6 @@ and translate_arr_assign e1 e2 e3 =
           translate_expr e3 );
     ]
 
-(** [translate_expr_stmt ctx id es] is the mir representation of an
-    expression statement with function [id] and arguments [es] *)
-and translate_expr_stmt ~ctx id es =
-  let name = mangle id ~ctx in
-  `Call (`Name name, List.map ~f:translate_expr es)
-
 (** [translate_multi_assign ctx ds id es] is the mir representation of a
     multi-assignment with declarations [ds], and function [id], and
     arguments [es] *)
@@ -346,26 +328,18 @@ and translate_multi_assign ~ctx ds id es =
   let assign = ds |> List.fold ~f ~init:(1, []) |> snd |> List.rev in
   `Seq (call :: assign)
 
-(** [translate_pr_call ctx id es] is the mir representation of a
-    procedure call on function [id] with arguments [es] *)
-and translate_pr_call ~ctx id es =
-  let name = mangle id ~ctx in
-  `Call (`Name name, List.map ~f:translate_expr es)
-
 (** [translate_return es] is the mir representation of a return
     statement with expressions [es] *)
 and translate_return es = `Return (List.map ~f:translate_expr es)
 
 (** [translate_block stmts] is the mir representation of a statement
     block with statements [stmts] *)
-and translate_block stmts =
-  `Seq (List.filter_map ~f:translate_stmt stmts)
+and translate_block stmts = `Seq (List.map ~f:translate_stmt stmts)
 
 (** [translate_control enode t f] translates booleans to control flow *)
 and translate_control enode t f =
   match DecNode.Expr.get enode with
-  | Primitive (`Bool true) -> `Jump (`Name t)
-  | Primitive (`Bool false) -> `Jump (`Name f)
+  | Primitive (`Bool b) -> `Jump (`Name (if b then t else f))
   | Uop (`LogNeg, e) -> translate_control e f t
   | Bop (`And, e1, e2) ->
       let label = fresh_label () in
@@ -373,9 +347,7 @@ and translate_control enode t f =
   | Bop (`Or, e1, e2) ->
       let label = fresh_label () in
       translate_short_circuit e1 e2 t label t f
-  | _ ->
-      let expr = translate_expr enode in
-      `CJump (expr, t, f)
+  | _ -> `CJump (translate_expr enode, t, f)
 
 (** [translate_short_circuit e1 e2 l1 l2 t f] translates the short
     circuit operators [`And] or [`Or] to control flow *)

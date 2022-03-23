@@ -54,5 +54,11 @@ type 'expr cjump2 =
 (** ['expr cjump2] represents a statement in IR, including conditional
     jump on expression of type ['expr] to a true label or false label *)
 
+val zero : [> 'expr expr ]
+(** [zero] is the IR constant 0 *)
+
+val one : [> 'expr expr ]
+(** [one] is the IR constant 1 *)
+
 val log_neg : ([> 'expr expr ] as 'expr) -> 'expr
 (** [log_neg e] is the IR node representing the logical negation of [e] *)

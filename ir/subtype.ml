@@ -47,5 +47,6 @@ type 'expr cjump2 =
   | `CJump of 'expr * label * label
   ]
 
+let zero = `Const Int64.zero
 let one = `Const Int64.one
 let log_neg e = `Bop (`Xor, e, one)
