@@ -21,6 +21,9 @@ module Temp : sig
   (** [generator ()] is a generator for creating fresh temps *)
 end
 
+type 'expr call = [ `Call of 'expr * 'expr list ]
+(** ['expr call] represents a function or procedure call in Xi *)
+
 type 'expr dest =
   [ `Mem of 'expr
   | Temp.t
@@ -33,23 +36,18 @@ type 'expr expr =
   | 'expr dest
   ]
 
-(** [Stmt] represents the subtype of an IR statement *)
-module Stmt : sig
-  type 'expr base =
-    [ `Move of 'expr dest * 'expr
-    | `Jump of 'expr
-    | `Label of label
-    | `Return of 'expr list
-    ]
-  (** [base] represents a base IR statement, excluding CJump's *)
+type 'expr cjump2 = [ `CJump of 'expr * label * label ]
+(** ['expr cjump2] represents a conditional jump on expression of type
+    ['expr] to a true label or false label*)
 
-  type 'expr t =
-    [ 'expr base
-    | `CJump of 'expr * label * label
-    ]
-  (** [t] represents the subtype of an IR statement, including a CJump
-      with true label and false label*)
-end
-
-type 'expr stmt = 'expr Stmt.t
+type 'expr stmt =
+  [ 'expr call
+  | `Move of 'expr dest * 'expr
+  | `Jump of 'expr
+  | `Label of label
+  | `Return of 'expr list
+  ]
 (** [stmt] is an alias for [Stmt.t] *)
+
+val log_neg : ([> 'expr expr ] as 'expr) -> 'expr
+(** [log_neg e] is the IR node representing the logical negation of [e] *)

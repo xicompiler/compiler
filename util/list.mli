@@ -15,3 +15,6 @@ val fold2_result :
 val hd_tl_exn : 'a list -> 'a * 'a list
 (** [hd_tl_exn lst] is [h :: t] if [lst] is [h :: t]. Raises: [Failure]
     if [lst] is nil. *)
+
+val rev_concat : 'a list list -> 'a list
+(** Same as [Core.List.concat], but in reverse order *)

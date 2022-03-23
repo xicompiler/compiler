@@ -13,13 +13,14 @@ open Type
 
 type expr =
   [ expr Subtype.expr
-  | `Call of expr * expr list
+  | expr Subtype.call
   | `ESeq of stmt * expr
   ]
 
 and stmt =
   [ expr Subtype.stmt
-  | `CallStmt of expr * expr list
+  | expr cjump2
+  | `Seq of stmt list
   ]
 
 (** [one] is an mir expression representing the constant one *)
@@ -156,8 +157,8 @@ and translate_string str =
 and translate_uop uop e =
   let ir = translate_expr e in
   match uop with
-  | `IntNeg -> `Bop (`Plus, `Bop (`Xor, ir, one), one)
-  | `LogNeg -> `Bop (`Xor, ir, one)
+  | `IntNeg -> `Bop (`Plus, log_neg ir, one)
+  | `LogNeg -> log_neg ir
 
 (** [translate_bop bop e1 e2] is the mir representation of binary
     operator expression [bop e1 e2] *)

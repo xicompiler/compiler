@@ -3,10 +3,22 @@ open Subtype
 
 type expr = expr Subtype.expr
 
-type stmt =
-  [ expr Subtype.stmt
-  | `Call of expr * expr list
-  ]
+module Stmt = struct
+  type base =
+    [ expr Subtype.stmt
+    | `Call of expr * expr list
+    ]
+
+  type t =
+    [ base
+    | expr cjump2
+    ]
+end
+
+let log_neg = Subtype.log_neg
+
+type stmt = Stmt.t
+type t = stmt list
 
 (** [fresh_temp ()] is the symbol generator for temps *)
 let fresh_temp = Temp.generator ()

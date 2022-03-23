@@ -12,3 +12,11 @@ let rec fold2_result ~unequal_lengths ~f ~init l1 l2 =
 let hd_tl_exn = function
   | h :: t -> (h, t)
   | [] -> failwith "list empty"
+
+(** Same as [rev_concat] but takes an accumulator *)
+let rec rev_concat_acc acc = function
+  | [] -> acc
+  | (h :: t) :: t' -> rev_concat_acc (h :: acc) (t :: t')
+  | [] :: t -> rev_concat_acc acc t
+
+let rev_concat lst = rev_concat_acc [] lst

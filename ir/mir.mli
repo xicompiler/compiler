@@ -2,13 +2,14 @@ open Subtype
 
 type expr =
   [ expr Subtype.expr
-  | `Call of expr * expr list
+  | expr Subtype.call
   | `ESeq of stmt * expr
   ]
 (** An [expr] is a mid-level intermediate representation expression *)
 
 and stmt =
   [ expr Subtype.stmt
-  | `CallStmt of expr * expr list
+  | expr cjump2
+  | `Seq of stmt list
   ]
 (** A [stmt] is a mid-level intermediate representation statement *)

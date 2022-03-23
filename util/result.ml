@@ -1,5 +1,7 @@
 open Core
 
+type ('a, 'b) t = ('a, 'b) result
+
 module Lazy = struct
   let ok_if_true ~error b = if b then Ok () else Error (error ())
 
