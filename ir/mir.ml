@@ -108,7 +108,7 @@ let translate_id id = `Temp (PosNode.get id)
 
 (** [translate_expr enode] is the mir representation of expression node
     [enode] *)
-let rec translate_expr enode =
+let rec translate_expr enode : expr =
   let ctx = DecNode.Expr.context enode in
   match DecNode.Expr.get enode with
   | Primitive p -> translate_primitive p
@@ -133,7 +133,7 @@ and translate_arr_lst lst =
   let f (len, acc) e =
     let index = len |> to_addr in
     ( Int64.succ len,
-      `Move (`Mem (`Bop (`Plus, `Name tm, `Const index)), e) :: acc )
+      `Move (`Mem (`Bop (`Plus, tm, `Const index)), e) :: acc )
   in
   let add_elts =
     lst |> List.fold ~f ~init:(0L, []) |> snd |> List.rev
@@ -163,14 +163,44 @@ and translate_uop uop e =
     operator expression [bop e1 e2] *)
 and translate_bop bop e1 e2 =
   match bop with
-  | `And ->
-      let t, f, label = fresh_label3 () in
-      translate_short_circuit e1 e2 label f t f
-  | `Or ->
-      let t, f, label = fresh_label3 () in
-      translate_short_circuit e1 e2 t label t f
+  | `And -> translate_and e1 e2
+  | `Or -> translate_or e1 e2
   | #Ast.Op.binop ->
       `Bop (Op.coerce bop, translate_expr e1, translate_expr e2)
+
+(** [translate_and e1 e2] is the mir representation of [e1 and e2] *)
+and translate_and e1 e2 =
+  let x = fresh_temp () in
+  let l1, l2, lf = fresh_label3 () in
+  `ESeq
+    ( `Seq
+        [
+          `Move (x, zero);
+          translate_control e1 l1 lf;
+          `Label l1;
+          translate_control e2 l2 lf;
+          `Label l2;
+          `Move (x, one);
+          `Label lf;
+        ],
+      x )
+
+(** [translate_or e1 e2] is the mir representation of [e1 or e2] *)
+and translate_or e1 e2 =
+  let x = fresh_temp () in
+  let l1, l2, lt = fresh_label3 () in
+  `ESeq
+    ( `Seq
+        [
+          `Move (x, one);
+          translate_control e1 lt l1;
+          `Label l1;
+          translate_control e2 lt l2;
+          `Label l2;
+          `Move (x, zero);
+          `Label lt;
+        ],
+      x )
 
 (** [translate_fn_call ctx id es] is the mir representation of a
     function call with function id [id], arguments [es], and context
@@ -197,9 +227,7 @@ and translate_index e1 e2 =
           `Move (ta, translate_expr e1);
           `Move (ti, translate_expr e2);
           `CJump
-            ( `Bop (`ULt, ti, `Mem (`Bop (`Minus, `Name ta, eight))),
-              lok,
-              lerr );
+            (`Bop (`ULt, ti, `Mem (`Bop (`Minus, ta, eight))), lok, lerr);
           `Label lerr;
           ir_pr_call xi_out_of_bounds;
           `Label lok;
@@ -208,7 +236,7 @@ and translate_index e1 e2 =
 
 (** [translate_stmt snode] is the mir representation of statement node
     [snode] *)
-and translate_stmt snode =
+and translate_stmt snode : stmt option =
   let ctx = DecNode.Stmt.context snode in
   match DecNode.Stmt.get snode with
   | If (e, s) -> Some (translate_if e s)
@@ -297,7 +325,7 @@ and translate_arr_assign e1 e2 e3 =
       ir_pr_call xi_out_of_bounds;
       `Label lok;
       `Move
-        ( `Mem (`Bop (`Plus, ta, `Bop (`Mul, ti, eight))),
+        ( `Mem (`Bop (`Plus, ta, `Bop (`Mult, ti, eight))),
           translate_expr e3 );
     ]
 
@@ -306,7 +334,7 @@ and translate_arr_assign e1 e2 e3 =
 and translate_expr_stmt ~ctx id es =
   let name = mangle id ~ctx in
   let expr_lst = List.map ~f:translate_expr es in
-  `CallStmt (`Name name, expr_lst)
+  `Call (`Name name, expr_lst)
 
 (** [translate_multi_assign ctx ds id es] is the mir representation of a
     multi-assignment with declarations [ds], and function [id], and
@@ -314,7 +342,7 @@ and translate_expr_stmt ~ctx id es =
 and translate_multi_assign ~ctx ds id es =
   let name = mangle id ~ctx in
   let expr_lst = List.map ~f:translate_expr es in
-  let call = `CallStmt (`Name name, expr_lst) in
+  let call = `Call (`Name name, expr_lst) in
   let f (rv, acc) = function
     | None -> (Int.succ rv, acc)
     | Some (v, _) ->
@@ -330,7 +358,7 @@ and translate_multi_assign ~ctx ds id es =
 and translate_pr_call ~ctx id es =
   let name = mangle id ~ctx in
   let expr_lst = List.map ~f:translate_expr es in
-  `CallStmt (`Name name, expr_lst)
+  `Call (`Name name, expr_lst)
 
 (** [translate_return es] is the mir representation of a return
     statement with expressions [es] *)
@@ -390,9 +418,6 @@ let translate_defn def =
 let translate_source { uses; definitions } =
   `Seq (List.filter_map ~f:translate_defn definitions)
 
-(** [translate_source tnode] is the mir representation of toplevel node
-    [tnode] *)
-let translate_toplevel tnode =
-  match tnode with
+let translate : Ast.Decorated.t -> stmt = function
   | Source src -> translate_source src
   | Intf intf -> failwith "no IR for an interface"

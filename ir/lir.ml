@@ -12,8 +12,7 @@ type t = stmt list
 let fresh_temp = Temp.generator ()
 
 (** [lower_expr expr] is the lowered form of mir expression [expr] *)
-let rec lower_expr expr =
-  match expr with
+let rec lower_expr : Mir.expr -> stmt list * expr = function
   | (`Const _ | `Name _ | `Temp _) as e -> ([], e)
   | `Call (e, es) -> lower_call e es
   | `ESeq (s, e) -> lower_eseq s e
@@ -23,22 +22,9 @@ let rec lower_expr expr =
 (** [lower_call e es] is the lowered form of a call expression with
     function name [e] and arguments [es] *)
 and lower_call e es =
-  let sv0, e0 = lower_expr e in
-  let t0 = fresh_temp () in
-  let f (ts, acc) el =
-    let sv, e' = lower_expr el in
-    let t = fresh_temp () in
-    (t :: ts, List.concat [ acc; sv; [ `Move (t, e') ] ])
-  in
-  let ts, args = List.fold ~init:([], []) es ~f in
-  let tr = fresh_temp () in
-  ( List.concat
-      [
-        sv0 @ [ `Move (t0, e0) ];
-        args;
-        [ `Call (t0, List.rev ts); `Move (tr, `Temp "_RV1") ];
-      ],
-    tr )
+  let call_stmt = lower_call_stmt e es in
+  let t = fresh_temp () in
+  (call_stmt @ [ `Move (t, `Temp "_RV1") ], t)
 
 (** [lower_eseq s e] is the lowered form of an expression sequence with
     statement [s] and expression [e] *)
@@ -61,12 +47,12 @@ and lower_mem e =
   (sv, `Mem e')
 
 (** [lower_stmt stmt] is the lowered form of mir statement [stmt] *)
-and lower_stmt stmt =
-  match stmt with
+and lower_stmt : Mir.stmt -> stmt list = function
   | `Label l as s -> [ s ]
   | `Move (dest, e) -> lower_move dest e
   | `Jump e -> lower_jump e
   | `Return es -> lower_return es
+  | `Call (e, es) -> lower_call_stmt e es
   | `CJump (e, l1, l2) -> lower_cjump e l1 l2
   | `Seq sv -> lower_seq sv
 
@@ -77,8 +63,7 @@ and lower_move dest e =
   match dest with
   | `Temp _ as t ->
       (* commute rule *)
-      let sv1, dest' = lower_expr t in
-      List.concat [ sv1; sv2; [ `Move (dest', e2) ] ]
+      sv2 @ [ `Move (t, e2) ]
   | `Mem e1 ->
       (* general rule *)
       let sv1, e1' = lower_expr e1 in
@@ -96,8 +81,7 @@ and lower_jump e =
 and lower_return es =
   let f (ts_rev, moves_rev) el =
     let t = fresh_temp () in
-    let sv, e = lower_expr el in
-    let move = lower_move t e in
+    let move = lower_move t el in
     (t :: ts_rev, move :: moves_rev)
   in
   let ts_rev, moves_rev = List.fold es ~f ~init:([], []) in
@@ -111,5 +95,21 @@ and lower_cjump e l1 l2 =
   let sv, e' = lower_expr e in
   sv @ [ `CJump (e', l1, l2) ]
 
+(** [lower_call_stmt e es] is the lowered form of a call statement with
+    funciton name [e] and arguments [es] *)
+and lower_call_stmt e es =
+  let sv0, e0 = lower_expr e in
+  let t0 = fresh_temp () in
+  let f (ts, acc) el =
+    let sv, e' = lower_expr el in
+    let t = fresh_temp () in
+    (t :: ts, List.concat [ acc; sv; [ `Move (t, e') ] ])
+  in
+  let ts, args = List.fold ~init:([], []) es ~f in
+  List.concat
+    [ sv0 @ [ `Move (t0, e0) ]; args; [ `Call (t0, List.rev ts) ] ]
+
 (** [lower_seq sv] is the lowered form of sequence [seq] *)
 and lower_seq sv = sv |> List.map ~f:lower_stmt |> List.concat
+
+let lower = lower_stmt

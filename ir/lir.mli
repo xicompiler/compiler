@@ -12,3 +12,6 @@ val log_neg : expr -> expr
 type t = stmt list
 (** [t] is the representation of a program in lowered IR, a list of
     statement s*)
+
+val lower : Mir.stmt -> stmt list
+(** [lower stmt] is the lowered form of mir statement [stmt] *)

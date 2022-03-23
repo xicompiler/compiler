@@ -12,3 +12,5 @@ end
 module Reorder : module type of struct
   include Reorder
 end
+
+val translate : Ast.Decorated.t -> Reorder.t

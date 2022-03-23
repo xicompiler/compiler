@@ -393,7 +393,7 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
         recursively constant folded *)
     and const_fold_node snode = Node.map ~f:const_fold snode
 
-    (** [const_fold_snodes stmts] is [stmts] where each statement has
+    (** [const_fold_nodes block] is [block] where each statement has
         been recursively constant folded *)
     and const_fold_nodes block = List.map ~f:const_fold_node block
 
