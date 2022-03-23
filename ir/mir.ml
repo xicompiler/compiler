@@ -22,6 +22,9 @@ and stmt =
   | `Seq of stmt list
   ]
 
+(** [seq lst] is [`Seq lst] *)
+let seq lst = `Seq lst
+
 (** [one] is an mir expression representing the constant one *)
 let one = `Const one
 
@@ -257,51 +260,42 @@ and translate_stmt snode : stmt option =
 (** [translate_if_stmt e s] is the first three IR instructions in if and
     if else statements, reversed*)
 and translate_if_stmt e s =
-  let t_label, f_label = fresh_label2 () in
-  [
-    translate_stmt s;
-    Some (`Label t_label);
-    Some (translate_control e t_label f_label);
-  ]
+  let t, f = fresh_label2 () in
+  [ translate_stmt s; Some (`Label t); Some (translate_control e t f) ]
 
 (** [translate_if e s] is the mir representation of an if statement with
     condition [e] and body [s] *)
 and translate_if e s =
-  let f_label = fresh_label () in
-  let if_stmt = translate_if_stmt e s in
-  let stmts =
-    Some (`Label f_label) :: if_stmt |> List.rev |> List.filter_opt
-  in
-  `Seq stmts
+  let f = `Label (fresh_label ()) in
+  s |> translate_if_stmt e |> List.cons (Some f)
+  |> Util.List.rev_filter_opt |> seq
 
 (** [translate_if_else e s1 s2] is the mir representation of an if-else
     statement with condition [e] and statements [s1] and [s2] *)
 and translate_if_else e s1 s2 =
-  let f_label, end_label = fresh_label2 () in
+  let f, l_end = fresh_label2 () in
   let if_stmt = translate_if_stmt e s1 in
-  let stmts =
-    Some (`Label end_label)
-    :: translate_stmt s2
-    :: Some (`Label f_label)
-    :: Some (`Jump (`Name end_label))
-    :: if_stmt
-    |> List.rev |> List.filter_opt
-  in
-  `Seq stmts
+  `Seq
+    (Some (`Label l_end)
+     :: translate_stmt s2
+     :: Some (`Label f)
+     :: Some (`Jump (`Name l_end))
+     :: if_stmt
+    |> Util.List.rev_filter_opt)
 
 (** [translate_while e s] is the mir representation of a while loop with
     condition [e] and loop body [s] *)
 and translate_while e s =
-  let h_label, t_label, f_label = fresh_label3 () in
+  let header, t, f = fresh_label3 () in
   `Seq
     (List.filter_opt
        [
-         Some (`Label h_label);
-         Some (translate_control e t_label f_label);
-         Some (`Label t_label);
+         Some (`Label header);
+         Some (translate_control e t f);
+         Some (`Label t);
          translate_stmt s;
-         Some (`Jump (`Name h_label));
-         Some (`Label f_label);
+         Some (`Jump (`Name header));
+         Some (`Label f);
        ])
 
 (** [translate_assign id e] is the mir representation of an assignment
@@ -333,8 +327,7 @@ and translate_arr_assign e1 e2 e3 =
     expression statement with function [id] and arguments [es] *)
 and translate_expr_stmt ~ctx id es =
   let name = mangle id ~ctx in
-  let expr_lst = List.map ~f:translate_expr es in
-  `Call (`Name name, expr_lst)
+  `Call (`Name name, List.map ~f:translate_expr es)
 
 (** [translate_multi_assign ctx ds id es] is the mir representation of a
     multi-assignment with declarations [ds], and function [id], and
@@ -357,8 +350,7 @@ and translate_multi_assign ~ctx ds id es =
     procedure call on function [id] with arguments [es] *)
 and translate_pr_call ~ctx id es =
   let name = mangle id ~ctx in
-  let expr_lst = List.map ~f:translate_expr es in
-  `Call (`Name name, expr_lst)
+  `Call (`Name name, List.map ~f:translate_expr es)
 
 (** [translate_return es] is the mir representation of a return
     statement with expressions [es] *)

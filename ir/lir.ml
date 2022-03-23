@@ -110,6 +110,6 @@ and lower_call_stmt e es =
     [ sv0 @ [ `Move (t0, e0) ]; args; [ `Call (t0, List.rev ts) ] ]
 
 (** [lower_seq sv] is the lowered form of sequence [seq] *)
-and lower_seq sv = sv |> List.map ~f:lower_stmt |> List.concat
+and lower_seq = List.concat_map ~f:lower_stmt
 
 let lower = lower_stmt

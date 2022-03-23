@@ -1,6 +1,8 @@
 open Core
 open Result.Let_syntax
 
+type 'a t = 'a list
+
 let rec fold2_result ~unequal_lengths ~f ~init l1 l2 =
   match (l1, l2) with
   | h1 :: t1, h2 :: t2 ->
@@ -20,3 +22,4 @@ let rec rev_concat_acc acc = function
   | [] :: t -> rev_concat_acc acc t
 
 let rev_concat lst = rev_concat_acc [] lst
+let rev_filter_opt = List.rev_filter_map ~f:ident
