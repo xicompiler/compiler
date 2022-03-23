@@ -1,6 +1,6 @@
 open OUnit2
 open Frontend
-open Util.Test
+open Common
 
 (** [parsing_file_test name ~src ~out ~reference] constructs an OUnit
     test with name [name] asserting that following
@@ -30,8 +30,6 @@ let parsing_file_test_cases =
       parsing_file_tests "./test/parsing";
     ]
 
-let parsing_suite =
+let suite =
   "unit test suite for parsing"
   >::: List.flatten [ parsing_file_test_cases ]
-
-let _ = run_test_tt_main parsing_suite

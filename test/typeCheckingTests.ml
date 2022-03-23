@@ -1,6 +1,6 @@
 open OUnit2
 open Frontend
-open Util.Test
+open Common
 
 (** [deps] are the dependencies used for testing *)
 let deps : Check.dependencies =
@@ -30,8 +30,6 @@ let typing_file_test_cases =
       typing_file_tests "./test/typecheck/autograder";
     ]
 
-let typing_suite =
+let suite =
   "unit test suite for typing"
   >::: List.flatten [ typing_file_test_cases ]
-
-let _ = run_test_tt_main typing_suite

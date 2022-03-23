@@ -24,28 +24,29 @@ let const_fold_bop_opt bop e1 e2 =
   | `Const i1, `Const i2 -> const_of_base (Op.eval bop i1 i2)
   | _ -> None
 
-(** [const_fold_expr expr] is IR expression [expr] constant folded *)
+(** [const_fold_expr expr] is LIR expression [expr] constant folded *)
 let rec const_fold_expr : Lir.expr -> Lir.expr = function
   | (`Const _ | `Name _) as e -> e
   | `Bop (op, e1, e2) -> const_fold_bop op e1 e2
   | #Subtype.dest as dest -> (const_fold_dest dest :> Lir.expr)
 
+(** [const_fold_dest] is [dest] constant folded *)
 and const_fold_dest : Lir.expr Subtype.dest -> Lir.expr Subtype.dest =
   function
   | `Mem e -> `Mem (const_fold_expr e)
   | `Temp _ as t -> t
 
-(** [const_fold_bop op e1 e2] is IR expression [e1 op e2] constant
-    folded *)
+(** [const_fold_bop op e1 e2] is operation [e1 op e2] constant folded *)
 and const_fold_bop op e1 e2 =
   let e1 = const_fold_expr e1 in
   let e2 = const_fold_expr e2 in
   let default () = `Bop (op, e1, e2) in
   Util.Option.Lazy.value ~default (const_fold_bop_opt op e1 e2)
 
-let const_fold_stmt : Lir.stmt -> Lir.stmt = function
+(** [const_fold_stmt stmt] is LIR statement [stmt] constant folded *)
+let const_fold_stmt : Reorder.stmt -> Reorder.stmt = function
   | `Label l as s -> s
-  | `CJump (e, l1, l2) -> `CJump (const_fold_expr e, l1, l2)
+  | `CJump (e, l) -> `CJump (const_fold_expr e, l)
   | `Call (e, es) ->
       let e = const_fold_expr e in
       let es = List.map es ~f:const_fold_expr in

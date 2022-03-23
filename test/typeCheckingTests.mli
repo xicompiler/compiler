@@ -1,3 +1,3 @@
 open OUnit2
 
-val typing_suite : test
+val suite : test

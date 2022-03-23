@@ -14,3 +14,8 @@ module Reorder : module type of struct
 end
 
 val translate : Ast.Decorated.t -> Reorder.t
+(** [translate ast] is decorated ast [ast] translated to lowered
+    (canonical) IR *)
+
+val const_fold : Reorder.t -> Reorder.t
+(** [const_fold stmts] is [stmts] constant folded at the IR level *)

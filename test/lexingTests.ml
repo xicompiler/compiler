@@ -3,7 +3,7 @@ open Frontend
 open Lex
 open Error
 open Parse
-open Util.Test
+open Common
 
 (** [char_token_of_int i] is a [CHAR] token carrying a utf8 codepoint
     with code [i]. *)
@@ -79,8 +79,6 @@ let lexing_file_test_cases =
       lexing_file_tests "./test/lexing";
     ]
 
-let lexing_suite =
+let suite =
   "unit test suite for lexing"
   >::: List.flatten [ lexing_test_cases; lexing_file_test_cases ]
-
-let _ = run_test_tt_main lexing_suite
