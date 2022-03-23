@@ -1,3 +1,5 @@
+open Core
+
 (** [Mir] is a mid level intermediate representation *)
 module Mir : module type of struct
   include Mir
@@ -19,3 +21,5 @@ val translate : Ast.Decorated.t -> Reorder.t
 
 val const_fold : Reorder.t -> Reorder.t
 (** [const_fold stmts] is [stmts] constant folded at the IR level *)
+
+val sexp_of_t : string -> Reorder.t -> Sexp.t

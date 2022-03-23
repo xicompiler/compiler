@@ -2,11 +2,17 @@ open Core
 open Subtype
 
 type expr = expr Subtype.expr
+
 type stmt = expr Subtype.cjump2
+
+type toplevel =
+  [ `Func of Subtype.label * stmt list
+  | `Data of Subtype.label * Int64.t
+  ]
 
 let log_neg = Subtype.log_neg
 
-type t = stmt list
+type t = toplevel list
 
 (** [fresh_temp ()] is the symbol generator for temps *)
 let fresh_temp = Temp.generator ()
@@ -19,7 +25,7 @@ let rv1 = `Temp "_RV1"
     lowered IR expressions equivalent to IR statement [s] *)
 let rec rev_lower_expr ~init : Mir.expr -> stmt list * expr = function
   | (`Const _ | `Name _ | `Temp _) as e -> (init, e)
-  | `Call (e, es) -> rev_lower_call ~init e es
+  | `Call (i, e, es) -> rev_lower_call ~init i e es
   | `ESeq (s, e) -> rev_lower_eseq ~init s e
   | `Bop (op, e1, e2) -> rev_lower_bop ~init op e1 e2
   | `Mem e -> rev_lower_mem ~init e
@@ -29,9 +35,9 @@ let rec rev_lower_expr ~init : Mir.expr -> stmt list * expr = function
     sequence of lowered IR expressions having the same side effects as
     IR statement [`Call (e, es)] and [e'] is the pure, lowered IR
     expression equivalent to the result computed by [`Call (e, es)] *)
-and rev_lower_call ~init e es =
+and rev_lower_call ~init i e es =
   let t = fresh_temp () in
-  (`Move (t, rv1) :: rev_lower_call_stmt ~init e es, t)
+  (`Move (t, rv1) :: rev_lower_call_stmt ~init i e es, t)
 
 (** [rev_lower_eseq ~init:\[sm; ...; s1\] s e] is
     ([sn; ...; sm-1; sm; ... s1], e') if [sm-1; ...; sn] are the
@@ -71,7 +77,7 @@ and rev_lower_stmt ~init : Mir.stmt -> stmt list = function
   | `Move (dest, e) -> rev_lower_move ~init dest e
   | `Jump e -> rev_lower_jump ~init e
   | `Return es -> rev_lower_return ~init es
-  | `Call (e, es) -> rev_lower_call_stmt ~init e es
+  | `Call (i, e, es) -> rev_lower_call_stmt ~init i e es
   | `CJump (e, l1, l2) -> rev_lower_cjump ~init e l1 l2
   | `Seq sv -> rev_lower_seq ~init sv
 
@@ -134,10 +140,10 @@ and rev_lower_cjump ~init e l1 l2 =
     [sn; ...; sm-1; sm; ... s1] if [sm-1; ...; sn] are the sequence of
     lowered IR expressions having the same side effects as IR statement
     [Call(e0, e1,..., ei)] *)
-and rev_lower_call_stmt ~init e es =
+and rev_lower_call_stmt ~init i e es =
   let ts, seq = rev_lower_moves ~init (e :: es) in
   let t0, ts = Util.List.hd_tl_exn ts in
-  `Call (t0, ts) :: seq
+  `Call (i, t0, ts) :: seq
 
 (** [rev_lower_seq ~init:\[sm; ...; s1\] seq] is
     [sn; ...; sm-1; sm; ... s1] if [sm-1; ...; sn] are the sequence of
@@ -146,4 +152,13 @@ and rev_lower_call_stmt ~init e es =
 and rev_lower_seq ~init seq =
   List.fold ~f:(fun acc -> rev_lower_stmt ~init:acc) ~init seq
 
-let lower = Fn.compose List.rev (rev_lower_stmt ~init:[])
+let lower_stmt = Fn.compose List.rev (rev_lower_stmt ~init:[])
+
+let lower_func l b = `Func (l, List.concat_map ~f:lower_stmt b)
+
+let lower_toplevel = function
+  | `Data (_, _) as d -> d
+  | `Func (l, b) -> lower_func l b
+
+let lower (prog : Mir.toplevel list) : toplevel list =
+  List.map ~f:lower_toplevel prog

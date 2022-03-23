@@ -20,7 +20,7 @@ module Temp = struct
   let generator () = GenSym.generate_map temp_fmt ~f:temp
 end
 
-type 'expr call = [ `Call of 'expr * 'expr list ]
+type 'expr call = [ `Call of int * 'expr * 'expr list ]
 
 type 'expr dest =
   [ `Mem of 'expr
@@ -48,6 +48,9 @@ type 'expr cjump2 =
   ]
 
 let zero = `Const Int64.zero
+
 let one = `Const Int64.one
+
 let eight = `Const 8L
+
 let log_neg e = `Bop (`Xor, e, one)

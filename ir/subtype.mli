@@ -21,7 +21,7 @@ module Temp : sig
   (** [generator ()] is a generator for creating fresh temps *)
 end
 
-type 'expr call = [ `Call of 'expr * 'expr list ]
+type 'expr call = [ `Call of int * 'expr * 'expr list ]
 (** ['expr call] represents a function or procedure call in Xi *)
 
 type 'expr dest =

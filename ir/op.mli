@@ -26,4 +26,7 @@ type t =
 val coerce : [< t ] -> t
 (** [coerce bop] coerces [bop] to a [t] *)
 
+val to_string : t -> string
+(** [to_string op] converts [op] to a string *)
+
 val eval : t -> int64 -> int64 -> int64 option

@@ -22,6 +22,11 @@ and stmt =
   | `Seq of stmt list
   ]
 
+type toplevel =
+  [ `Func of Subtype.label * stmt list
+  | `Data of Subtype.label * Int64.t
+  ]
+
 (** [seq lst] is [`Seq lst] *)
 let seq lst = `Seq lst
 
@@ -35,7 +40,7 @@ let xi_alloc = `Name "_xi_alloc"
     index *)
 let xi_out_of_bounds = `Name "_xi_out_of_bounds"
 
-let ir_pr_call name = `Call (name, [])
+let ir_pr_call name = `Call (0, name, [])
 
 (** [length lst] is the length of a list represented in int64 *)
 let length lst = lst |> List.length |> Int64.of_int
@@ -96,6 +101,12 @@ let mangle id ~ctx =
   let args = arg |> tau_list_of_term |> encode_args in
   Printf.sprintf mangle_fmt name return args
 
+(** [num_returns id ctx] is the number of values that the function [id]
+    returns. *)
+let num_returns id ~ctx =
+  let arg, ret = Context.find_fn_exn ~id ctx in
+  ret |> tau_list_of_term |> List.length
+
 (** [translate_primitive p] is the mir representation of primitive [p] *)
 let translate_primitive = function
   | `Int i -> `Const i
@@ -139,7 +150,7 @@ and translate_arr_lst lst =
     lst |> List.fold ~f ~init:(Int64.zero, []) |> snd |> List.rev
   in
   let alloc_arr =
-    `Move (tm, `Call (xi_alloc, [ `Const (to_addr n) ]))
+    `Move (tm, `Call (0, xi_alloc, [ `Const (to_addr n) ]))
   in
   let add_len = `Move (`Mem tm, `Const n) in
   `ESeq
@@ -168,7 +179,8 @@ and translate_int_neg e =
     call with function id [id], arguments [es], and context [ctx] *)
 and translate_call ~ctx id es : expr Subtype.call =
   let name = mangle id ~ctx in
-  `Call (`Name name, translate_exprs es)
+  let rets = num_returns id ~ctx in
+  `Call (rets, `Name name, translate_exprs es)
 
 (** [translate_bop bop e1 e2] is the mir representation of binary
     operator expression [bop e1 e2] *)
@@ -320,8 +332,9 @@ and translate_arr_assign e1 e2 e3 =
     arguments [es] *)
 and translate_multi_assign ~ctx ds id es =
   let name = mangle id ~ctx in
+  let rets = num_returns id ~ctx in
   let expr_lst = translate_exprs es in
-  let call = `Call (`Name name, expr_lst) in
+  let call = `Call (rets, `Name name, expr_lst) in
   let f (rv, acc) = function
     | None -> (Int.succ rv, acc)
     | Some (v, _) ->
@@ -365,27 +378,29 @@ and translate_short_circuit e1 e2 l1 l2 t f =
 (** [translate_fn_defn sign] is the mir representation of a function
     definition with signature [sign] *)
 let translate_fn_defn ({ id } : Ast.signature) block =
-  `Seq [ `Label (PosNode.get id); translate_block block ]
+  `Func (PosNode.get id, [ translate_block block ])
 
 (** [translate_global_init id typ p] is the mir representation of a
     global initialization of [id] with type [typ] and primitive [p] as
     its value *)
-let translate_global_init id typ p =
-  `Move (`Temp (PosNode.get id), translate_primitive p)
+let translate_global_init id p =
+  match translate_primitive p with
+  | `Const i -> `Data (PosNode.get id, i)
+  | _ -> failwith "Primitive not a const"
 
 (** [translate_defn def] is the mir representation of source toplevel
     definition [def] *)
 let translate_defn def =
   match DecNode.Toplevel.get def with
   | FnDefn (signature, block) ->
-      Some (translate_fn_defn signature block)
+      Some (translate_fn_defn signature block :> toplevel)
   | GlobalDecl _ -> None
-  | GlobalInit (id, typ, p) -> Some (translate_global_init id typ p)
+  | GlobalInit (id, _, p) -> Some (translate_global_init id p)
 
 (** [translate_source source] is the mir representation of [source] *)
 let translate_source { uses; definitions } =
-  `Seq (List.filter_map ~f:translate_defn definitions)
+  List.filter_map ~f:translate_defn definitions
 
-let translate : Ast.Decorated.t -> stmt = function
+let translate : Ast.Decorated.t -> toplevel list = function
   | Source src -> translate_source src
   | Intf intf -> failwith "no IR for an interface"

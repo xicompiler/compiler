@@ -6,12 +6,17 @@ type expr = expr Subtype.expr
 type stmt = expr Subtype.cjump2
 (** A [stmt] is a low-level intermediate representation statement *)
 
+type toplevel =
+  [ `Func of Subtype.label * stmt list
+  | `Data of Subtype.label * Int64.t
+  ]
+
 val log_neg : expr -> expr
 (** [log_neg expr] is the logical negation of [expr] *)
 
-type t = stmt list
+type t = toplevel list
 (** [t] is the representation of a program in lowered IR, a list of
     statement s*)
 
-val lower : Mir.stmt -> stmt list
+val lower : Mir.toplevel list -> t
 (** [lower stmt] is the lowered form of mir statement [stmt] *)

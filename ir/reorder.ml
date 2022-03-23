@@ -9,7 +9,12 @@ type stmt =
   | `CJump of Lir.expr * label
   ]
 
-type t = stmt list
+type toplevel =
+  [ `Func of Subtype.label * stmt list
+  | `Data of Subtype.label * Int64.t
+  ]
+
+type t = toplevel list
 
 (** [label_map nodes] is a map [{l1 : v1, ..., ln : vn}] such that for
     every [i], [li] is bound to [vi] iff [vi] wraps a basic block
@@ -296,10 +301,18 @@ let concatenated_traces prog =
   prog |> create_cfg |> deque_of_cfg |> rev_traces
   |> Util.List.rev_concat
 
-let reorder prog ~gensym =
-  let traces = concatenated_traces prog in
+let reorder_stmts stmts ~gensym =
+  let traces = concatenated_traces stmts in
   fix_jumps ~gensym traces;
   remove_unused_labels traces;
   traces
   |> List.concat_map ~f:(Vertex.compose ~f:Doubly_linked.to_list)
   |> List.map ~f:remove_false_label
+
+let reorder_toplevel (top : Lir.toplevel) ~gensym : toplevel =
+  match top with
+  | `Data (_, _) as d -> d
+  | `Func (l, b) -> `Func (l, reorder_stmts b ~gensym)
+
+let reorder (prog : Lir.t) ~gensym : t =
+  List.map ~f:(reorder_toplevel ~gensym) prog

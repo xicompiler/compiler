@@ -26,6 +26,31 @@ type t =
 
 let coerce bop = (bop :> t)
 
+let to_string = function
+  | `Plus -> "ADD"
+  | `Minus -> "SUB"
+  | `Mult -> "MUL"
+  | `HighMult -> "HIGHMULT"
+  | `Div -> "DIV"
+  | `Mod -> "MOD"
+  | `And -> "AND"
+  | `Or -> "OR"
+  | `Xor -> "XOR"
+  | `Not -> "NOT"
+  | `RShift -> "RSHIFT"
+  | `LShift -> "LSHIFT"
+  | `ARShift -> "ARSHIFT"
+  | `Lt -> "LT"
+  | `Leq -> "LEQ"
+  | `Geq -> "GEQ"
+  | `Gt -> "GT"
+  | `Eq -> "EQ"
+  | `Neq -> "NEQ"
+  | `ULt -> "ULT"
+  | `ULeq -> "ULEQ"
+  | `UGt -> "UGT"
+  | `UGeq -> "UGEQ"
+
 (** [int_of_bool b] is [one] if b or [zero] otherwise *)
 let int_of_bool b = if b then one else zero
 

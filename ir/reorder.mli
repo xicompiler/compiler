@@ -7,7 +7,12 @@ type stmt =
   ]
 (** [stmt] is the type of a reordered statement *)
 
-type t = stmt list
+type toplevel =
+  [ `Func of Subtype.label * stmt list
+  | `Data of Subtype.label * Int64.t
+  ]
+
+type t = toplevel list
 (** [t] is the type representing a reordered program, a sequence of
     statements *)
 

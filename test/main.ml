@@ -4,7 +4,8 @@ let suite =
   "unit test suite for compiler"
   >::: [
          (* LexingTests.suite; ParsingTests.suite;
-            TypeCheckingTests.suite; ReorderTests.suite; *)
+            TypeCheckingTests.suite; *)
+         ReorderTests.suite;
          IrConstFoldTests.suite;
        ]
 

@@ -15,29 +15,37 @@ let reorder_test ~name ~expect prog =
     notes *)
 let prog : Lir.t =
   [
-    `Label "L0";
-    `CJump (`Temp "e", "L2", "L3");
-    `Label "L1";
-    `Move (`Temp "x", `Temp "y");
-    `Label "L2";
-    `Move (`Temp "x", `Bop (`Plus, `Temp "x", `Temp "y"));
-    `Jump (`Name "L1");
-    `Label "L3";
-    `Call (`Name "f", [ `Temp "x" ]);
-    `Return [];
+    `Func
+      ( "a",
+        [
+          `Label "L0";
+          `CJump (`Temp "e", "L2", "L3");
+          `Label "L1";
+          `Move (`Temp "x", `Temp "y");
+          `Label "L2";
+          `Move (`Temp "x", `Bop (`Plus, `Temp "x", `Temp "y"));
+          `Jump (`Name "L1");
+          `Label "L3";
+          `Call (1, `Name "f", [ `Temp "x" ]);
+          `Return [];
+        ] );
   ]
 
 (** [reordered] is the reordered IR of [prog] *)
 let reordered : Reorder.t =
   [
-    `CJump (Lir.log_neg (`Temp "e"), "L3");
-    `Label "L2";
-    `Move (`Temp "x", `Bop (`Plus, `Temp "x", `Temp "y"));
-    `Move (`Temp "x", `Temp "y");
-    `Jump (`Name "L2");
-    `Label "L3";
-    `Call (`Name "f", [ `Temp "x" ]);
-    `Return [];
+    `Func
+      ( "a",
+        [
+          `CJump (Lir.log_neg (`Temp "e"), "L3");
+          `Label "L2";
+          `Move (`Temp "x", `Bop (`Plus, `Temp "x", `Temp "y"));
+          `Move (`Temp "x", `Temp "y");
+          `Jump (`Name "L2");
+          `Label "L3";
+          `Call (1, `Name "f", [ `Temp "x" ]);
+          `Return [];
+        ] );
   ]
 
 let suite =

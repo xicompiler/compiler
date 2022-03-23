@@ -11,5 +11,10 @@ and stmt =
   ]
 (** A [stmt] is a mid-level intermediate representation statement *)
 
-val translate : Ast.Decorated.t -> stmt
+type toplevel =
+  [ `Func of Subtype.label * stmt list
+  | `Data of Subtype.label * Int64.t
+  ]
+
+val translate : Ast.Decorated.t -> toplevel list
 (** [translate ast] is decorated ast [ast] translated to mid-level IR *)
