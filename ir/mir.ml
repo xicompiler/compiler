@@ -155,10 +155,16 @@ and translate_string str =
 (** [translate_uop uop e] is the mir representation of unary operator
     expression [uop e] *)
 and translate_uop uop e =
-  let ir = translate_expr e in
   match uop with
-  | `IntNeg -> `Bop (`Plus, log_neg ir, one)
-  | `LogNeg -> log_neg ir
+  | `IntNeg -> translate_int_neg e
+  | `LogNeg -> e |> translate_expr |> log_neg
+
+(** [translate_int_neg e] is the mir representation of an integer
+    negation of [e] *)
+and translate_int_neg e =
+  match DecNode.Expr.get e with
+  | Primitive (`Int i) -> `Const ~-i
+  | _ -> `Bop (`Minus, zero, translate_expr e)
 
 (** [translate_call ctx id es] is the mir representation of a function
     call with function id [id], arguments [es], and context [ctx] *)

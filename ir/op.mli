@@ -18,7 +18,6 @@ type unsigned =
 
 type t =
   [ bitwise
-  | shift
   | unsigned
   | Binop.t
   ]
@@ -26,3 +25,5 @@ type t =
 
 val coerce : [< t ] -> t
 (** [coerce bop] coerces [bop] to a [t] *)
+
+val eval : t -> int64 -> int64 -> int64 option
