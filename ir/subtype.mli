@@ -1,12 +1,29 @@
 open Ast.Op
 
-type binop = Bop
+(** [Label] represents a label in Xi *)
+module Label : sig
+  type t = string
+  (** [t] is the type of a label in Xi *)
 
-type label = string
+  val generator : unit -> unit -> t
+  (** [generator ()] is a generator for creating fresh labels *)
+end
+
+type label = Label.t
+(** [label] is an alias for [Label.t] *)
+
+(** [Temp] represents a temporary variable in Xi *)
+module Temp : sig
+  type t = [ `Temp of string ]
+  (** [t] represents the type of a temporary variable in Xi *)
+
+  val generator : unit -> unit -> [> t ]
+  (** [generator ()] is a generator for creating fresh temps *)
+end
 
 type 'expr dest =
   [ `Mem of 'expr
-  | `Temp of label
+  | Temp.t
   ]
 
 type 'expr expr =

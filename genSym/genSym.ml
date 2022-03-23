@@ -1,14 +1,12 @@
 open Core
 
-type 'a t = {
-  mutable counter : int;
-  format : (int -> 'a, unit, string, string, string, string) format6;
-}
-(** [t] is the type of a symbol generator *)
+type 'a format = (int -> 'a, unit, string) Core.format
 
-let create ?(init = 0) format = { counter = init; format }
+let generate_map ?(init = 0) fmt ~f =
+  let counter = ref init in
+  fun () ->
+    let sym = Printf.sprintf fmt !counter in
+    incr counter;
+    f sym
 
-let generate gen =
-  let symbol = Printf.sprintf gen.format gen.counter in
-  gen.counter <- succ gen.counter;
-  symbol
+let generate ?init fmt = generate_map ?init fmt ~f:Fn.id

@@ -1,11 +1,13 @@
-type 'a t
+open Core
 
-val create :
-  ?init:int ->
-  (int -> 'a, unit, string, string, string, string) format6 ->
-  'a t
-(** [create init format] creates a symbol generator initialized with
-    [init] and [format] *)
+type 'a format = (int -> 'a, unit, string) Core.format
+(** ['a format] is a format with exactly one integer format specifier*)
 
-val generate : 'a t -> 'a
-(** [generate gen] is a new symbol generated with [gen] *)
+val generate : ?init:int -> 'a format -> unit -> 'a
+(** [generate ?f ?init fmt] is a symbol generator with a counter
+    starting from [init], or 0 if not provided, that takes [()] and
+    returns a fresh label with the current value of the counter
+    replacing the integer format specificer in [fmt] *)
+
+val generate_map : ?init:int -> 'a format -> f:('a -> 'b) -> unit -> 'b
+(** Same as [generate], but each generate symbol is mapped by [f] *)

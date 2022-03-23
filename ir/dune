@@ -1,3 +1,5 @@
 (library
  (name ir)
- (libraries ast binop core primitive type genSym))
+ (libraries ast binop core primitive thunk type genSym)
+ (preprocess
+  (pps ppx_jane)))

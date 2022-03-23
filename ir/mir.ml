@@ -46,17 +46,20 @@ let length lst = lst |> List.length |> Int64.of_int
 (** [to_addr n] is [n] converted to a memory address *)
 let to_addr n = (8L * n) + 8L
 
-(** [label_gen] is the symbol generator for labels *)
-let label_gen = GenSym.create "l%d"
+(** [fresh_label ()] generates a unique label with prefix "l" *)
+let fresh_label = Label.generator ()
 
-(** [temp_gen] is the symbol generator for temps *)
-let temp_gen = GenSym.create "x%d"
+(** [fresh_label2] is a pair of fresh labels *)
+let fresh_label2 () = Thunk.map2 fresh_label
 
-(** [generate_label ()] generates a unique label with prefix "l" *)
-let generate_label () = GenSym.generate label_gen
+(** [fresh_label3 ()] is a triple of fresh labels *)
+let fresh_label3 () = Thunk.map3 fresh_label
 
-(** [generate_temp ()] generates a unique temp with prefix "x" *)
-let generate_temp () = GenSym.generate temp_gen
+(** [fresh_temp ()] generates a unique temp with prefix "x" *)
+let fresh_temp = Temp.generator ()
+
+(** [fresh_temp2 ()] is a pair of fresh temporaries *)
+let fresh_temp2 () = Thunk.map2 fresh_temp
 
 (** [encode_tau t] is [t] encoded for function mangling *)
 let rec encode_tau = function
@@ -126,7 +129,7 @@ and translate_arr arr =
 (** [translate_arr_lst lst] is the mir representation of a list [lst] *)
 and translate_arr_lst lst =
   let n = length lst in
-  let tm = generate_temp () in
+  let tm = fresh_temp () in
   let f (len, acc) e =
     let index = len |> to_addr in
     ( Int64.succ len,
@@ -136,12 +139,11 @@ and translate_arr_lst lst =
     lst |> List.fold ~f ~init:(0L, []) |> snd |> List.rev
   in
   let alloc_arr =
-    `Move (`Temp tm, `Call (xi_alloc, [ `Const (to_addr n) ]))
+    `Move (tm, `Call (xi_alloc, [ `Const (to_addr n) ]))
   in
-  let add_len = `Move (`Mem (`Temp tm), `Const n) in
+  let add_len = `Move (`Mem tm, `Const n) in
   `ESeq
-    ( `Seq (alloc_arr :: add_len :: add_elts),
-      `Bop (`Plus, `Temp tm, eight) )
+    (`Seq (alloc_arr :: add_len :: add_elts), `Bop (`Plus, tm, eight))
 
 (** [translate_string str] is the mir representation of [str] *)
 and translate_string str =
@@ -162,10 +164,10 @@ and translate_uop uop e =
 and translate_bop bop e1 e2 =
   match bop with
   | `And ->
-      let t, f, label = Tuple3.map ~f:generate_label ((), (), ()) in
+      let t, f, label = fresh_label3 () in
       translate_short_circuit e1 e2 label f t f
   | `Or ->
-      let t, f, label = Tuple3.map ~f:generate_label ((), (), ()) in
+      let t, f, label = fresh_label3 () in
       translate_short_circuit e1 e2 t label t f
   | #Ast.Op.binop ->
       `Bop (Op.coerce bop, translate_expr e1, translate_expr e2)
@@ -187,16 +189,15 @@ and translate_length e =
 (** [translate_index e1 e2] is the mir representation of an indexing of
     [e1] at position [e2] *)
 and translate_index e1 e2 =
-  let ta, ti = Tuple2.map ~f:generate_temp ((), ()) in
-  let lok, lerr = Tuple2.map ~f:generate_label ((), ()) in
+  let ta, ti = fresh_temp2 () in
+  let lok, lerr = fresh_label2 () in
   `ESeq
     ( `Seq
         [
-          `Move (`Temp ta, translate_expr e1);
-          `Move (`Temp ti, translate_expr e2);
+          `Move (ta, translate_expr e1);
+          `Move (ti, translate_expr e2);
           `CJump
-            ( `Bop
-                (`ULt, `Temp ti, `Mem (`Bop (`Minus, `Name ta, eight))),
+            ( `Bop (`ULt, ti, `Mem (`Bop (`Minus, `Name ta, eight))),
               lok,
               lerr );
           `Label lerr;
@@ -228,7 +229,7 @@ and translate_stmt snode =
 (** [translate_if_stmt e s] is the first three IR instructions in if and
     if else statements, reversed*)
 and translate_if_stmt e s =
-  let t_label, f_label = Tuple2.map ~f:generate_label ((), ()) in
+  let t_label, f_label = fresh_label2 () in
   [
     translate_stmt s;
     Some (`Label t_label);
@@ -238,7 +239,7 @@ and translate_if_stmt e s =
 (** [translate_if e s] is the mir representation of an if statement with
     condition [e] and body [s] *)
 and translate_if e s =
-  let f_label = generate_label () in
+  let f_label = fresh_label () in
   let if_stmt = translate_if_stmt e s in
   let stmts =
     Some (`Label f_label) :: if_stmt |> List.rev |> List.filter_opt
@@ -248,7 +249,7 @@ and translate_if e s =
 (** [translate_if_else e s1 s2] is the mir representation of an if-else
     statement with condition [e] and statements [s1] and [s2] *)
 and translate_if_else e s1 s2 =
-  let f_label, end_label = Tuple2.map ~f:generate_label ((), ()) in
+  let f_label, end_label = fresh_label2 () in
   let if_stmt = translate_if_stmt e s1 in
   let stmts =
     Some (`Label end_label)
@@ -263,9 +264,7 @@ and translate_if_else e s1 s2 =
 (** [translate_while e s] is the mir representation of a while loop with
     condition [e] and loop body [s] *)
 and translate_while e s =
-  let h_label, t_label, f_label =
-    Tuple3.map ~f:generate_label ((), (), ())
-  in
+  let h_label, t_label, f_label = fresh_label3 () in
   `Seq
     (List.filter_opt
        [
@@ -286,21 +285,19 @@ and translate_assign id e =
 (** [translate_arr_assign e1 e2 e3] is the mir representation of a array
     assignment statement with *)
 and translate_arr_assign e1 e2 e3 =
-  let ta, ti = Tuple2.map ~f:generate_temp ((), ()) in
-  let lok, lerr = Tuple2.map ~f:generate_label ((), ()) in
+  let ta, ti = fresh_temp2 () in
+  let lok, lerr = fresh_label2 () in
   `Seq
     [
-      `Move (`Temp ta, translate_expr e1);
-      `Move (`Temp ti, translate_expr e2);
+      `Move (ta, translate_expr e1);
+      `Move (ti, translate_expr e2);
       `CJump
-        ( `Bop (`ULt, `Temp ti, `Mem (`Bop (`Minus, `Name ta, eight))),
-          lok,
-          lerr );
+        (`Bop (`ULt, ti, `Mem (`Bop (`Minus, ta, eight))), lok, lerr);
       `Label lerr;
       ir_pr_call xi_out_of_bounds;
       `Label lok;
       `Move
-        ( `Mem (`Bop (`Plus, `Name ta, `Bop (`Mul, `Name ti, eight))),
+        ( `Mem (`Bop (`Plus, ta, `Bop (`Mul, ti, eight))),
           translate_expr e3 );
     ]
 
@@ -351,10 +348,10 @@ and translate_control enode t f =
   | Primitive (`Bool false) -> `Jump (`Name f)
   | Uop (`LogNeg, e) -> translate_control e f t
   | Bop (`And, e1, e2) ->
-      let label = generate_label () in
+      let label = fresh_label () in
       translate_short_circuit e1 e2 label f t f
   | Bop (`Or, e1, e2) ->
-      let label = generate_label () in
+      let label = fresh_label () in
       translate_short_circuit e1 e2 t label t f
   | _ ->
       let expr = translate_expr enode in
@@ -363,7 +360,7 @@ and translate_control enode t f =
 (** [translate_short_circuit e1 e2 l1 l2 t f] translates the short
     circuit operators [`And] or [`Or] to control flow *)
 and translate_short_circuit e1 e2 l1 l2 t f =
-  let label = generate_label () in
+  let label = fresh_label () in
   `Seq
     [
       translate_control e1 l1 l2; `Label label; translate_control e2 t f;

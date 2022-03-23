@@ -8,10 +8,8 @@ type stmt =
   | `Call of expr * expr list
   ]
 
-(** [temp_gen] is the symbol generator for temps *)
-let temp_gen = GenSym.create "x%d"
-
-let generate_temp () = GenSym.generate temp_gen
+(** [fresh_temp ()] is the symbol generator for temps *)
+let fresh_temp = Temp.generator ()
 
 (** [lower_expr expr] is the lowered form of mir expression [expr] *)
 let rec lower_expr expr =
@@ -26,19 +24,19 @@ let rec lower_expr expr =
     function name [e] and arguments [es] *)
 and lower_call e es =
   let sv0, e0 = lower_expr e in
-  let t0 = generate_temp () in
+  let t0 = fresh_temp () in
   let f (ts, acc) el =
     let sv, e' = lower_expr el in
-    let t = generate_temp () in
-    (t :: ts, List.concat [ acc; sv; [ `Move (`Temp t, e') ] ])
+    let t = fresh_temp () in
+    (t :: ts, List.concat [ acc; sv; [ `Move (t, e') ] ])
   in
   let ts, args = List.fold ~init:([], []) es ~f in
-  let tr = generate_temp () in
+  let tr = fresh_temp () in
   ( List.concat
       [
-        sv0 @ [ `Move (`Temp t0, e0) ];
+        sv0 @ [ `Move (t0, e0) ];
         args;
-        [ `Call (t0, List.rev ts); `Move (`Temp tr, `Temp "_RV1") ];
+        [ `Call (t0, List.rev ts); `Move (tr, `Temp "_RV1") ];
       ],
     tr )
 
@@ -54,9 +52,8 @@ and lower_eseq s e =
 and lower_bop op e1 e2 =
   let sv1, e1' = lower_expr e1 in
   let sv2, e2' = lower_expr e2 in
-  let t = generate_temp () in
-  ( List.concat [ sv1; [ `Move (`Temp t, e1') ]; sv2 ],
-    `Bop (op, `Temp t, e2') )
+  let t = fresh_temp () in
+  (List.concat [ sv1; [ `Move (t, e1') ]; sv2 ], `Bop (op, t, e2'))
 
 (** [lower_mem e] is the lowered form of a mem expression of [e] *)
 and lower_mem e =
@@ -85,14 +82,9 @@ and lower_move dest e =
   | `Mem e1 ->
       (* general rule *)
       let sv1, e1' = lower_expr e1 in
-      let t = generate_temp () in
+      let t = fresh_temp () in
       List.concat
-        [
-          sv1;
-          [ `Move (`Temp t, e1') ];
-          sv2;
-          [ `Move (`Mem (`Temp t), e2) ];
-        ]
+        [ sv1; [ `Move (t, e1') ]; sv2; [ `Move (`Mem t, e2) ] ]
 
 (** [lower_jump e] is the lowered form of a jump statement to [e] *)
 and lower_jump e =
@@ -103,7 +95,7 @@ and lower_jump e =
     expressions [es] *)
 and lower_return es =
   let f (ts_rev, moves_rev) el =
-    let t = generate_temp () in
+    let t = fresh_temp () in
     let sv, e = lower_expr el in
     let move = lower_move t e in
     (t :: ts_rev, move :: moves_rev)
