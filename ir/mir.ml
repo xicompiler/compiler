@@ -18,8 +18,7 @@ type expr =
   ]
 
 and stmt =
-  [ expr Subtype.stmt
-  | expr cjump2
+  [ expr Subtype.cjump2
   | `Seq of stmt list
   ]
 

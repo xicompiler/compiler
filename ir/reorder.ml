@@ -2,8 +2,10 @@ open Core
 open Subtype
 open Digraph
 
+type nocjump = Lir.expr Subtype.stmt
+
 type stmt =
-  [ Lir.Stmt.base
+  [ nocjump
   | `CJump of Lir.expr * label
   ]
 
@@ -285,7 +287,7 @@ let remove_unused_labels = List.iter ~f:remove_unused_label
     [`CJump (e, t, f)] and [s] otherwise *)
 let remove_false_label = function
   | `CJump (e, t, _) -> `CJump (e, t)
-  | #Lir.Stmt.base as s -> s
+  | #nocjump as s -> s
 
 (** [concatenated_traces prog] is a sequence of CFG vertices
     corresponding to traces of [prog], with branches between basic

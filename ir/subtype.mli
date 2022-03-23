@@ -28,6 +28,7 @@ type 'expr dest =
   [ `Mem of 'expr
   | Temp.t
   ]
+(** An ['expr dest] is an expression that can be the target of a move *)
 
 type 'expr expr =
   [ `Const of int64
@@ -35,10 +36,7 @@ type 'expr expr =
   | `Name of label
   | 'expr dest
   ]
-
-type 'expr cjump2 = [ `CJump of 'expr * label * label ]
-(** ['expr cjump2] represents a conditional jump on expression of type
-    ['expr] to a true label or false label*)
+(** An ['expr expr] is the subtype of an IR expression *)
 
 type 'expr stmt =
   [ 'expr call
@@ -47,7 +45,14 @@ type 'expr stmt =
   | `Label of label
   | `Return of 'expr list
   ]
-(** [stmt] is an alias for [Stmt.t] *)
+(** ['expr base] is the base type of an IR statement *)
+
+type 'expr cjump2 =
+  [ 'expr stmt
+  | `CJump of 'expr * label * label
+  ]
+(** ['expr cjump2] represents a statement in IR, including conditional
+    jump on expression of type ['expr] to a true label or false label *)
 
 val log_neg : ([> 'expr expr ] as 'expr) -> 'expr
 (** [log_neg e] is the IR node representing the logical negation of [e] *)

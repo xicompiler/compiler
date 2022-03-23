@@ -34,14 +34,17 @@ type 'expr expr =
   | 'expr dest
   ]
 
-type 'expr cjump2 = [ `CJump of 'expr * label * label ]
-
 type 'expr stmt =
   [ 'expr call
   | `Move of 'expr dest * 'expr
   | `Jump of 'expr
   | `Label of label
   | `Return of 'expr list
+  ]
+
+type 'expr cjump2 =
+  [ 'expr stmt
+  | `CJump of 'expr * label * label
   ]
 
 let one = `Const Int64.one

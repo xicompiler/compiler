@@ -2,7 +2,7 @@ open Core
 open Subtype
 
 type stmt =
-  [ Lir.Stmt.base
+  [ Lir.expr Subtype.stmt
   | `CJump of Lir.expr * label
   ]
 (** [stmt] is the type of a reordered statement *)
