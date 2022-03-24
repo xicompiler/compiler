@@ -7,11 +7,9 @@ module Reorder = Reorder
 open IrGensym
 
 let translate ast =
-  let mir = Mir.translate ast in
-  let lir = Lir.lower mir in
-  (* TODO fix gensym *)
-  let gen = IrGensym.create () in
-  Reorder.reorder lir ~gensym:(Label.generator gen)
+  let gensym = IrGensym.create () in
+  ast |> Mir.translate ~gensym |> Lir.lower ~gensym
+  |> Reorder.reorder ~gensym:(Label.generator gensym)
 
 (** [const_of_base b] is [`Const r] if [b] is [Some r] and [None]
     otherwise *)
@@ -152,20 +150,20 @@ let sexp_of_toplevel = function
   | `Data (l, i) -> sexp_of_data l i
   | `Func (l, b) -> sexp_of_func l b
 
-let sexp_of_t ~name (top : Reorder.t) : Sexp.t =
+let sexp_of_t ~compunit (top : Reorder.t) : Sexp.t =
   Sexp.List
-    (Sexp.Atom "COMPUNIT" :: Sexp.Atom name
+    (Sexp.Atom "COMPUNIT" :: Sexp.Atom compunit
     :: List.map ~f:sexp_of_toplevel top)
 
 module Diagnostic = struct
   (** [print_source ~out source] prints [source] to [out] as an
       s-expression *)
-  let print_source ~out ~name source =
-    source |> translate |> sexp_of_t ~name |> SexpPrinter.print_ppf out
+  let print_source ~out ~compunit source =
+    source |> translate |> sexp_of_t ~compunit |> SexpPrinter.pp out
 
   let file_to_file ?cache ~src ~out ~deps () =
-    let name = Util.File.base src in
+    let compunit = Util.File.base src in
     let open Ast.Decorated in
-    let f out = iter_source ~f:(print_source ~out ~name) in
+    let f out = iter_source ~f:(print_source ~out ~compunit) in
     Check.Diagnostic.file_to_file_iter ?cache ~src ~out ~deps ~f ()
 end

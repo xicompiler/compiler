@@ -314,5 +314,4 @@ let reorder_toplevel (top : Lir.toplevel) ~gensym : toplevel =
   | `Data _ as d -> d
   | `Func (l, b) -> `Func (l, reorder_stmts b ~gensym)
 
-let reorder (prog : Lir.t) ~gensym : t =
-  List.map ~f:(reorder_toplevel ~gensym) prog
+let reorder ~gensym = List.map ~f:(reorder_toplevel ~gensym)

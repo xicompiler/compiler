@@ -19,9 +19,9 @@ val translate : Ast.Decorated.Toplevel.source -> Reorder.t
 (** [translate ast] is decorated ast [ast] translated to lowered
     (canonical) IR *)
 
-val sexp_of_t : name:string -> Reorder.t -> Sexp.t
-(** [sexp_of_t name tlist] is the s-expression representation of the
-    reordered toplevel list with COMPUNIT name [name] *)
+val sexp_of_t : compunit:string -> Reorder.t -> Sexp.t
+(** [sexp_of_t ~compunit tlist] is the s-expression representation of
+    the reordered toplevel list with COMPUNIT name [compunit] *)
 
 val const_fold : Reorder.t -> Reorder.t
 (** [const_fold stmts] is [stmts] constant folded at the IR level *)

@@ -17,6 +17,6 @@ and print_list out = function
       Printf.fprintf out " ";
       print_list out es
 
-let print_ppf out =
+let pp out =
   let ppf = Format.formatter_of_out_channel out in
   Sexp.pp_hum ppf

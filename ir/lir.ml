@@ -14,49 +14,48 @@ let log_neg = Subtype.log_neg
 
 type t = toplevel list
 
-let gensym = IrGensym.create ()
-
 (** [rv1] is the virtual egister storing the first return value *)
 let rv1 = `Temp "_RV1"
 
 (** [rev_lower_expr ~init:\[sm; ...; s1\] s] is
     [sn; ...; sm-1; sm; ... s1] if [sm-1; ...; sn] are the sequence of
     lowered IR expressions equivalent to IR statement [s] *)
-let rec rev_lower_expr ~init : Mir.expr -> stmt list * expr = function
+let rec rev_lower_expr ~gensym ~init : Mir.expr -> stmt list * expr =
+  function
   | (`Const _ | `Name _ | `Temp _) as e -> (init, e)
-  | `Call (i, e, es) -> rev_lower_call ~init i e es
-  | `ESeq (s, e) -> rev_lower_eseq ~init s e
-  | `Bop (op, e1, e2) -> rev_lower_bop ~init op e1 e2
-  | `Mem e -> rev_lower_mem ~init e
+  | `Call (i, e, es) -> rev_lower_call ~gensym ~init i e es
+  | `ESeq (s, e) -> rev_lower_eseq ~gensym ~init s e
+  | `Bop (op, e1, e2) -> rev_lower_bop ~gensym ~init op e1 e2
+  | `Mem e -> rev_lower_mem ~gensym ~init e
 
 (** [rev_lower_call ~init:\[sm; ...; s1\] e es] is
     ([sn; ...; sm-1; sm; ... s1], e') if [sm-1; ...; sn] are the
     sequence of lowered IR expressions having the same side effects as
     IR statement [`Call (e, es)] and [e'] is the pure, lowered IR
     expression equivalent to the result computed by [`Call (e, es)] *)
-and rev_lower_call ~init i e es =
+and rev_lower_call ~gensym ~init i e es =
   let t = Temp.fresh gensym in
-  (`Move (t, rv1) :: rev_lower_call_stmt ~init i e es, t)
+  (`Move (t, rv1) :: rev_lower_call_stmt ~gensym ~init i e es, t)
 
 (** [rev_lower_eseq ~init:\[sm; ...; s1\] s e] is
     ([sn; ...; sm-1; sm; ... s1], e') if [sm-1; ...; sn] are the
     sequence of lowered IR expressions having the same side effects as
     IR statement [`ESeq (e, s)] and [e'] is the pure, lowered IR
     expression equivalent to the result computed by [`ESeq (e, s)] *)
-and rev_lower_eseq ~init s e =
-  let s' = rev_lower_stmt ~init s in
-  rev_lower_expr ~init:s' e
+and rev_lower_eseq ~gensym ~init s e =
+  let s' = rev_lower_stmt ~gensym ~init s in
+  rev_lower_expr ~gensym ~init:s' e
 
 (** [rev_lower_bop ~init:\[sm; ...; s1\] op e1 e2] is
     ([sn; ...; sm-1; sm; ... s1], e') if [sm-1; ...; sn] are the
     sequence of lowered IR expressions having the same side effects as
     IR statement [`Bop (op, e1, e2)] and [e'] is the pure, lowered IR
     expression equivalent to the result computed by [`Bop (op, e1, e2)] *)
-and rev_lower_bop ~init op e1 e2 =
+and rev_lower_bop ~gensym ~init op e1 e2 =
   let t = Temp.fresh gensym in
-  let s1, e1' = rev_lower_expr ~init e1 in
+  let s1, e1' = rev_lower_expr ~gensym ~init e1 in
   let init = `Move (t, e1') :: s1 in
-  let s2, e2' = rev_lower_expr ~init e2 in
+  let s2, e2' = rev_lower_expr ~gensym ~init e2 in
   (s2, `Bop (op, t, e2'))
 
 (** [rev_lower_mem ~init:\[sm; ...; s1\] e] is
@@ -64,56 +63,58 @@ and rev_lower_bop ~init op e1 e2 =
     sequence of lowered IR expressions having the same side effects as
     IR expresion [e] and [e'] is the pure, lowered IR expression
     equivalent to the result computed by [`Mem e] *)
-and rev_lower_mem ~init e =
-  e |> rev_lower_expr ~init |> Tuple2.map_snd ~f:(fun e -> `Mem e)
+and rev_lower_mem ~gensym ~init e =
+  e
+  |> rev_lower_expr ~gensym ~init
+  |> Tuple2.map_snd ~f:(fun e -> `Mem e)
 
 (** [rev_lower_stmt ~init:\[sm; ...; s1\] s] is
     [sn; ...; sm-1; sm; ... s1] if [sm-1; ...; sn] are the sequence of
     lowered IR expressions having the same side effects as IR statement
     [s] *)
-and rev_lower_stmt ~init : Mir.stmt -> stmt list = function
+and rev_lower_stmt ~gensym ~init : Mir.stmt -> stmt list = function
   | `Label l as s -> s :: init
-  | `Move (dest, e) -> rev_lower_move ~init dest e
-  | `Jump e -> rev_lower_jump ~init e
-  | `Return es -> rev_lower_return ~init es
-  | `Call (i, e, es) -> rev_lower_call_stmt ~init i e es
-  | `CJump (e, l1, l2) -> rev_lower_cjump ~init e l1 l2
-  | `Seq sv -> rev_lower_seq ~init sv
+  | `Move (dest, e) -> rev_lower_move ~gensym ~init dest e
+  | `Jump e -> rev_lower_jump ~gensym ~init e
+  | `Return es -> rev_lower_return ~gensym ~init es
+  | `Call (i, e, es) -> rev_lower_call_stmt ~gensym ~init i e es
+  | `CJump (e, l1, l2) -> rev_lower_cjump ~gensym ~init e l1 l2
+  | `Seq sv -> rev_lower_seq ~gensym ~init sv
 
 (** [rev_lower_move ~init:\[sm; ...; s1\] dst e] is
     [sn; ...; sm-1; sm; ... s1] if [sm-1; ...; sn] are the sequence of
     lowered IR expressions having the same side effects as IR statement
     [`Move (dst, e)] *)
-and rev_lower_move ~init dst src =
+and rev_lower_move ~gensym ~init dst src =
   match dst with
-  | `Temp _ as t -> rev_lower_move_temp ~init t src
-  | `Mem addr -> rev_lower_move_mem ~init addr src
+  | `Temp _ as t -> rev_lower_move_temp ~gensym ~init t src
+  | `Mem addr -> rev_lower_move_mem ~gensym ~init addr src
 
 (** [rev_move_temp ~init:\[sm; ...; s1\] dst src] is
     [sn; ...; sm-1; sm; ... s1] if [sm-1; ...; sn] are the sequence of
     lowered IR expressions having the same side effects as IR statement
     [`Move (t, src)], where [t] is a temporary *)
-and rev_lower_move_temp ~init t src =
-  let s, e = rev_lower_expr ~init src in
+and rev_lower_move_temp ~gensym ~init t src =
+  let s, e = rev_lower_expr ~gensym ~init src in
   `Move (t, e) :: s
 
 (** [rev_lower_move_mem ~init:\[sm; ...; s1\] addr src] is
     [sn; ...; sm-1; sm; ... s1] if [sm-1; ...; sn] are the sequence of
     lowered IR expressions having the same side effects as IR statement
     [`Move (`Mem addr, src)] *)
-and rev_lower_move_mem ~init addr src =
-  let s_addr, addr' = rev_lower_expr ~init addr in
+and rev_lower_move_mem ~gensym ~init addr src =
+  let s_addr, addr' = rev_lower_expr ~gensym ~init addr in
   let t = Temp.fresh gensym in
   let init = `Move (t, addr') :: s_addr in
-  let s_src, src' = rev_lower_expr ~init src in
+  let s_src, src' = rev_lower_expr ~gensym ~init src in
   `Move (`Mem t, src') :: s_src
 
 (** [rev_lower_move ~init:\[sm; ...; s1\] e] is
     [sn; ...; sm-1; sm; ... s1] if [sm-1; ...; sn] are the sequence of
     lowered IR expressions having the same side effects as IR statement
     [`Jump e] *)
-and rev_lower_jump ~init e =
-  let s, e' = rev_lower_expr ~init e in
+and rev_lower_jump ~gensym ~init e =
+  let s, e' = rev_lower_expr ~gensym ~init e in
   `Jump e' :: s
 
 (** [rev_lower_moves ~init:\[sm; ...; s1\] \[e1; ...; ei\]] is
@@ -122,10 +123,10 @@ and rev_lower_jump ~init e =
     having the same side effects as IR statements
     [T\[`Move (t1, e1)\]; ...; T\[`Move (ti, ei)\]], where [T\[.\]] is
     the lowering function *)
-and rev_lower_moves ~init es =
+and rev_lower_moves ~gensym ~init es =
   let f (ts, init) e =
     let t = Temp.fresh gensym in
-    (t :: ts, rev_lower_move_temp ~init t e)
+    (t :: ts, rev_lower_move_temp ~gensym ~init t e)
   in
   es |> List.fold ~f ~init:([], init) |> Tuple2.map_fst ~f:List.rev
 
@@ -133,42 +134,43 @@ and rev_lower_moves ~init es =
     [sn; ...; sm-1; sm; ... s1] if [sm-1; ...; sn] are the sequence of
     lowered IR expressions having the same side effects as IR statement
     [`Return \[e1; ...; ei\]] *)
-and rev_lower_return ~init es =
-  let ts, seq = rev_lower_moves ~init es in
+and rev_lower_return ~gensym ~init es =
+  let ts, seq = rev_lower_moves ~gensym ~init es in
   `Return ts :: seq
 
 (** [rev_lower_move ~init:\[sm; ...; s1\] e l1 l2] is
     [sn; ...; sm-1; sm; ... s1] if [sm-1; ...; sn] are the sequence of
     lowered IR expressions having the same side effects as IR statement
     [`CJump (e, l1, l2)] *)
-and rev_lower_cjump ~init e l1 l2 =
-  let s, e' = rev_lower_expr ~init e in
+and rev_lower_cjump ~gensym ~init e l1 l2 =
+  let s, e' = rev_lower_expr ~gensym ~init e in
   `CJump (e', l1, l2) :: s
 
 (** [rev_lower_call_stmt ~init:\[sm; ...; s1\] e0 \[e1; ...; ei\]] is
     [sn; ...; sm-1; sm; ... s1] if [sm-1; ...; sn] are the sequence of
     lowered IR expressions having the same side effects as IR statement
     [Call(e0, e1,..., ei)] *)
-and rev_lower_call_stmt ~init i e es =
-  let seq, e' = rev_lower_expr ~init e in
-  let ts, seq = rev_lower_moves ~init:seq es in
+and rev_lower_call_stmt ~gensym ~init i e es =
+  let seq, e' = rev_lower_expr ~gensym ~init e in
+  let ts, seq = rev_lower_moves ~gensym ~init:seq es in
   `Call (i, e', ts) :: seq
 
 (** [rev_lower_seq ~init:\[sm; ...; s1\] seq] is
     [sn; ...; sm-1; sm; ... s1] if [sm-1; ...; sn] are the sequence of
     lowered IR expressions having the same side effects as IR statement
     [`Seq seq] *)
-and rev_lower_seq ~init seq =
-  List.fold ~f:(fun acc -> rev_lower_stmt ~init:acc) ~init seq
+and rev_lower_seq ~gensym ~init seq =
+  List.fold ~f:(fun acc -> rev_lower_stmt ~gensym ~init:acc) ~init seq
 
 (** [lower_seq seq] is the sequence of lowered ir statements having the
     same effect as [seq] *)
-let lower_seq = Fn.compose List.rev (rev_lower_seq ~init:[])
+let lower_seq ~gensym =
+  Fn.compose List.rev (rev_lower_seq ~gensym ~init:[])
 
-let lower_func l b = `Func (l, lower_seq b)
+let lower_func ~gensym l b = `Func (l, lower_seq ~gensym b)
 
-let lower_toplevel = function
+let lower_toplevel ~gensym = function
   | `Data _ as d -> d
-  | `Func (l, b) -> lower_func l b
+  | `Func (l, b) -> lower_func ~gensym l b
 
-let lower = List.map ~f:lower_toplevel
+let lower ~gensym = List.map ~f:(lower_toplevel ~gensym)

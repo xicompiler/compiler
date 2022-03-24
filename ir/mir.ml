@@ -52,8 +52,6 @@ let to_addr n = (8L * n) + 8L
 (** [to_addr_expr p m] is [p + m * 8] as an IR expression *)
 let to_addr_expr p m = `Bop (`Plus, p, `Bop (`Mult, m, eight))
 
-let gensym = IrGensym.create ()
-
 (** [encode_tau t] is [t] encoded for function mangling *)
 let rec encode_tau = function
   | `Int -> "i"
@@ -100,9 +98,9 @@ let num_returns id ~ctx =
 
 (** [translate_primitive p] is the mir representation of primitive [p] *)
 let translate_primitive = function
-  | `Int i -> `Const i
-  | `Bool b -> if b then one else zero
-  | `Char c -> `Const (c |> Uchar.to_scalar |> Int64.of_int)
+  | `Int i -> i
+  | `Bool b -> b |> Bool.to_int |> Int64.of_int
+  | `Char c -> c |> Uchar.to_scalar |> Int64.of_int
 
 (** [translate_primitive id] is the mir representation of [id] *)
 let translate_id id = `Temp (PosNode.get id)
@@ -113,27 +111,28 @@ let translate_alloc space = `Call (0, xi_alloc, [ space ])
 
 (** [translate_expr enode] is the mir representation of expression node
     [enode] *)
-let rec translate_expr enode =
+let rec translate_expr ~gensym enode =
   let ctx = DecNode.Expr.context enode in
   match DecNode.Expr.get enode with
-  | Primitive p -> translate_primitive p
+  | Primitive p -> `Const (translate_primitive p)
   | Id id -> translate_id id
-  | Array arr -> translate_arr arr
-  | String s -> translate_string s
-  | Bop (op, e1, e2) -> translate_bop op e1 e2
-  | Uop (op, e) -> translate_uop op e
-  | FnCall (id, es) -> (translate_call ~ctx id es :> expr)
-  | Length e -> translate_length e
-  | Index (e1, e2) -> translate_index e1 e2
+  | Array arr -> translate_arr ~gensym arr
+  | String s -> translate_string ~gensym s
+  | Bop (op, e1, e2) -> translate_bop ~gensym op e1 e2
+  | Uop (op, e) -> translate_uop ~gensym op e
+  | FnCall (id, es) -> (translate_call ~gensym ~ctx id es :> expr)
+  | Length e -> translate_length ~gensym e
+  | Index (e1, e2) -> translate_index ~gensym e1 e2
 
 (** [translate_exprs es] is [es], each of which translated to IR *)
-and translate_exprs es = List.map ~f:translate_expr es
+and translate_exprs ~gensym es = List.map ~f:(translate_expr ~gensym) es
 
 (** [translate_arr arr] is the mir representation of [arr] *)
-and translate_arr arr = arr |> translate_exprs |> translate_arr_lst
+and translate_arr ~gensym arr =
+  arr |> translate_exprs ~gensym |> translate_arr_lst ~gensym
 
 (** [translate_arr_lst lst] is the mir representation of a list [lst] *)
-and translate_arr_lst lst =
+and translate_arr_lst ~gensym lst =
   let n = length lst in
   let tm = Temp.fresh gensym in
   let f (len, acc) e =
@@ -149,52 +148,55 @@ and translate_arr_lst lst =
     (`Seq (alloc_arr :: add_len :: add_elts), `Bop (`Plus, tm, eight))
 
 (** [translate_string str] is the mir representation of [str] *)
-and translate_string str =
+and translate_string ~gensym str =
   let f s = `Const (s |> int_of_char |> Int64.of_int) in
-  str |> String.to_list_rev |> List.rev_map ~f |> translate_arr_lst
+  str |> String.to_list_rev |> List.rev_map ~f
+  |> translate_arr_lst ~gensym
 
 (** [translate_uop uop e] is the mir representation of unary operator
     expression [uop e] *)
-and translate_uop uop e =
+and translate_uop ~gensym uop e =
   match uop with
-  | `IntNeg -> translate_int_neg e
-  | `LogNeg -> e |> translate_expr |> log_neg
+  | `IntNeg -> translate_int_neg ~gensym e
+  | `LogNeg -> e |> translate_expr ~gensym |> log_neg
 
 (** [translate_int_neg e] is the mir representation of an integer
     negation of [e] *)
-and translate_int_neg e =
+and translate_int_neg ~gensym e =
   match DecNode.Expr.get e with
   | Primitive (`Int i) -> `Const ~-i
-  | _ -> `Bop (`Minus, zero, translate_expr e)
+  | _ -> `Bop (`Minus, zero, translate_expr ~gensym e)
 
 (** [translate_call ctx id es] is the mir representation of a function
     call with function id [id], arguments [es], and context [ctx] *)
-and translate_call ~ctx id es : expr Subtype.call =
+and translate_call ~gensym ~ctx id es : expr Subtype.call =
   let name = mangle id ~ctx in
   let rets = num_returns id ~ctx in
-  `Call (rets, `Name name, translate_exprs es)
+  `Call (rets, `Name name, translate_exprs ~gensym es)
 
 (** [translate_bop bop e1 e2] is the mir representation of binary
     operator expression [bop e1 e2] *)
-and translate_bop bop e1 e2 =
+and translate_bop ~gensym bop e1 e2 =
   match (bop, DecNode.Expr.get e1, DecNode.Expr.get e2) with
-  | `And, _, _ -> translate_and e1 e2
-  | `Or, _, _ -> translate_or e1 e2
-  | `Plus, Array a1, Array a2 -> translate_arr (a1 @ a2)
+  | `And, _, _ -> translate_and ~gensym e1 e2
+  | `Or, _, _ -> translate_or ~gensym e1 e2
+  | `Plus, Array a1, Array a2 -> translate_arr ~gensym (a1 @ a2)
   | #Ast.Op.binop, _, _ ->
-      `Bop (Op.coerce bop, translate_expr e1, translate_expr e2)
+      let e1 = translate_expr ~gensym e1 in
+      let e2 = translate_expr ~gensym e2 in
+      `Bop (Op.coerce bop, e1, e2)
 
 (** [translate_and e1 e2] is the mir representation of [e1 and e2] *)
-and translate_and e1 e2 =
+and translate_and ~gensym e1 e2 =
   let x = Temp.fresh gensym in
   let l1, l2, lf = Label.fresh3 gensym in
   `ESeq
     ( `Seq
         [
           `Move (x, zero);
-          translate_control e1 l1 lf;
+          translate_control ~gensym e1 l1 lf;
           `Label l1;
-          translate_control e2 l2 lf;
+          translate_control ~gensym e2 l2 lf;
           `Label l2;
           `Move (x, one);
           `Label lf;
@@ -202,16 +204,16 @@ and translate_and e1 e2 =
       x )
 
 (** [translate_or e1 e2] is the mir representation of [e1 or e2] *)
-and translate_or e1 e2 =
+and translate_or ~gensym e1 e2 =
   let x = Temp.fresh gensym in
   let l1, l2, lt = Label.fresh3 gensym in
   `ESeq
     ( `Seq
         [
           `Move (x, one);
-          translate_control e1 lt l1;
+          translate_control ~gensym e1 lt l1;
           `Label l1;
-          translate_control e2 lt l2;
+          translate_control ~gensym e2 lt l2;
           `Label l2;
           `Move (x, zero);
           `Label lt;
@@ -220,18 +222,19 @@ and translate_or e1 e2 =
 
 (** [translate_length e] is the mir representation of a length function
     call with argument [e] *)
-and translate_length e = `Mem (`Bop (`Minus, translate_expr e, eight))
+and translate_length ~gensym e =
+  `Mem (`Bop (`Minus, translate_expr ~gensym e, eight))
 
 (** [translate_index e1 e2] is the mir representation of an indexing of
     [e1] at position [e2] *)
-and translate_index e1 e2 =
+and translate_index ~gensym e1 e2 =
   let ta, ti = Temp.fresh2 gensym in
   let lok, lerr = Label.fresh2 gensym in
   `ESeq
     ( `Seq
         [
-          `Move (ta, translate_expr e1);
-          `Move (ti, translate_expr e2);
+          `Move (ta, translate_expr ~gensym e1);
+          `Move (ti, translate_expr ~gensym e2);
           `CJump
             (`Bop (`ULt, ti, `Mem (`Bop (`Minus, ta, eight))), lok, lerr);
           `Label lerr;
@@ -242,59 +245,61 @@ and translate_index e1 e2 =
 
 (** [translate_stmt snode] is the mir representation of statement node
     [snode] *)
-and translate_stmt snode =
+and translate_stmt ~gensym snode =
   let ctx = DecNode.Stmt.context snode in
   match DecNode.Stmt.get snode with
-  | If (e, s) -> translate_if e s
-  | IfElse (e, s1, s2) -> translate_if_else e s1 s2
-  | While (e, s) -> translate_while e s
+  | If (e, s) -> translate_if ~gensym e s
+  | IfElse (e, s1, s2) -> translate_if_else ~gensym e s1 s2
+  | While (e, s) -> translate_while ~gensym e s
   | VarDecl _ -> empty
-  | ArrayDecl (id, _, es) -> translate_array_decl id es
-  | Assign (id, e) -> translate_assign id e
-  | ArrAssign (e1, e2, e3) -> translate_arr_assign e1 e2 e3
+  | ArrayDecl (id, _, es) -> translate_array_decl ~gensym id es
+  | Assign (id, e) -> translate_assign ~gensym id e
+  | ArrAssign (e1, e2, e3) -> translate_arr_assign ~gensym e1 e2 e3
   | ExprStmt (id, es) | PrCall (id, es) ->
-      (translate_call ~ctx id es :> stmt)
-  | VarInit (id, _, e) -> translate_assign id e
-  | MultiAssign (ds, id, es) -> translate_multi_assign ~ctx ds id es
-  | Return es -> translate_return es
-  | Block stmts -> translate_block stmts
+      (translate_call ~gensym ~ctx id es :> stmt)
+  | VarInit (id, _, e) -> translate_assign ~gensym id e
+  | MultiAssign (ds, id, es) ->
+      translate_multi_assign ~gensym ~ctx ds id es
+  | Return es -> translate_return ~gensym es
+  | Block stmts -> translate_block ~gensym stmts
 
 (** [translate_if_stmt e s] is [stmts, f] where [stmts] is the first
     three IR instructions in if and if else statements, reversed, and
     [f] is the false label *)
-and translate_if_stmt e s =
+and translate_if_stmt ~gensym e s =
   let t, f = Label.fresh2 gensym in
-  ([ translate_stmt s; `Label t; translate_control e t f ], f)
+  let s = translate_stmt ~gensym s in
+  ([ s; `Label t; translate_control ~gensym e t f ], f)
 
 (** [translate_if e s] is the mir representation of an if statement with
     condition [e] and body [s] *)
-and translate_if e s =
-  let stmt, f = translate_if_stmt e s in
+and translate_if ~gensym e s =
+  let stmt, f = translate_if_stmt ~gensym e s in
   stmt |> List.cons (`Label f) |> List.rev |> seq
 
 (** [translate_if_else e s1 s2] is the mir representation of an if-else
     statement with condition [e] and statements [s1] and [s2] *)
-and translate_if_else e s1 s2 =
+and translate_if_else ~gensym e s1 s2 =
   let l_end = Label.fresh gensym in
-  let stmt, f = translate_if_stmt e s1 in
+  let stmt, f = translate_if_stmt ~gensym e s1 in
   let open List in
   stmt
   |> cons (`Jump (`Name l_end))
   |> cons (`Label f)
-  |> cons (translate_stmt s2)
+  |> cons (translate_stmt ~gensym s2)
   |> cons (`Label l_end)
   |> rev |> seq
 
 (** [translate_while e s] is the mir representation of a while loop with
     condition [e] and loop body [s] *)
-and translate_while e s =
+and translate_while ~gensym e s =
   let header, t, f = Label.fresh3 gensym in
   `Seq
     [
       `Label header;
-      translate_control e t f;
+      translate_control ~gensym e t f;
       `Label t;
-      translate_stmt s;
+      translate_stmt ~gensym s;
       `Jump (`Name header);
       `Label f;
     ]
@@ -302,8 +307,8 @@ and translate_while e s =
 (** [translate_array_decl_shallow len] is [stmts, temp] where [stmts] is
     the first three IR instructions in array decl statements, reversed,
     and [temp] is the memory address of the allocated space *)
-and translate_array_decl_shallow len =
-  let e = translate_expr len in
+and translate_array_decl_shallow ~gensym len =
+  let e = translate_expr ~gensym len in
   let tn, tm = Temp.fresh2 gensym in
   ( [
       `Move (`Mem tm, tn);
@@ -314,10 +319,10 @@ and translate_array_decl_shallow len =
 
 (** [translate_array_decl id es] is the mir representation of an array
     declaration for variable [id] with lengths [es] *)
-and translate_array_decl id = function
+and translate_array_decl ~gensym id = function
   | Some e :: es ->
       let name = `Temp (PosNode.get id) in
-      let shallow, tm = translate_array_decl_shallow e in
+      let shallow, tm = translate_array_decl_shallow ~gensym e in
       shallow
       |> List.cons (`Move (name, `Bop (`Plus, tm, eight)))
       |> List.rev |> seq
@@ -325,33 +330,33 @@ and translate_array_decl id = function
 
 (** [translate_assign id e] is the mir representation of an assignment
     of [e] to [id] *)
-and translate_assign id e =
-  `Move (`Temp (PosNode.get id), translate_expr e)
+and translate_assign ~gensym id e =
+  `Move (`Temp (PosNode.get id), translate_expr ~gensym e)
 
 (** [translate_arr_assign e1 e2 e3] is the mir representation of a array
     assignment statement with *)
-and translate_arr_assign e1 e2 e3 =
+and translate_arr_assign ~gensym e1 e2 e3 =
   let ta, ti = Temp.fresh2 gensym in
   let lok, lerr = Label.fresh2 gensym in
   `Seq
     [
-      `Move (ta, translate_expr e1);
-      `Move (ti, translate_expr e2);
+      `Move (ta, translate_expr ~gensym e1);
+      `Move (ti, translate_expr ~gensym e2);
       `CJump
         (`Bop (`ULt, ti, `Mem (`Bop (`Minus, ta, eight))), lok, lerr);
       `Label lerr;
       ir_pr_call xi_out_of_bounds;
       `Label lok;
-      `Move (`Mem (to_addr_expr ta ti), translate_expr e3);
+      `Move (`Mem (to_addr_expr ta ti), translate_expr ~gensym e3);
     ]
 
 (** [translate_multi_assign ctx ds id es] is the mir representation of a
     multi-assignment with declarations [ds], and function [id], and
     arguments [es] *)
-and translate_multi_assign ~ctx ds id es =
+and translate_multi_assign ~gensym ~ctx ds id es =
   let name = mangle id ~ctx in
   let rets = num_returns id ~ctx in
-  let expr_lst = translate_exprs es in
+  let expr_lst = translate_exprs ~gensym es in
   let call = `Call (rets, `Name name, expr_lst) in
   let f (rv, acc) = function
     | None -> (Int.succ rv, acc)
@@ -365,49 +370,49 @@ and translate_multi_assign ~ctx ds id es =
 
 (** [translate_return es] is the mir representation of a return
     statement with expressions [es] *)
-and translate_return es = `Return (translate_exprs es)
+and translate_return ~gensym es = `Return (translate_exprs ~gensym es)
 
 (** [translate_block stmts] is the mir representation of a statement
     block with statements [stmts] *)
-and translate_block stmts = `Seq (List.map ~f:translate_stmt stmts)
+and translate_block ~gensym stmts =
+  `Seq (List.map ~f:(translate_stmt ~gensym) stmts)
 
 (** [translate_control enode t f] translates booleans to control flow *)
-and translate_control enode t f =
+and translate_control ~gensym enode t f =
   match DecNode.Expr.get enode with
   | Primitive (`Bool b) -> `Jump (`Name (if b then t else f))
-  | Uop (`LogNeg, e) -> translate_control e f t
+  | Uop (`LogNeg, e) -> translate_control ~gensym e f t
   | Bop (`And, e1, e2) ->
       let label = Label.fresh gensym in
       `Seq
         [
-          translate_control e1 label f;
+          translate_control ~gensym e1 label f;
           `Label label;
-          translate_control e2 t f;
+          translate_control ~gensym e2 t f;
         ]
   | Bop (`Or, e1, e2) ->
       let label = Label.fresh gensym in
       `Seq
         [
-          translate_control e1 t label;
+          translate_control ~gensym e1 t label;
           `Label label;
-          translate_control e2 t f;
+          translate_control ~gensym e2 t f;
         ]
-  | _ -> `CJump (translate_expr enode, t, f)
+  | _ -> `CJump (translate_expr ~gensym enode, t, f)
 
 (** [returns_unit ctx id] is true if the function associated with [id]
     in [ctx] has a return of type Unit, false otherwise *)
 let returns_unit ~ctx id =
-  let _, ret = Context.find_fn_exn ~id ctx in
-  match ret with `Unit -> true | _ -> false
+  match Context.find_fn_exn ~id ctx with _, `Unit -> true | _ -> false
 
 (** [translate_fn_defn sign] is the mir representation of a function
     definition with signature [sign] *)
-let translate_fn_defn ~ctx ({ id } : Ast.signature) block =
+let translate_fn_defn ~gensym ~ctx ({ id } : Ast.signature) block =
   let name = mangle id ~ctx in
+  let block = translate_block ~gensym block in
   let body =
-    if returns_unit ~ctx id then
-      [ translate_block block; translate_return [] ]
-    else [ translate_block block ]
+    if returns_unit ~ctx id then [ block; translate_return ~gensym [] ]
+    else [ block ]
   in
   `Func (name, body)
 
@@ -415,19 +420,17 @@ let translate_fn_defn ~ctx ({ id } : Ast.signature) block =
     global initialization of [id] with type [typ] and primitive [p] as
     its value *)
 let translate_global_init id p =
-  match translate_primitive p with
-  | `Const i -> `Data (PosNode.get id, i)
-  | _ -> failwith "Primitive not a const"
+  `Data (PosNode.get id, translate_primitive p)
 
 (** [translate_defn def] is the mir representation of source toplevel
     definition [def] *)
-let translate_defn def =
+let translate_defn ~gensym def =
   match DecNode.Toplevel.get def with
   | FnDefn (signature, block) ->
       let ctx = DecNode.Toplevel.context def in
-      Some (translate_fn_defn ~ctx signature block :> toplevel)
+      Some (translate_fn_defn ~gensym ~ctx signature block :> toplevel)
   | GlobalDecl _ -> None
   | GlobalInit (id, _, p) -> Some (translate_global_init id p)
 
-let translate { uses; definitions } =
-  List.filter_map ~f:translate_defn definitions
+let translate ~gensym { uses; definitions } =
+  List.filter_map ~f:(translate_defn ~gensym) definitions

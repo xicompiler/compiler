@@ -18,5 +18,5 @@ type t = toplevel list
 (** [t] is the representation of a program in lowered IR, a list of
     statement s*)
 
-val lower : Mir.toplevel list -> t
+val lower : gensym:IrGensym.t -> Mir.toplevel list -> t
 (** [lower stmt] is the lowered form of mir statement [stmt] *)

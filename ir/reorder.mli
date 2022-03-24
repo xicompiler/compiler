@@ -16,7 +16,7 @@ type t = toplevel list
 (** [t] is the type representing a reordered program, a sequence of
     statements *)
 
-val reorder : Lir.t -> gensym:(unit -> label) -> t
+val reorder : gensym:(unit -> label) -> Lir.t -> t
 (** [reorder ir ~gensym] is the reordered list of statements
     corresponding to [ir], where fresh labels are generated using
     [gensym] *)

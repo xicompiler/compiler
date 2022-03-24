@@ -1,4 +1,5 @@
 open Subtype
+open Ast.Decorated
 
 type expr =
   [ expr Subtype.expr
@@ -18,6 +19,6 @@ type toplevel =
   | `Data of label * int64
   ]
 
-val translate : Ast.Decorated.Toplevel.source -> toplevel list
-(** [translate src] is decorated ast source [src] translated to
-    mid-level IR *)
+val translate : gensym:IrGensym.t -> Toplevel.source -> toplevel list
+(** [translate ~gensym src] is decorated ast source [src] translated to
+    mid-level IR, generating fresh symbols using [gensym] *)
