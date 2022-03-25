@@ -614,7 +614,7 @@ and translate_array_decl ~gensym ~map id es =
 (** [translate_assign id e] is the mir representation of an assignment
     of [e] to [id] *)
 and translate_assign ~gensym ~map id e =
-  `Move (`Temp (PosNode.get id), translate_expr ~gensym ~map e)
+  `Temp (PosNode.get id) := translate_expr ~gensym ~map e
 
 (** [translate_arr_assign e1 e2 e3] is the mir representation of a array
     assignment statement with array reference [e1], position [e2], and
