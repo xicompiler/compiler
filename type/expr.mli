@@ -13,3 +13,6 @@ val to_string : t -> string
 val equal : [< t ] -> [< t ] -> bool
 (** [equal t1 t2] is [true] iff [t1] and [t2] represent the same
     expression type. *)
+
+val is_array : [< t ] -> bool
+(** [is_array t] is [true] iff [t] is an array type. *)

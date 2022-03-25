@@ -50,3 +50,13 @@ val eight : [> 'expr expr ]
 
 val log_neg : ([> 'expr expr ] as 'expr) -> 'expr
 (** [log_neg e] is the IR node representing the logical negation of [e] *)
+
+module Infix : sig
+  type 'expr binop = ([> 'expr expr ] as 'expr) -> 'expr -> 'expr
+
+  val ( + ) : 'expr binop
+  val ( * ) : 'expr binop
+  val ( - ) : 'expr binop
+  val ( := ) : 'a -> 'b -> [> `Move of 'a * 'b ]
+  val ( ! ) : 'a -> [> `Mem of 'a ]
+end

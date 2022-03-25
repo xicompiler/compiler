@@ -15,6 +15,9 @@ module Temp : sig
 
   val fresh2 : t -> ([> temp ] as 'a) * 'a
   (** [fresh2 gen] is a pair of fresh temps *)
+
+  val fresh3 : t -> ([> temp ] as 'a) * 'a * 'a
+  (** [fresh3 gen] is a triple of fresh temps *)
 end
 
 (** [Label] is a module used for generating fresh labels *)

@@ -37,6 +37,7 @@ module Temp = struct
   let fresh { gen_temp } = `Temp (gen_temp ())
 
   let fresh2 = fresh2 ~fresh
+  let fresh3 = fresh3 ~fresh
 end
 
 module Label = struct
