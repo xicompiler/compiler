@@ -1,0 +1,40 @@
+$WHILE e s := ...
+
+$WHILE_LT e1 e2 s := SEQ (
+  $WHILE (e1 < e2) SEQ (
+    s, 
+    MOVE(e1, e1 + 1)
+  )
+)
+
+$ALLOC_ARR e := CALL(NAME(MALLOC), e * 8 + 8)
+
+E [e1 + e2] = ESEQ (
+  SEQ (
+    MOVE(t1, E[e1]),
+    MOVE(t2, E[e2]),
+    MOVE(len1, MEM(t1 - 8)),
+    MOVE(len2, MEM(t2 - 8)),
+    MOVE(both, len1 + len2),
+    MOVE(base, $ALLOC_ARR both),
+    MOVE(MEM(base), both),
+    MOVE(ptr, base + 8),
+    $WHILE_LT ti len1 MOVE(MEM(ti * 8 + ptr), MEM(ti * 8 + t1))
+    MOVE(begin, MEM(len1 * 8 + ptr)),
+    $WHILE_LT tj len2 MOVE(MEM(tj * 8 + begin), MEM(tj * 8 + t2))
+  ),
+  ptr
+)
+
+S [x : t[e1][e2][...]] = SEQ (
+  MOVE(len, e1),
+  MOVE(base, $ALLOC_ARR len),
+  MOVE(MEM(base), len),
+  MOVE(ptr, base + 8),
+  MOVE(x, ptr),
+  $WHILE_LT ti len
+    SEQ (
+      S [y : t[e2][...]],
+      MOVE(MEM(8 * ti + ptr), y)
+    )
+)

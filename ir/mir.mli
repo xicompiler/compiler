@@ -23,8 +23,7 @@ type toplevel =
   ]
 
 val commute : expr -> expr -> bool
-(** [has_mem e] is [true] iff expression [e] contains a [`Mem] node in
-    its expression tree *)
+(** [commute e1 e2] is [true] iff expressions [e1] and [e2] commute *)
 
 val translate : gensym:IrGensym.t -> Toplevel.source -> toplevel list
 (** [translate ~gensym src] is decorated ast source [src] translated to

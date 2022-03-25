@@ -22,8 +22,5 @@ val to_string : t -> string
 val sexp_of_t : t -> Sexp.t
 (** [sexp_of_t typ] is the s-expression serialization of [typ] *)
 
-val is_array : t -> bool
-(** [is_array t] is [true] iff [t] is an array type. *)
-
 val equal : t -> t -> bool
 (** [equal t1 t2] is [true] iff [t1] and [t2] represent equivalent types *)

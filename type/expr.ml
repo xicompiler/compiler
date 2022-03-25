@@ -19,3 +19,5 @@ let equal t1 t2 =
   | `Tuple ts1, `Tuple ts2 -> List.equal Tau.equal ts1 ts2
   | `Tuple _, _ | _, `Tuple _ -> false
   | (#Tau.t as t1), (#Tau.t as t2) -> Tau.equal t1 t2
+
+let is_array = function `Array _ -> true | #t -> false

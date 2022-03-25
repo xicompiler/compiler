@@ -25,5 +25,3 @@ let rec equal t1 t2 =
   | `Poly, _ | _, `Poly | `Int, `Int | `Bool, `Bool -> true
   | `Array t1', `Array t2' -> equal t1' t2'
   | _ -> false
-
-let is_array = function `Array _ -> true | #primitive -> false

@@ -224,9 +224,32 @@ let translate_primitive = function
 (** [translate_primitive id] is the mir representation of [id] *)
 let translate_id id = `Temp (PosNode.get id)
 
-(** [translate_alloc space] is the mir representation of a call to
-    allocate space *)
-let translate_alloc space = `Call (0, xi_alloc, [ space ])
+(** [alloc space] is the mir representation of a call to allocate space *)
+let alloc space = `Call (1, xi_alloc, [ space ])
+
+(** [alloc_array len] is a [`Call] to [alloc] requesting [8 * len + 8]
+    bytes of memory *)
+let alloc_array len = alloc (to_addr_expr eight len)
+
+(** [while_seq c s lh lt lf] is a while sequence with control statement
+    [c], body [s], header label [lh], true label [lt], and false label
+    [lf] *)
+let while_seq c s lh lt lf : stmt =
+  `Seq [ `Label lh; c; `Label lt; s; `Jump (`Name lh); `Label lf ]
+
+(** [while_stmt ~gensym e s] is a while stmt with conditional [e] and
+    body [s] *)
+let while_stmt ~gensym e s =
+  let lh, lt, lf = Label.fresh3 gensym in
+  let c = `CJump (e, lt, lf) in
+  while_seq c s lh lt lf
+
+(** [while_lt ~gensym e1 e2 s] is a while stmt with condition [e1 < e2]
+    and body [s], followed by increment to [e1] *)
+let while_lt ~gensym e1 e2 s : stmt =
+  let guard = `Bop (`Lt, (e1 :> expr), e2) in
+  let body = `Seq [ s; `Move (e1, `Bop (`Plus, (e1 :> expr), one)) ] in
+  `Seq [ `Move (e1, zero); while_stmt ~gensym guard body ]
 
 (** [translate_expr enode] is the mir representation of expression node
     [enode] *)
@@ -261,10 +284,9 @@ and translate_arr_lst ~gensym lst =
   let add_elts =
     lst |> List.fold ~f ~init:(Int64.zero, []) |> snd |> List.rev
   in
-  let alloc_arr = `Move (tm, translate_alloc (`Const (to_addr n))) in
+  let move = `Move (tm, alloc (`Const (to_addr n))) in
   let add_len = `Move (`Mem tm, `Const n) in
-  `ESeq
-    (`Seq (alloc_arr :: add_len :: add_elts), `Bop (`Plus, tm, eight))
+  `ESeq (`Seq (move :: add_len :: add_elts), `Bop (`Plus, tm, eight))
 
 (** [translate_string str] is the mir representation of [str] *)
 and translate_string ~gensym str =
@@ -299,11 +321,37 @@ and translate_bop ~gensym bop e1 e2 =
   match (bop, DecNode.Expr.get e1, DecNode.Expr.get e2) with
   | `And, _, _ -> translate_and ~gensym e1 e2
   | `Or, _, _ -> translate_or ~gensym e1 e2
-  | `Plus, Array a1, Array a2 -> translate_arr ~gensym (a1 @ a2)
+  | `Plus, _, _ when e1 |> DecNode.Expr.typ |> Expr.is_array ->
+      translate_concat ~gensym e1 e2
   | #Ast.Op.binop, _, _ ->
       let e1 = translate_expr ~gensym e1 in
       let e2 = translate_expr ~gensym e2 in
       `Bop (Op.coerce bop, e1, e2)
+
+and translate_concat ~gensym e1 e2 : expr =
+  let open Subtype.Infix in
+  let t1, len1, ti = Temp.fresh3 gensym in
+  let t2, len2, tj = Temp.fresh3 gensym in
+  let both, base, ptr = Temp.fresh3 gensym in
+  let start = Temp.fresh gensym in
+  let body1 = `Mem ((ti * eight) + ptr) := `Mem ((ti * eight) + t1) in
+  let body2 = `Mem ((tj * eight) + start) := `Mem ((tj * eight) + t2) in
+  `ESeq
+    ( `Seq
+        [
+          t1 := translate_expr ~gensym e1;
+          t2 := translate_expr ~gensym e2;
+          len1 := `Mem (t1 - eight);
+          len2 := `Mem (t2 - eight);
+          both := `Mem (len1 + len2);
+          base := alloc_array both;
+          `Mem base := both;
+          ptr := base + eight;
+          while_lt ~gensym ti len1 body1;
+          start := `Mem ((len1 * eight) + ptr);
+          while_lt ~gensym tj len2 body2;
+        ],
+      ptr )
 
 (** [translate_and e1 e2] is the mir representation of [e1 and e2] *)
 and translate_and ~gensym e1 e2 =
@@ -412,16 +460,10 @@ and translate_if_else ~gensym e s1 s2 =
 (** [translate_while e s] is the mir representation of a while loop with
     condition [e] and loop body [s] *)
 and translate_while ~gensym e s =
-  let header, t, f = Label.fresh3 gensym in
-  `Seq
-    [
-      `Label header;
-      translate_control ~gensym e t f;
-      `Label t;
-      translate_stmt ~gensym s;
-      `Jump (`Name header);
-      `Label f;
-    ]
+  let lh, lt, lf = Label.fresh3 gensym in
+  let c = translate_control ~gensym e lt lf in
+  let s' = translate_stmt ~gensym s in
+  while_seq c s' lh lt lf
 
 (** [translate_arr_assign_simple ta ti e] is the assignment of [e] to
     array [ta] at position [ti] *)
@@ -437,30 +479,37 @@ and translate_arr_assign_simple ~gensym ta ti e =
       `Move (`Mem (to_addr_expr ta ti), translate_expr ~gensym e);
     ]
 
-(** [translate_array_decl_shallow len] is [stmts, temp, len] where
-    [stmts] is the first three IR instructions in array decl statements,
-    reversed, and [temp] is the memory address of the allocated space,
-    and [len] is the length of the array *)
-and translate_array_decl_shallow ~gensym len =
-  let e = translate_expr ~gensym len in
-  let tn, tm = Temp.fresh2 gensym in
-  ( [
-      `Move (`Mem tm, tn);
-      `Move (tm, translate_alloc (to_addr_expr eight tn));
-      `Move (tn, e);
-    ],
-    tm )
+(** [translate_array_decl_helper name es] is the mir representation of
+    an array declaration for [name] with lengths [es] *)
+and translate_array_decl_helper ~gensym name = function
+  | Some e :: es ->
+      let open Subtype.Infix in
+      let e = translate_expr ~gensym e in
+      let len, base, ptr = Temp.fresh3 gensym in
+      let ti, nested_name = Temp.fresh2 gensym in
+      let nested =
+        `Seq
+          [
+            translate_array_decl_helper ~gensym nested_name es;
+            `Move (`Mem (to_addr_expr ptr ti), nested_name);
+          ]
+      in
+      `Seq
+        [
+          `Move (len, e);
+          `Move (base, alloc_array len);
+          `Move (`Mem base, len);
+          `Move (ptr, base + eight);
+          `Move (name, ptr);
+          while_lt ~gensym ti len nested;
+        ]
+  | None :: _ | [] -> empty
 
 (** [translate_array_decl id es] is the mir representation of an array
     declaration for variable [id] with lengths [es] *)
-and translate_array_decl ~gensym id = function
-  | Some e :: es ->
-      let name = `Temp (PosNode.get id) in
-      let shallow, tm = translate_array_decl_shallow ~gensym e in
-      shallow
-      |> List.cons (`Move (name, `Bop (`Plus, tm, eight)))
-      |> List.rev |> seq
-  | None :: _ | [] -> empty
+and translate_array_decl ~gensym id es =
+  let name = `Temp (PosNode.get id) in
+  translate_array_decl_helper ~gensym name es
 
 (** [translate_assign id e] is the mir representation of an assignment
     of [e] to [id] *)
