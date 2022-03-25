@@ -23,3 +23,4 @@ let rec rev_concat_acc acc = function
 
 let rev_concat lst = rev_concat_acc [] lst
 let rev_filter_opt = List.rev_filter_map ~f:ident
+let length lst = lst |> List.length |> Int64.of_int

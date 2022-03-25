@@ -42,6 +42,8 @@ module Infix = struct
   type 'expr binop = ([> 'expr expr ] as 'expr) -> 'expr -> 'expr
 
   let ( + ) e1 e2 = `Bop (`Plus, e1, e2)
+  let ( < ) e1 e2 = `Bop (`Lt, e1, e2)
+  let ( <? ) e1 e2 = `Bop (`ULt, e1, e2)
   let ( * ) e1 e2 = `Bop (`Mult, e1, e2)
   let ( - ) e1 e2 = `Bop (`Minus, e1, e2)
   let ( := ) e1 e2 = `Move (e1, e2)

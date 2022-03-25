@@ -51,12 +51,29 @@ val eight : [> 'expr expr ]
 val log_neg : ([> 'expr expr ] as 'expr) -> 'expr
 (** [log_neg e] is the IR node representing the logical negation of [e] *)
 
+(** [Infix] contains useful infix operators that operate on expressions *)
 module Infix : sig
   type 'expr binop = ([> 'expr expr ] as 'expr) -> 'expr -> 'expr
+  (** ['expr binop] is the type of a binary operator operator on ['expr] *)
 
   val ( + ) : 'expr binop
+  (** [e1 + e2] is [`Bop (`Plus, e1, e2)] *)
+
   val ( * ) : 'expr binop
+  (** [e1 * e2] is [`Bop (`Mult, e1, e2)] *)
+
   val ( - ) : 'expr binop
+  (** [e1 - e2] is [`Bop (`Minus, e1, e2)] *)
+
+  val ( < ) : 'expr binop
+  (** [e1 < e2] is [`Bop (`Lt, e1, e2)] *)
+
+  val ( <? ) : 'expr binop
+  (** [e1 <? e2] is [`Bop (`ULt, e1, e2)] *)
+
   val ( := ) : 'a -> 'b -> [> `Move of 'a * 'b ]
+  (** [e1 := e2] is [`Move (e1, e2)] *)
+
   val ( ! ) : 'a -> [> `Mem of 'a ]
+  (** [!e] is [`Mem e] *)
 end

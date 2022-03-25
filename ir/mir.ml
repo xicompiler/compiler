@@ -163,14 +163,30 @@ let xi_out_of_bounds = `Name "_xi_out_of_bounds"
 
 let ir_pr_call name = `Call (0, name, [])
 
-(** [length lst] is the length of a list represented in int64 *)
-let length lst = lst |> List.length |> Int64.of_int
-
 (** [to_addr n] is [n] converted to a memory address *)
 let to_addr n = (8L * n) + 8L
 
-(** [to_addr_expr p m] is [p + m * 8] as an IR expression *)
-let to_addr_expr p m = `Bop (`Plus, p, `Bop (`Mult, m, eight))
+open Infix
+
+(** [index_addr p m] is [p + m * 8] as an IR expression *)
+let index_addr p m = p + (m * eight)
+
+(** [index e1 e2] is the array index expression [e1\[e2\]] *)
+let index e1 e2 = !(index_addr e1 e2)
+
+(** [length e] is the length of the array beginning at pointer [e] *)
+let length e = !(e - eight)
+
+(** [check_bounds e1 e2] is jumps to an error location of [e2] is not a
+    valid index for [e1], or does nothing otherwise ]*)
+let check_bounds ~gensym e1 e2 =
+  let lok, lerr = Label.fresh2 gensym in
+  [
+    `CJump (e2 <? length e1, lok, lerr);
+    `Label lerr;
+    ir_pr_call xi_out_of_bounds;
+    `Label lok;
+  ]
 
 (** [encode_tau t] is [t] encoded for function mangling *)
 let rec encode_tau = function
@@ -324,7 +340,7 @@ let alloc space = `Call (1, xi_alloc, [ space ])
 
 (** [alloc_array len] is a [`Call] to [alloc] requesting [8 * len + 8]
     bytes of memory *)
-let alloc_array len = alloc (to_addr_expr eight len)
+let alloc_array len = alloc (index_addr eight len)
 
 (** [while_seq c s lh lt lf] is a while sequence with control statement
     [c], body [s], header label [lh], true label [lt], and false label
@@ -342,8 +358,8 @@ let while_stmt ~gensym e s =
 (** [while_lt ~gensym e1 e2 s] is a while stmt with condition [e1 < e2]
     and body [s], followed by increment to [e1] *)
 let while_lt ~gensym e1 e2 s : stmt =
-  let guard = `Bop (`Lt, (e1 :> expr), e2) in
-  let body = `Seq [ s; `Move (e1, `Bop (`Plus, (e1 :> expr), one)) ] in
+  let guard = (e1 :> expr) < e2 in
+  let body = `Seq [ s; e1 := (e1 :> expr) + one ] in
   `Seq [ `Move (e1, zero); while_stmt ~gensym guard body ]
 
 (** [translate_expr enode] is the mir representation of expression node
@@ -371,30 +387,25 @@ and translate_arr ~gensym ~map arr =
 
 (** [translate_arr_lst lst] is the mir representation of a list [lst] *)
 and translate_arr_lst ~gensym lst =
-  let n = length lst in
+  let n = Util.List.length lst in
   let tm = Temp.fresh gensym in
   let f (len, acc) e =
-    let index = to_addr len in
-    (succ len, `Move (`Mem (`Bop (`Plus, tm, `Const index)), e) :: acc)
+    let move = !(tm + `Const (to_addr len)) := e in
+    (succ len, move :: acc)
   in
   let add_elts =
     lst |> List.fold ~f ~init:(Int64.zero, []) |> snd |> List.rev
   in
-  let move = `Move (tm, alloc (`Const (to_addr n))) in
-  let add_len = `Move (`Mem tm, `Const n) in
-  `ESeq (`Seq (move :: add_len :: add_elts), `Bop (`Plus, tm, eight))
+  let move = tm := alloc (`Const (to_addr n)) in
+  let add_len = !tm := `Const n in
+  `ESeq (`Seq (move :: add_len :: add_elts), tm + eight)
 
 (** [translate_string str] is the mir representation of [str] *)
 and translate_string ~gensym ~map str =
   if Map.mem map str then
     let global = Map.find_exn map str in
     let t1, t2 = Temp.fresh2 gensym in
-    `ESeq
-      ( `Seq
-          [
-            `Move (t2, `Name global); `Move (t1, `Bop (`Plus, t2, eight));
-          ],
-        t1 )
+    `ESeq (`Seq [ t2 := `Name global; t1 := t2 + eight ], t1)
   else
     let f s = `Const (s |> int_of_char |> Int64.of_int) in
     str |> String.to_list_rev |> List.rev_map ~f
@@ -427,7 +438,7 @@ and translate_bop ~gensym ~map bop e1 e2 =
   match (bop, DecNode.Expr.get e1, DecNode.Expr.get e2) with
   | `And, _, _ -> translate_and ~gensym ~map e1 e2
   | `Or, _, _ -> translate_or ~gensym ~map e1 e2
-  | `Plus, _, _ when e1 |> DecNode.Expr.typ |> Expr.is_array ->
+  | `Plus, _, _ when Expr.is_array (DecNode.Expr.typ e1) ->
       translate_concat ~gensym ~map e1 e2
   | #Ast.Op.binop, _, _ ->
       let e1 = translate_expr ~gensym ~map e1 in
@@ -437,26 +448,25 @@ and translate_bop ~gensym ~map bop e1 e2 =
 (** [translate_concat e1 e2] is the mir representation of array
     concatenation [e1 @ e2] *)
 and translate_concat ~gensym ~map e1 e2 : expr =
-  let open Subtype.Infix in
   let t1, len1, ti = Temp.fresh3 gensym in
   let t2, len2, tj = Temp.fresh3 gensym in
   let total, base, ptr = Temp.fresh3 gensym in
   let start = Temp.fresh gensym in
-  let body1 = !((ti * eight) + ptr) := !((ti * eight) + t1) in
-  let body2 = !((tj * eight) + start) := !((tj * eight) + t2) in
+  let body1 = index ptr ti := index t1 ti in
+  let body2 = index start tj := index t2 tj in
   `ESeq
     ( `Seq
         [
           t1 := translate_expr ~gensym ~map e1;
           t2 := translate_expr ~gensym ~map e2;
-          len1 := !(t1 - eight);
-          len2 := !(t2 - eight);
+          len1 := length t1;
+          len2 := length t2;
           total := len1 + len2;
           base := alloc_array total;
           !base := total;
           ptr := base + eight;
           while_lt ~gensym ti len1 body1;
-          start := (len1 * eight) + ptr;
+          start := index_addr ptr len1;
           while_lt ~gensym tj len2 body2;
         ],
       ptr )
@@ -468,12 +478,12 @@ and translate_and ~gensym ~map e1 e2 =
   `ESeq
     ( `Seq
         [
-          `Move (x, zero);
+          x := zero;
           translate_control ~gensym ~map e1 l1 lf;
           `Label l1;
           translate_control ~gensym ~map e2 l2 lf;
           `Label l2;
-          `Move (x, one);
+          x := one;
           `Label lf;
         ],
       x )
@@ -485,12 +495,12 @@ and translate_or ~gensym ~map e1 e2 =
   `ESeq
     ( `Seq
         [
-          `Move (x, one);
+          x := one;
           translate_control ~gensym ~map e1 lt l1;
           `Label l1;
           translate_control ~gensym ~map e2 lt l2;
           `Label l2;
-          `Move (x, zero);
+          x := zero;
           `Label lt;
         ],
       x )
@@ -498,25 +508,17 @@ and translate_or ~gensym ~map e1 e2 =
 (** [translate_length e] is the mir representation of a length function
     call with argument [e] *)
 and translate_length ~gensym ~map e =
-  `Mem (`Bop (`Minus, translate_expr ~gensym ~map e, eight))
+  let open Infix in
+  !(translate_expr ~gensym ~map e - eight)
 
 (** [translate_index e1 e2] is the mir representation of an indexing of
     [e1] at position [e2] *)
 and translate_index ~gensym ~map e1 e2 =
   let ta, ti = Temp.fresh2 gensym in
-  let lok, lerr = Label.fresh2 gensym in
-  `ESeq
-    ( `Seq
-        [
-          `Move (ta, translate_expr ~gensym ~map e1);
-          `Move (ti, translate_expr ~gensym ~map e2);
-          `CJump
-            (`Bop (`ULt, ti, `Mem (`Bop (`Minus, ta, eight))), lok, lerr);
-          `Label lerr;
-          ir_pr_call xi_out_of_bounds;
-          `Label lok;
-        ],
-      `Mem (to_addr_expr ta ti) )
+  let get_ptr = ta := translate_expr ~gensym ~map e1 in
+  let get_idx = ti := translate_expr ~gensym ~map e2 in
+  let bounds_check = check_bounds ~gensym ta ti in
+  `ESeq (`Seq (get_ptr :: get_idx :: bounds_check), index ta ti)
 
 (** [translate_stmt snode] is the mir representation of statement node
     [snode] *)
@@ -575,22 +577,13 @@ and translate_while ~gensym ~map e s =
 (** [translate_arr_assign_simple ta ti e] is the assignment of [e] to
     array [ta] at position [ti] *)
 and translate_arr_assign_simple ~gensym ~map ta ti e =
-  let lok, lerr = Label.fresh2 gensym in
-  `Seq
-    [
-      `CJump
-        (`Bop (`ULt, ti, `Mem (`Bop (`Minus, ta, eight))), lok, lerr);
-      `Label lerr;
-      ir_pr_call xi_out_of_bounds;
-      `Label lok;
-      `Move (`Mem (to_addr_expr ta ti), translate_expr ~gensym ~map e);
-    ]
+  let move = index ta ti := translate_expr ~gensym ~map e in
+  `Seq [ `Seq (check_bounds ~gensym ta ti); move ]
 
 (** [translate_array_decl_helper name es] is the mir representation of
     an array declaration for [name] with lengths [es] *)
 and translate_array_decl_helper ~gensym ~map name = function
   | Some e :: es ->
-      let open Subtype.Infix in
       let e = translate_expr ~gensym ~map e in
       let len, base, ptr = Temp.fresh3 gensym in
       let ti, nested_name = Temp.fresh2 gensym in
@@ -598,16 +591,16 @@ and translate_array_decl_helper ~gensym ~map name = function
         `Seq
           [
             translate_array_decl_helper ~gensym ~map nested_name es;
-            `Move (`Mem (to_addr_expr ptr ti), nested_name);
+            index ptr ti := nested_name;
           ]
       in
       `Seq
         [
-          `Move (len, e);
-          `Move (base, alloc_array len);
-          `Move (`Mem base, len);
-          `Move (ptr, base + eight);
-          `Move (name, ptr);
+          len := e;
+          base := alloc_array len;
+          !base := len;
+          ptr := base + eight;
+          name := ptr;
           while_lt ~gensym ti len nested;
         ]
   | None :: _ | [] -> empty
@@ -630,8 +623,8 @@ and translate_arr_assign ~gensym ~map e1 e2 e3 =
   let ta, ti = Temp.fresh2 gensym in
   `Seq
     [
-      `Move (ta, translate_expr ~gensym ~map e1);
-      `Move (ti, translate_expr ~gensym ~map e2);
+      ta := translate_expr ~gensym ~map e1;
+      ti := translate_expr ~gensym ~map e2;
       translate_arr_assign_simple ~gensym ~map ta ti e3;
     ]
 
@@ -646,9 +639,9 @@ and translate_multi_assign ~gensym ~map ~ctx ds id es =
   let f (rv, acc) = function
     | None -> (Int.succ rv, acc)
     | Some (v, _) ->
-        let t = "_RV" ^ Int.to_string rv in
-        let lst = `Move (`Temp (PosNode.get v), `Temp t) :: acc in
-        (Int.succ rv, lst)
+        let t = Printf.sprintf "_RV%d" rv in
+        let move = `Temp (PosNode.get v) := `Temp t in
+        (Int.succ rv, move :: acc)
   in
   let assign = ds |> List.fold ~f ~init:(1, []) |> snd |> List.rev in
   `Seq (call :: assign)
@@ -701,8 +694,9 @@ let translate_fn_defn
     block =
   let name = mangle id ~ctx in
   let f (arg, acc) ((param, _) : Ast.decl) : int * stmt list =
-    let t = "_ARG" ^ Int.to_string arg in
-    (Int.succ arg, `Move (`Temp (PosNode.get param), `Temp t) :: acc)
+    let t = Printf.sprintf "_ARG%d" arg in
+    let move = `Temp (PosNode.get param) := `Temp t in
+    (Int.succ arg, move :: acc)
   in
   let moves =
     params |> List.fold ~f ~init:(1, []) |> snd |> List.rev |> seq

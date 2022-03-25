@@ -24,3 +24,6 @@ val rev_concat : 'a t t -> 'a t
 
 val rev_filter_opt : 'a option t -> 'a t
 (** Same as [filter_opt], but reverses the list *)
+
+val length : 'a t -> int64
+(** [length lst] is [Int64.of_int (Core.List.length lst)] *)
