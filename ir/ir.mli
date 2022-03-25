@@ -10,6 +10,11 @@ module Lir : module type of struct
   include Lir
 end
 
+(** [Subtype] is the subtype of an IR node *)
+module Subtype : module type of struct
+  include Subtype
+end
+
 (** [Reorder] contains functions for reordering lowered IR *)
 module Reorder : module type of struct
   include Reorder

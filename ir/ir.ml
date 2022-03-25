@@ -4,6 +4,7 @@ open Frontend
 module Mir = Mir
 module Lir = Lir
 module Reorder = Reorder
+module Subtype = Subtype
 open IrGensym
 
 (** [const_of_base b] is [`Const r] if [b] is [Some r] and [None]
