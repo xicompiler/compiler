@@ -12,7 +12,9 @@ main(args:int[][]) {
 
     println("n assigned")
 
-    r: int = Ack(2, n)
+    x: int = foo()
+    println(unparseInt(x))
+    r: int = ack(2, n)
 
     println("r assigned")
     
@@ -25,9 +27,12 @@ main(args:int[][]) {
     println("done")
 }
 
-Ack(m:int, n:int):int {
-    print("ack")
+foo() : int {
+    return 1
+}
+
+ack(m:int, n:int):int {
     if (m == 0) { return n+1 }
-    else if (n == 0) { return Ack(m-1, 1) }
-    else { return Ack(m-1, Ack(m, n-1)) }
+    else if (n == 0) { return ack(m-1, 1) }
+    else { return ack(m-1, ack(m, n-1)) }
 }

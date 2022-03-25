@@ -19,8 +19,8 @@ type 'expr expr =
 type 'expr stmt =
   [ 'expr call
   | `Move of 'expr dest * 'expr
-  | `Jump of 'expr
   | `Label of label
+  | `Jump of 'expr
   | `Return of 'expr list
   ]
 

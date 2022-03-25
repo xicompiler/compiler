@@ -39,8 +39,11 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
       | Index of index
 
     and node = t Node.t
+
     and nodes = node list
+
     and call = id * nodes
+
     and index = node * node
 
     (** [sexp_of_t e] is the s-expression serialization of expression
@@ -104,12 +107,19 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
       let%map r = b in
       Primitive (r :> primitive)
 
+    (** [arr_of_base b] is [Array r] if [b] is [Some r] and [None]
+        otherwise *)
+    let arr_of_base b =
+      let%map r = b in
+      Array r
+
     (** [const_fold_bop_opt bop e1 e2] is the AST node [e1 bop e2] where
         all constant expressions have been folded *)
     let const_fold_bop_opt bop e1 e2 =
       match (e1, e2) with
       | Primitive x1, Primitive x2 ->
-          prim_of_base (Binop.eval bop x1 x2)
+          prim_of_base (Binop.eval_primitive bop x1 x2)
+      | Array a1, Array a2 -> arr_of_base (Binop.eval_array bop a1 a2)
       | _ -> None
 
     (** [const_fold_uop_opt uop e] is the AST node [uop e] where all
@@ -198,6 +208,7 @@ module Make (Ex : Node.S) (St : Node.S) (Tp : Node.S) = struct
       | Block of block
 
     and node = t Node.t
+
     and block = node list
 
     (** [empty] is an empty block of statements *)

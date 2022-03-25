@@ -41,8 +41,15 @@ module Vertex : sig
   val value : ('v, 'e) t -> 'v
   (** [value vertex] is the value stored by [vertex] *)
 
-  val compose : ('v, 'e) t -> f:('v -> 'a) -> 'a
-  (** [compose vertex ~f] is [f (value vertex)] *)
+  val set : ('v, 'e) t -> value:'v -> unit
+  (** [set_value v ~value] sets the value of vertex [v] to [value] *)
+
+  val map_set : ('v, 'e) t -> f:('v -> 'v) -> unit
+  (** [map_set v ~f] applies [f] to the value of [g] and writes the
+      computed result back to [v] *)
+
+  val map : ('v, 'e) t -> f:('v -> 'a) -> 'a
+  (** [map vertex ~f] is [f (value vertex)] *)
 
   val marked : ('v, 'e) t -> bool
   (** [marked vertex] is [true] iff [vertex] has been marked *)
@@ -71,9 +78,6 @@ module Vertex : sig
   val exists_incoming : ('v, 'e) t -> f:(('v, 'e) edge -> bool) -> bool
   (** [exists_incoming v ~f] is [true] iff there exists an edge [e]
       entering [v] for which [f e] is [true] *)
-
-  val compose : ('v, 'e) t -> f:('v -> 'a) -> 'a
-  (** [compose v ~f] is [f (value v)] *)
 end
 
 (** [Edge] represents an edge in a directed graph *)
@@ -91,3 +95,8 @@ module Edge : sig
   val weight : ('v, 'e) t -> 'e
   (** [weight edge] is the weight carried by [edge] *)
 end
+
+val graphviz :
+  to_string:(('v, 'e) vertex -> string) ->
+  ('v, 'e) vertex list ->
+  string

@@ -393,16 +393,16 @@ and translate_if_stmt ~gensym e s =
 (** [translate_if e s] is the mir representation of an if statement with
     condition [e] and body [s] *)
 and translate_if ~gensym e s =
-  let stmt, f = translate_if_stmt ~gensym e s in
-  stmt |> List.cons (`Label f) |> List.rev |> seq
+  let stmts, f = translate_if_stmt ~gensym e s in
+  stmts |> List.cons (`Label f) |> List.rev |> seq
 
 (** [translate_if_else e s1 s2] is the mir representation of an if-else
     statement with condition [e] and statements [s1] and [s2] *)
 and translate_if_else ~gensym e s1 s2 =
   let l_end = Label.fresh gensym in
-  let stmt, f = translate_if_stmt ~gensym e s1 in
+  let stmts, f = translate_if_stmt ~gensym e s1 in
   let open List in
-  stmt
+  stmts
   |> cons (`Jump (`Name l_end))
   |> cons (`Label f)
   |> cons (translate_stmt ~gensym s2)
@@ -423,9 +423,24 @@ and translate_while ~gensym e s =
       `Label f;
     ]
 
-(** [translate_array_decl_shallow len] is [stmts, temp] where [stmts] is
-    the first three IR instructions in array decl statements, reversed,
-    and [temp] is the memory address of the allocated space *)
+(** [translate_arr_assign_simple ta ti e] is the assignment of [e] to
+    array [ta] at position [ti] *)
+and translate_arr_assign_simple ~gensym ta ti e =
+  let lok, lerr = Label.fresh2 gensym in
+  `Seq
+    [
+      `CJump
+        (`Bop (`ULt, ti, `Mem (`Bop (`Minus, ta, eight))), lok, lerr);
+      `Label lerr;
+      ir_pr_call xi_out_of_bounds;
+      `Label lok;
+      `Move (`Mem (to_addr_expr ta ti), translate_expr ~gensym e);
+    ]
+
+(** [translate_array_decl_shallow len] is [stmts, temp, len] where
+    [stmts] is the first three IR instructions in array decl statements,
+    reversed, and [temp] is the memory address of the allocated space,
+    and [len] is the length of the array *)
 and translate_array_decl_shallow ~gensym len =
   let e = translate_expr ~gensym len in
   let tn, tm = Temp.fresh2 gensym in
@@ -453,20 +468,15 @@ and translate_assign ~gensym id e =
   `Move (`Temp (PosNode.get id), translate_expr ~gensym e)
 
 (** [translate_arr_assign e1 e2 e3] is the mir representation of a array
-    assignment statement with *)
+    assignment statement with array reference [e1], position [e2], and
+    value [e3] *)
 and translate_arr_assign ~gensym e1 e2 e3 =
   let ta, ti = Temp.fresh2 gensym in
-  let lok, lerr = Label.fresh2 gensym in
   `Seq
     [
       `Move (ta, translate_expr ~gensym e1);
       `Move (ti, translate_expr ~gensym e2);
-      `CJump
-        (`Bop (`ULt, ti, `Mem (`Bop (`Minus, ta, eight))), lok, lerr);
-      `Label lerr;
-      ir_pr_call xi_out_of_bounds;
-      `Label lok;
-      `Move (`Mem (to_addr_expr ta ti), translate_expr ~gensym e3);
+      translate_arr_assign_simple ~gensym ta ti e3;
     ]
 
 (** [translate_multi_assign ctx ds id es] is the mir representation of a
@@ -526,12 +536,24 @@ let returns_unit ~ctx id =
 
 (** [translate_fn_defn sign] is the mir representation of a function
     definition with signature [sign] *)
-let translate_fn_defn ~gensym ~ctx ({ id } : Ast.signature) block =
+let translate_fn_defn
+    ~gensym
+    ~ctx
+    ({ id; params } : Ast.signature)
+    block =
   let name = mangle id ~ctx in
+  let f (arg, acc) ((param, _) : Ast.decl) : int * stmt list =
+    let t = "_ARG" ^ Int.to_string arg in
+    (Int.succ arg, `Move (`Temp (PosNode.get param), `Temp t) :: acc)
+  in
+  let moves =
+    params |> List.fold ~f ~init:(1, []) |> snd |> List.rev |> seq
+  in
   let block = translate_block ~gensym block in
   let body =
-    if returns_unit ~ctx id then [ block; translate_return ~gensym [] ]
-    else [ block ]
+    if returns_unit ~ctx id then
+      [ moves; block; translate_return ~gensym [] ]
+    else [ moves; block ]
   in
   `Func (name, body)
 

@@ -2,7 +2,7 @@ open Core
 open Option.Monad_infix
 
 type ('v, 'e) vertex = {
-  value : 'v;
+  mutable value : 'v;
   mutable marked : bool;
   mutable unmarked_pred : int;
   mutable incoming : ('v, 'e) edge list;
@@ -47,7 +47,9 @@ module Vertex = struct
   let add_outgoing ~edge v = v.outgoing <- edge :: v.outgoing
 
   let value { value } = value
-  let compose { value } ~f = f value
+  let set v ~value = v.value <- value
+  let map_set v ~f = set v (f v.value)
+  let map v ~f = f v.value
   let marked { marked } = marked
   let unmarked v = not (marked v)
 
@@ -68,9 +70,9 @@ module Vertex = struct
 
   let add_edge ~src ~dst ~weight =
     let edge = { src; dst; weight } in
-    incr_unmarked_pred dst;
     add_incoming ~edge dst;
-    add_outgoing ~edge src
+    add_outgoing ~edge src;
+    if unmarked src then incr_unmarked_pred dst
 
   (** [filter_incoming ~src ~dst] is the list of all edges [(u, dst)]
       with [u] not equal to [src] *)
@@ -114,3 +116,20 @@ module Vertex = struct
       outgoing = [];
     }
 end
+
+let graphviz ~to_string nodes =
+  let f node =
+    node.outgoing
+    |> List.map ~f:(fun e ->
+           let v = to_string node in
+           let dest = to_string e.dst in
+           Printf.sprintf "%s -> %s;" v dest)
+    |> String.concat ~sep:"\n"
+  in
+  let viz = nodes |> List.map ~f |> String.concat in
+  Printf.sprintf
+    "digraph g {\n\
+    \    rankdir=LR;\n\
+    \    node [shape = square];\n\
+    \    %s\n\
+    \  }" viz

@@ -59,8 +59,11 @@ let eval_bool op b1 b2 =
   | #log as op -> Some (Log.eval op b1 b2)
   | #arith | #ord -> None
 
-let eval op x1 x2 =
+let eval_primitive op x1 x2 =
   match (Primitive.cast x1, Primitive.cast x2) with
   | `Int i1, `Int i2 -> eval_int op i1 i2
   | `Bool b1, `Bool b2 -> eval_bool op b1 b2 >>| Primitive.Base.bool
   | `Int _, `Bool _ | `Bool _, `Int _ -> None
+
+let eval_array op a1 a2 =
+  match op with `Plus -> Some (a1 @ a2) | #t -> None

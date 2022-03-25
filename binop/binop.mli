@@ -50,11 +50,16 @@ type t =
 val to_string : [< t ] -> string
 (** [to_string bop] is the string representation of [bop] *)
 
-val eval :
+val eval_primitive :
   [< t ] ->
   [< Primitive.t ] ->
   [< Primitive.t ] ->
   Primitive.base option
-(** [eval op x1 x2] is [Some (x1 op x2)] if the types of the operator
-    and the operands match and the operation is sucessful, or [None]
-    otherwise *)
+(** [eval_primitive op x1 x2] is [Some (x1 op x2)] if the types of the
+    operator and the operands match and the operation is sucessful, or
+    [None] otherwise *)
+
+val eval_array : [< t ] -> 'a list -> 'a list -> 'a list option
+(** [eval_array op a1 a2] is [Some (a1 op a2)] if the types of the
+    operator and the operands match and the operation is sucessful, or
+    [None] otherwise *)
