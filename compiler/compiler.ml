@@ -34,7 +34,9 @@ let ir_run ir =
     [dir] *)
 let ir_out ?cache ~args ~dir ~src ~deps () =
   let out = Util.File.diagnostic ~dir ~src ".ir" in
-  ignore (Ir.Diagnostic.file_to_file ?cache ~src ~out ~deps ());
+  let optimize = not args.disable_optimize in
+  ignore
+    (Ir.Diagnostic.file_to_file ?cache ~src ~out ~deps ~optimize ());
   if args.irrun then ir_run out
 
 (** [deps_of_args args] are the semantic dependecies corresponding to

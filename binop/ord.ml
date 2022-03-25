@@ -12,4 +12,4 @@ let eval = function
   | `Lt -> ( < )
   | `Leq -> ( <= )
   | `Geq -> ( >= )
-  | `Gt -> ( < )
+  | `Gt -> ( > )

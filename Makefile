@@ -6,11 +6,10 @@ build:
 build-interpreter:
 	cd interpreter && ./interpreter_build
 
-test: xic
-	dune exec ./test/main.exe
-
-xic:
+test:
 	./xic-build
+	dune exec ./test/main.exe
+	
 
 clean: bisect-clean
 	dune clean

@@ -1,7 +1,6 @@
 open Core
 open Subtype
 open Util.Option
-
 open Digraph.Make (Int)
 
 type nocjump = Lir.expr Subtype.stmt

@@ -26,6 +26,11 @@ val sexp_of_t : compunit:string -> Reorder.t -> Sexp.t
 val const_fold : Reorder.t -> Reorder.t
 (** [const_fold stmts] is [stmts] constant folded at the IR level *)
 
+val translate :
+  optimize:bool -> Ast.Decorated.Toplevel.source -> Reorder.t
+(** [translate ~optimize ast] is decorated ast [ast] translated to
+    lowered (canonical) IR, with optimizations if [optimize] is true *)
+
 open Frontend
 
 module Diagnostic : sig
@@ -34,6 +39,7 @@ module Diagnostic : sig
     src:string ->
     out:string ->
     deps:Check.dependencies ->
+    optimize:bool ->
     unit ->
     unit File.Xi.result
   (** [file_to_file ~start lexbuf out] parses and typechecks the

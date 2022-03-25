@@ -9,5 +9,5 @@ type t = {
   typecheck : bool;
   irgen : bool;
   irrun : bool;
-  optimize : bool;
+  disable_optimize : bool;
 }

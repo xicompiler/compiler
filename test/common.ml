@@ -1,35 +1,36 @@
-let file_contents in_file =
-  let ch = open_in in_file in
-  let s = really_input_string ch (in_channel_length ch) in
-  close_in ch;
-  s
+open Core
 
-let map_file_tests f ref_ext dir =
-  let make_test file =
-    let ext = Filename.extension file in
-    if ext = ".xi" || ext = ".ixi" then
-      let name =
-        file |> Filename.remove_extension |> Printf.sprintf "%s/%s" dir
-      in
-      let src = name ^ ext in
-      let out = name ^ ".output" in
-      let reference = name ^ ref_ext in
-      Some (f name ~src ~out ~reference)
-    else None
-  in
-  Sys.readdir dir |> Array.to_list |> Stdlib.List.filter_map make_test
+let file_contents = In_channel.read_all
 
-let map_file_tests_no_ixi f ref_ext dir =
-  let make_test file =
-    let ext = Filename.extension file in
-    if ext = ".xi" then
-      let name =
-        file |> Filename.remove_extension |> Printf.sprintf "%s/%s" dir
-      in
-      let src = name ^ ext in
-      let out = name ^ ".output" in
-      let reference = name ^ ref_ext in
-      Some (f name ~src ~out ~reference)
-    else None
-  in
-  Sys.readdir dir |> Array.to_list |> Stdlib.List.filter_map make_test
+let output_file ?(ext = "output") src =
+  let src_no_ext = Filename.chop_extension src in
+  Printf.sprintf "%s.%s" src_no_ext ext
+
+(** [make_test ~exts file f ref_ext dir] makes a test for [file] if
+    [file] has an extension in [exts] *)
+let make_test ~exts file f ref_ext dir =
+  let ext = Caml.Filename.extension file in
+  if List.exists ~f:(String.equal ext) exts then
+    let name =
+      file |> Filename.chop_extension |> Printf.sprintf "%s/%s" dir
+    in
+    let src = name ^ ext in
+    let reference = name ^ ref_ext in
+    Some (f name ~src ~reference)
+  else None
+
+let map_file_tests ~f ref_ext dir =
+  let f file = make_test ~exts:[ ".xi"; ".ixi" ] file f ref_ext dir in
+  Sys.readdir dir |> Array.to_list |> Stdlib.List.filter_map f
+
+let map_file_tests_xi ~f ref_ext dir =
+  let f file = make_test ~exts:[ ".xi" ] file f ref_ext dir in
+  Sys.readdir dir |> Array.to_list |> Stdlib.List.filter_map f
+
+let map2_file_tests_xi ~f ref_ext dir =
+  let f file = make_test ~exts:[ ".xi" ] file f ref_ext dir in
+  Sys.readdir dir |> Array.to_list
+  |> Stdlib.List.filter_map f
+  |> List.fold_left
+       ~f:(fun acc (test1, test2) -> test1 :: test2 :: acc)
+       ~init:[]

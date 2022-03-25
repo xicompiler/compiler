@@ -29,17 +29,17 @@ let lexing_test_ok test_name input expected =
 let lexing_test_err test_name input expected =
   lexing_test test_name input (List.map Result.error expected)
 
-(** [lexing_file_test name ~src ~out ~reference] constructs an OUnit
-    test with name [name] asserting that following [to_file ~src ~out],
-    the contents of [out] and [reference] are equal. *)
-let lexing_file_test name ~src ~out ~reference =
+(** [lexing_file_test name ~src ~reference] tests lexing for [src],
+    comparing the resulting file with [reference] *)
+let lexing_file_test name ~src ~reference =
   let expected = file_contents reference in
+  let out = output_file src in
   ignore (Lex.Diagnostic.file_to_file ~src ~out);
   let actual = file_contents out in
   name >:: fun _ -> assert_equal expected actual
 
 (* Maps each file in [dir] using [lexing_file_test]. *)
-let lexing_file_tests = map_file_tests lexing_file_test ".lexedsol"
+let lexing_file_tests = map_file_tests ~f:lexing_file_test ".lexedsol"
 
 let str_error =
   Position.Error.make ~pos:{ line = 1; column = 1 } InvalidString

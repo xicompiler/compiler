@@ -6,23 +6,11 @@ module Lir = Lir
 module Reorder = Reorder
 open IrGensym
 
-let translate ast =
-  let gensym = IrGensym.create () in
-  ast |> Mir.translate ~gensym |> Lir.lower ~gensym
-  |> Reorder.reorder ~gensym:(Label.generator gensym)
-
 (** [const_of_base b] is [`Const r] if [b] is [Some r] and [None]
     otherwise *)
 let const_of_base b =
   let%map r = b in
   `Const r
-
-(** [const_fold_bop_opt bop e1 e2] is the IR node [e1 bop e2] where all
-    constant expressions have been folded *)
-let const_fold_bop_opt bop e1 e2 =
-  match (e1, e2) with
-  | `Const i1, `Const i2 -> const_of_base (Op.eval bop i1 i2)
-  | _ -> None
 
 (** [const_fold_expr expr] is LIR expression [expr] constant folded *)
 let rec const_fold_expr : Lir.expr -> Lir.expr = function
@@ -35,6 +23,15 @@ and const_fold_dest : Lir.expr Subtype.dest -> Lir.expr Subtype.dest =
   function
   | `Mem e -> `Mem (const_fold_expr e)
   | `Temp _ as t -> t
+
+(** [const_fold_bop_opt bop e1 e2] is the IR node [e1 bop e2] where all
+    constant expressions have been folded *)
+and const_fold_bop_opt bop e1 e2 =
+  match (bop, e1, e2) with
+  | op, `Const i1, `Const i2 -> const_of_base (Op.eval op i1 i2)
+  | `Xor, `Bop (`Xor, e, `Const 1L), `Const 1L ->
+      Some (const_fold_expr e)
+  | _ -> None
 
 (** [const_fold_bop op e1 e2] is operation [e1 op e2] constant folded *)
 and const_fold_bop op e1 e2 =
@@ -107,9 +104,9 @@ let sexp_of_jump e = Sexp.List [ Sexp.Atom "JUMP"; sexp_of_expr e ]
 let sexp_of_call_stmt i e es =
   Sexp.List
     (Sexp.Atom "CALL_STMT"
-     ::
-     Sexp.Atom (Int.to_string i)
-     :: sexp_of_expr e :: List.map ~f:sexp_of_expr es)
+    :: Sexp.Atom (Int.to_string i)
+    :: sexp_of_expr e
+    :: List.map ~f:sexp_of_expr es)
 
 (** [sexp_of_jump e] is the sexp representation of [`CJump e l] *)
 and sexp_of_cjump e l =
@@ -152,18 +149,29 @@ let sexp_of_toplevel = function
 
 let sexp_of_t ~compunit (top : Reorder.t) : Sexp.t =
   Sexp.List
-    (Sexp.Atom "COMPUNIT"
-     :: Sexp.Atom compunit :: List.map ~f:sexp_of_toplevel top)
+    (Sexp.Atom "COMPUNIT" :: Sexp.Atom compunit
+    :: List.map ~f:sexp_of_toplevel top)
+
+let translate ~optimize ast =
+  let gensym = IrGensym.create () in
+  let stmts =
+    ast |> Mir.translate ~gensym |> Lir.lower ~gensym
+    |> Reorder.reorder ~gensym:(Label.generator gensym)
+  in
+  if optimize then const_fold stmts else stmts
 
 module Diagnostic = struct
-  (** [print_source ~out source] prints [source] to [out] as an
-      s-expression *)
-  let print_source ~out ~compunit source =
-    source |> translate |> sexp_of_t ~compunit |> SexpPrinter.pp out
+  (** [print_source ~out ~compunit ~optimize source] prints [source] to
+      [out] as an s-expression *)
+  let print_source ~out ~compunit ~optimize source =
+    source |> translate ~optimize |> sexp_of_t ~compunit
+    |> SexpPrinter.pp out
 
-  let file_to_file ?cache ~src ~out ~deps () =
+  let file_to_file ?cache ~src ~out ~deps ~optimize () =
     let compunit = Util.File.base src in
     let open Ast.Decorated in
-    let f out = iter_source ~f:(print_source ~out ~compunit) in
+    let f out =
+      iter_source ~f:(print_source ~out ~compunit ~optimize)
+    in
     Check.Diagnostic.file_to_file_iter ?cache ~src ~out ~deps ~f ()
 end
