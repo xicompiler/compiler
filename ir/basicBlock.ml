@@ -40,3 +40,16 @@ let has_label block ~label:l =
 
 let insert_label block ~label = insert_first block ~stmt:(`Label label)
 let to_list = Fdeque.to_list
+
+(** [string_of_stmt s] is the string representation of statement [s] *)
+let string_of_stmt = function
+  | `Return _ -> "return"
+  | `Jump (`Name l) -> "jump " ^ l
+  | `CJump (_, t, f) -> Printf.sprintf "cjump %s %s" t f
+  | `Label l -> "label " ^ l
+  | #Lir.stmt -> "other"
+
+let to_string block =
+  block |> Fdeque.to_list
+  |> List.map ~f:string_of_stmt
+  |> String.concat ~sep:"\n"

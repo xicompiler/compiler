@@ -1,7 +1,7 @@
 open Core
 open Subtype
-open Digraph
 open Util.Option
+open Digraph.Make (Int)
 
 type nocjump = Lir.expr Subtype.stmt
 
@@ -38,6 +38,10 @@ type weight =
 let string_of_weight = function
   | Labeled -> "labeled"
   | Fallthrough -> "fallthrough"
+
+(** [string_of_vertex vertex] is the string representation of the value
+    of [vertex] *)
+let string_of_vertex v = v |> Vertex.value |> BasicBlock.to_string
 
 (** [is_labeled Labeled] is [true], [is_labeled Fallthrough] is [false] *)
 let is_labeled = function Labeled -> true | Fallthrough -> false
@@ -87,19 +91,9 @@ let rec add_edges ~labels = function
 
 (** [cfg_nodes prog] is the list of cfg nodes wrapping maximally-sized
     basic blocks corresponding to [prog] *)
-let cfg_nodes = Fn.compose (List.map ~f:Vertex.create) BasicBlock.of_lir
-
-(** TODO fix *)
-let string_of_vertex start =
-  let f = function
-    | `Return _ -> "return"
-    | `Jump (`Name l) -> "jump " ^ l
-    | `CJump (_, t, f) -> Printf.sprintf "cjump %s %s" t f
-    | `Label l -> "label " ^ l
-    | _ -> "other"
-  in
-  start |> Vertex.value |> Doubly_linked.to_list |> List.map ~f
-  |> String.concat ~sep:"\n"
+let cfg_nodes =
+  let f key value = Vertex.create ~key ~value in
+  Fn.compose (List.mapi ~f) BasicBlock.of_lir
 
 (** [create_cfg prog] is list of nodes representing the control flow
     graph of lowered ir program [prog] *)
@@ -109,15 +103,30 @@ let create_cfg prog =
   add_edges ~labels nodes;
   nodes
 
-(** [deque_of_cfg cfg] is an [Fdeque.t] containing all nodes of [cfg].
-    Vertices with an unmarked predecessor are at the back of the queue,
-    and those without are at the front *)
-let deque_of_cfg =
-  let f t v =
-    let side = if Vertex.has_unmarked_pred v then `back else `front in
-    Fdeque.enqueue t side v
-  in
-  List.fold ~f ~init:Fdeque.empty
+(** [traverse ~visited v] is a mapping of keys to vertices not in
+    [visited] that results in a traversal from [v] *)
+let rec traverse ~visited v =
+  let key = Vertex.key v in
+  let f acc = traverse ~visited:acc in
+  match Map.add visited ~key ~data:v with
+  | `Ok init -> v |> Vertex.succ |> List.fold ~f ~init
+  | `Duplicate -> visited
+
+(** [enqueue_vertex t v] is [t] with [v] pushed to the front if it has
+    no unmarked predecessors, and [t] with [v] pushed to the back
+    otherwise *)
+let enqueue_vertex t v =
+  let side = if Vertex.has_unmarked_pred v then `back else `front in
+  Fdeque.enqueue t side v
+
+(** [create_deque start] is an [Fdeque.t] containing all nodes reachable
+    from [start]. Vertices with an unmarked predecessor are at the back
+    of the queue, and those without are at the front *)
+let create_deque start =
+  let f ~key:_ ~data acc = enqueue_vertex acc data in
+  start
+  |> traverse ~visited:Int.Map.empty
+  |> Map.fold ~f ~init:Fdeque.empty
 
 (** [enqueue_all deque vs] is [deque] with all unmarked vertices of [v]
     with no unmarked predecessors enqueued to the front *)
@@ -158,11 +167,11 @@ let rec rev_traces_acc acc deque =
     vertices from [deque] *)
 let rev_traces = rev_traces_acc []
 
-(** [invert_cjump ~pred ~next e t f] sets the doubly linked list node
+(** [invert_cjump ~pred ~succ e t f] sets the doubly linked list node
     [pred] to CJUMP (!e, f, t) if basic block [next] begins with label
     [t]. Returns: [`Inverted] on inversion, [`Unchanged] if unchanged *)
-let invert_cjump ~pred ~next e t f =
-  if BasicBlock.has_label ~label:t next then begin
+let invert_cjump ~pred ~succ e t f =
+  if Vertex.map ~f:(BasicBlock.has_label ~label:t) succ then begin
     let stmt = `CJump (log_neg e, f, t) in
     Vertex.map_set pred ~f:(BasicBlock.set_last ~stmt);
     `Inverted
@@ -183,11 +192,11 @@ let append_jump vertex ~target =
   let jump = `Jump (`Name target) in
   Vertex.map_set vertex ~f:(BasicBlock.insert_last ~stmt:jump)
 
-(** [fix_cjump_fallthrough ~target ~block ~next] appends an
+(** [fix_cjump_fallthrough ~target ~block ~succ] appends an
     unconditional jump to [target] if [next] does not begin with label
     [target] *)
-let fix_cjump_fallthrough ~target ~pred ~next =
-  if not (BasicBlock.has_label ~label:target next) then
+let fix_cjump_fallthrough ~target ~pred ~succ =
+  if not (Vertex.map ~f:(BasicBlock.has_label ~label:target) succ) then
     append_jump pred ~target
 
 (** [label v ~gensym] is the label of the basic block wrapped in [v] if
@@ -231,10 +240,9 @@ let fix_ordinary_fallthrough ~gensym ~pred ~succ =
     [succ] is labeled with [t] and fixes the fallthrough if it does not
     yield control to the next basic block *)
 let fix_cjump ~pred ~succ e t f =
-  let next = Vertex.value succ in
-  let r = invert_cjump ~pred ~next e t f in
+  let r = invert_cjump ~pred ~succ e t f in
   let target = match r with `Inverted -> t | `Unchanged -> f in
-  fix_cjump_fallthrough ~target ~pred ~next
+  fix_cjump_fallthrough ~target ~pred ~succ
 
 (** [fix_jump_stmt ~gensym ~pred ~succ stmt] fixes the jumps, if any,
     wrapped in [elt] where [succ] is the basic block following [pred].
@@ -285,17 +293,25 @@ let remove_false_label = function
   | `CJump (e, t, _) -> `CJump (e, t)
   | #nocjump as s -> s
 
-(** [concatenated_traces prog] is a sequence of CFG vertices
-    corresponding to traces of [prog], with branches between basic
-    blocks broken and unused labels present *)
-let concatenated_traces prog =
-  prog |> create_cfg |> deque_of_cfg |> rev_traces
+(** [concatenated_traces cfg] is a sequence of CFG vertices
+    corresponding to traces of [cfg], with branches between basic blocks
+    broken and unused labels present *)
+let concatenated_traces cfg =
+  cfg |> List.hd_exn |> create_deque |> rev_traces
   |> Util.List.rev_concat
 
 let reorder_stmts ~gensym stmts =
-  let traces = concatenated_traces stmts in
+  let start = `Label (gensym ()) in
+  let cfg = create_cfg (start :: stmts) in
+  print_endline "cfg";
+  cfg |> graphviz ~string_of_vertex ~string_of_weight |> print_endline;
+  let traces = concatenated_traces cfg in
   fix_jumps ~gensym traces;
+  print_endline "fix_jumps";
+  cfg |> graphviz ~string_of_vertex ~string_of_weight |> print_endline;
   remove_unused_labels traces;
+  print_endline "remove_unused_labels";
+  cfg |> graphviz ~string_of_vertex ~string_of_weight |> print_endline;
   traces
   |> List.concat_map ~f:(Vertex.map ~f:BasicBlock.to_list)
   |> List.map ~f:remove_false_label
