@@ -97,6 +97,7 @@ module Edge : sig
 end
 
 val graphviz :
-  to_string:(('v, 'e) vertex -> string) ->
+  string_of_vertex:(('v, 'e) vertex -> string) ->
+  string_of_weight:('e -> string) ->
   ('v, 'e) vertex list ->
   string

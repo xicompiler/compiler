@@ -32,4 +32,8 @@ type 'expr cjump2 =
 let zero = `Const Int64.zero
 let one = `Const Int64.one
 let eight = `Const 8L
-let log_neg e = `Bop (`Xor, e, one)
+
+let log_neg = function
+  | `Bop ((#Op.negatable as op), e1, e2) ->
+      `Bop ((Op.log_neg op :> Op.t), e1, e2)
+  | e -> `Bop (`Xor, e, one)

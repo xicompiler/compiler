@@ -34,6 +34,11 @@ type weight =
   | Labeled
   | Fallthrough
 
+(** [string_of_weight weight] is the string representaiton of [weight] *)
+let string_of_weight = function
+  | Labeled -> "labeled"
+  | Fallthrough -> "fallthrough"
+
 (** [is_labeled Labeled] is [true], [is_labeled Fallthrough] is [false] *)
 let is_labeled = function Labeled -> true | Fallthrough -> false
 
@@ -83,6 +88,18 @@ let rec add_edges ~labels = function
 (** [cfg_nodes prog] is the list of cfg nodes wrapping maximally-sized
     basic blocks corresponding to [prog] *)
 let cfg_nodes = Fn.compose (List.map ~f:Vertex.create) BasicBlock.of_lir
+
+(** TODO fix *)
+let string_of_vertex start =
+  let f = function
+    | `Return _ -> "return"
+    | `Jump (`Name l) -> "jump " ^ l
+    | `CJump (_, t, f) -> Printf.sprintf "cjump %s %s" t f
+    | `Label l -> "label " ^ l
+    | _ -> "other"
+  in
+  start |> Vertex.value |> Doubly_linked.to_list |> List.map ~f
+  |> String.concat ~sep:"\n"
 
 (** [create_cfg prog] is list of nodes representing the control flow
     graph of lowered ir program [prog] *)
@@ -226,7 +243,7 @@ let fix_jump_stmt ~gensym ~pred ~succ = function
   | `Jump (`Name l) -> elide_jump ~pred ~succ l
   | `CJump (e, t, f) -> fix_cjump ~pred ~succ e t f
   | `Return _ | `Jump _ -> ()
-  | _ -> fix_ordinary_fallthrough ~gensym ~pred ~succ
+  | #Lir.stmt -> fix_ordinary_fallthrough ~gensym ~pred ~succ
 
 (** [fix_jump ~gensym ~pred ~succ] fixes any jumps present in [pred],
     where [succ] is the basic block following [pred]. Fresh labels are

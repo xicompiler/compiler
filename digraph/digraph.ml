@@ -117,19 +117,18 @@ module Vertex = struct
     }
 end
 
-let graphviz ~to_string nodes =
+let graphviz ~string_of_vertex ~string_of_weight nodes =
+  let stringify_vertex = Fn.compose String.escaped string_of_vertex in
+  let stringify_weight = Fn.compose String.escaped string_of_weight in
   let f node =
+    let v1 = stringify_vertex node in
     node.outgoing
     |> List.map ~f:(fun e ->
-           let v = to_string node in
-           let dest = to_string e.dst in
-           Printf.sprintf "%s -> %s;" v dest)
+           let v2 = stringify_vertex e.dst in
+           let w = stringify_weight e.weight in
+           Printf.sprintf "\"%s\" -> \"%s\" [label = \"%s\"];" v1 v2 w)
     |> String.concat ~sep:"\n"
   in
-  let viz = nodes |> List.map ~f |> String.concat in
-  Printf.sprintf
-    "digraph g {\n\
-    \    rankdir=LR;\n\
-    \    node [shape = square];\n\
-    \    %s\n\
-    \  }" viz
+  let viz = nodes |> List.map ~f |> String.concat ~sep:"\n" in
+  if String.is_empty viz then "empty digraph"
+  else Printf.sprintf "digraph g {\nnode [shape = square];\n\n%s\n}" viz

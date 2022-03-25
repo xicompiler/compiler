@@ -23,10 +23,27 @@ type t =
   ]
 (** [t] is the type of an operator in IR *)
 
+type negatable =
+  [ `Lt
+  | `Leq
+  | `Geq
+  | `Gt
+  | `Eq
+  | `Neq
+  | `ULt
+  | `ULeq
+  | `UGt
+  | `UGeq
+  ]
+(** [negatable] is a negatable operator in IR *)
+
 val coerce : [< t ] -> t
 (** [coerce bop] coerces [bop] to a [t] *)
 
 val to_string : t -> string
 (** [to_string op] converts [op] to a string *)
+
+val log_neg : negatable -> negatable
+(** [log_neg op] is the negated operator of [op] *)
 
 val eval : t -> int64 -> int64 -> int64 option

@@ -24,6 +24,19 @@ type t =
   | Binop.t
   ]
 
+type negatable =
+  [ `Lt
+  | `Leq
+  | `Geq
+  | `Gt
+  | `Eq
+  | `Neq
+  | `ULt
+  | `ULeq
+  | `UGt
+  | `UGeq
+  ]
+
 let coerce bop = (bop :> t)
 
 let to_string = function
@@ -36,7 +49,6 @@ let to_string = function
   | `And -> "AND"
   | `Or -> "OR"
   | `Xor -> "XOR"
-  | `Not -> "NOT"
   | `RShift -> "RSHIFT"
   | `LShift -> "LSHIFT"
   | `ARShift -> "ARSHIFT"
@@ -50,6 +62,18 @@ let to_string = function
   | `ULeq -> "ULEQ"
   | `UGt -> "UGT"
   | `UGeq -> "UGEQ"
+
+let log_neg : negatable -> negatable = function
+  | `Lt -> `Geq
+  | `Leq -> `Gt
+  | `Geq -> `Lt
+  | `Gt -> `Leq
+  | `Eq -> `Neq
+  | `Neq -> `Eq
+  | `ULt -> `UGeq
+  | `ULeq -> `UGt
+  | `UGt -> `ULeq
+  | `UGeq -> `ULt
 
 (** [int_of_bool b] is [one] if b or [zero] otherwise *)
 let int_of_bool b = if b then one else zero
