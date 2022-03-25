@@ -360,7 +360,7 @@ let while_stmt ~gensym e s =
 let while_lt ~gensym e1 e2 s : stmt =
   let guard = (e1 :> expr) < e2 in
   let body = `Seq [ s; e1 := (e1 :> expr) + one ] in
-  `Seq [ `Move (e1, zero); while_stmt ~gensym guard body ]
+  `Seq [ e1 := zero; while_stmt ~gensym guard body ]
 
 (** [translate_expr enode] is the mir representation of expression node
     [enode] *)
