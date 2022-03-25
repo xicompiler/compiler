@@ -6,11 +6,8 @@ build:
 build-interpreter:
 	cd interpreter && ./interpreter_build
 
-test: build
+test: xic
 	dune exec ./test/main.exe
-
-test-cli: xic
-	./test/cli/irrun_tests
 
 xic:
 	./xic-build

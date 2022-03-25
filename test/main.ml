@@ -8,7 +8,7 @@ let suite =
          TypeCheckingTests.suite;
          ReorderTests.suite;
          IrConstFoldTests.suite;
-         IrTests.suite;
+         IrRunTests.suite;
        ]
 
 let _ = run_test_tt_main suite

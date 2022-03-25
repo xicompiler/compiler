@@ -28,6 +28,7 @@ output
 *.lexed
 *.parsed
 *.typed
+*.ir
 
 # executable
 /xic
