@@ -39,7 +39,7 @@ let to_string = function
   | `Plus -> "ADD"
   | `Minus -> "SUB"
   | `Mult -> "MUL"
-  | `HighMult -> "HIGHMULT"
+  | `HighMult -> "HMUL"
   | `Div -> "DIV"
   | `Mod -> "MOD"
   | `And -> "AND"

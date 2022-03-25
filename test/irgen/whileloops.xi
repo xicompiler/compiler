@@ -2,7 +2,7 @@ use io
 use conv
 
 testWhile(a:int) : int {
-  //println(unparseInt(a))
+  println(unparseInt(a))
   b:int = a
   while(b > 0) {
     b = b - 1
