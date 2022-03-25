@@ -31,10 +31,6 @@ type negatable =
   | `Gt
   | `Eq
   | `Neq
-  | `ULt
-  | `ULeq
-  | `UGt
-  | `UGeq
   ]
 
 let coerce bop = (bop :> t)
@@ -70,10 +66,6 @@ let log_neg : negatable -> negatable = function
   | `Gt -> `Leq
   | `Eq -> `Neq
   | `Neq -> `Eq
-  | `ULt -> `UGeq
-  | `ULeq -> `UGt
-  | `UGt -> `ULeq
-  | `UGeq -> `ULt
 
 (** [int_of_bool b] is [one] if b or [zero] otherwise *)
 let int_of_bool b = if b then one else zero

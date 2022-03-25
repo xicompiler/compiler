@@ -30,10 +30,6 @@ type negatable =
   | `Gt
   | `Eq
   | `Neq
-  | `ULt
-  | `ULeq
-  | `UGt
-  | `UGeq
   ]
 (** [negatable] is a negatable operator in IR *)
 

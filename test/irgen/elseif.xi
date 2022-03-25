@@ -6,5 +6,4 @@ main(args:int[][]) {
     if (a == 0) { println("wrong 0")}
     else if (a == 2) { println("wrong 2") }
     else { println("correct") }
-    
 }

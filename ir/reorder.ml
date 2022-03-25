@@ -76,7 +76,7 @@ let add_edge ~src ~labels next =
     | `Jump (`Name l) -> add_jump_edge ~src ~labels l
     | `CJump (_, l1, l2) -> add_cjump_edge ~src ~labels l1 l2
     | `Return _ | `Jump _ -> ()
-    | _ -> add_ordinary_edge ~src next
+    | #Lir.stmt -> add_ordinary_edge ~src next
   in
   src |> Vertex.map ~f:BasicBlock.last |> Option.iter ~f
 
@@ -253,18 +253,37 @@ let fix_jump_stmt ~gensym ~pred ~succ = function
   | `Return _ | `Jump _ -> ()
   | #Lir.stmt -> fix_ordinary_fallthrough ~gensym ~pred ~succ
 
+(** [iter_last ~f ~gensym pred] is [()] if the basic block of [pred]
+    contains no statements, or is [f s'], where [s'] is the last
+    statement in the block, ohterwise. *)
+let iter_last ~f ~gensym pred =
+  pred |> Vertex.map ~f:BasicBlock.last |> Option.iter ~f
+
 (** [fix_jump ~gensym ~pred ~succ] fixes any jumps present in [pred],
     where [succ] is the basic block following [pred]. Fresh labels are
     generated using [gensym], if needed *)
 let fix_jump ~gensym ~pred ~succ =
-  pred
-  |> Vertex.map ~f:BasicBlock.last
-  |> Option.iter ~f:(fix_jump_stmt ~gensym ~pred ~succ)
+  iter_last ~f:(fix_jump_stmt ~gensym ~pred ~succ) ~gensym pred
+
+(** [fix_jump_singleton_stmt ~gensym ~pred stmt] fixes the jump in
+    [stmt], which is the last statement of the basic block of [pred],
+    generating fresh symbols using [gensym] if needed *)
+let fix_jump_singleton_stmt ~gensym ~pred = function
+  | `CJump (_, _, f) -> append_jump pred ~target:f
+  | `Return _ | `Jump _ -> ()
+  | #Lir.stmt -> add_fallthrough_jump ~gensym pred
+
+(** [fix_jump_singleton ~gensym pred] fixes the jumps following a
+    singleton basic block [pred], generating fesh symbols using [gensym]
+    if ndeeded *)
+let fix_jump_singleton ~gensym ~pred =
+  iter_last ~f:(fix_jump_singleton_stmt ~gensym ~pred) ~gensym pred
 
 (** [fix_jumps blocks] repairs the jumps of every basic block in
     [blocks]. Fresh labels are generated using [gensym], if needed *)
 let rec fix_jumps ~gensym = function
-  | [ _ ] | [] -> ()
+  | [] -> ()
+  | [ pred ] -> fix_jump_singleton ~gensym ~pred
   | pred :: (succ :: _ as t) ->
       fix_jump ~gensym ~pred ~succ;
       fix_jumps ~gensym t
@@ -300,18 +319,18 @@ let concatenated_traces cfg =
   cfg |> List.hd_exn |> create_deque |> rev_traces
   |> Util.List.rev_concat
 
+(** [print_cfg ~label cfg] prints [label], along with the graphviz code
+    for displaying [cfg] *)
+let print_cfg ~label cfg =
+  print_endline label;
+  cfg |> graphviz ~string_of_vertex ~string_of_weight |> print_endline
+
 let reorder_stmts ~gensym stmts =
   let start = `Label (gensym ()) in
   let cfg = create_cfg (start :: stmts) in
-  print_endline "cfg";
-  cfg |> graphviz ~string_of_vertex ~string_of_weight |> print_endline;
   let traces = concatenated_traces cfg in
   fix_jumps ~gensym traces;
-  print_endline "fix_jumps";
-  cfg |> graphviz ~string_of_vertex ~string_of_weight |> print_endline;
   remove_unused_labels traces;
-  print_endline "remove_unused_labels";
-  cfg |> graphviz ~string_of_vertex ~string_of_weight |> print_endline;
   traces
   |> List.concat_map ~f:(Vertex.map ~f:BasicBlock.to_list)
   |> List.map ~f:remove_false_label
