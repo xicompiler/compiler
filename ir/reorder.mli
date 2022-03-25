@@ -9,7 +9,7 @@ type stmt =
 
 type toplevel =
   [ `Func of label * stmt list
-  | `Data of label * int64
+  | `Data of label * int64 list
   ]
 
 type t = toplevel list

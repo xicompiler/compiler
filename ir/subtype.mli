@@ -58,4 +58,5 @@ module Infix : sig
   val ( * ) : 'expr binop
   val ( - ) : 'expr binop
   val ( := ) : 'a -> 'b -> [> `Move of 'a * 'b ]
+  val ( ! ) : 'a -> [> `Mem of 'a ]
 end

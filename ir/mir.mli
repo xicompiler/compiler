@@ -19,7 +19,7 @@ type dest = expr Subtype.dest
 
 type toplevel =
   [ `Func of label * stmt list
-  | `Data of label * int64
+  | `Data of label * int64 list
   ]
 
 val commute : expr -> expr -> bool

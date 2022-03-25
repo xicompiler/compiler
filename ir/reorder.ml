@@ -1,6 +1,7 @@
 open Core
 open Subtype
 open Util.Option
+
 open Digraph.Make (Int)
 
 type nocjump = Lir.expr Subtype.stmt
@@ -12,7 +13,7 @@ type stmt =
 
 type toplevel =
   [ `Func of label * stmt list
-  | `Data of label * int64
+  | `Data of label * int64 list
   ]
 
 type t = toplevel list

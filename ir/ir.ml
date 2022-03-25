@@ -107,9 +107,9 @@ let sexp_of_jump e = Sexp.List [ Sexp.Atom "JUMP"; sexp_of_expr e ]
 let sexp_of_call_stmt i e es =
   Sexp.List
     (Sexp.Atom "CALL_STMT"
-    :: Sexp.Atom (Int.to_string i)
-    :: sexp_of_expr e
-    :: List.map ~f:sexp_of_expr es)
+     ::
+     Sexp.Atom (Int.to_string i)
+     :: sexp_of_expr e :: List.map ~f:sexp_of_expr es)
 
 (** [sexp_of_jump e] is the sexp representation of [`CJump e l] *)
 and sexp_of_cjump e l =
@@ -134,7 +134,7 @@ let sexp_of_stmt = function
 (** [sexp_of_data l i] is the sexp representation of [`Data (l, i)] *)
 let sexp_of_data l i =
   Sexp.List
-    [ Sexp.Atom "DATA"; Sexp.Atom l; Sexp.List [ Int64.sexp_of_t i ] ]
+    [ Sexp.Atom "DATA"; Sexp.Atom l; List.sexp_of_t Int64.sexp_of_t i ]
 
 (** [sexp_of_func l b] is the sexp representation of [`Func l b] *)
 let sexp_of_func l b =
@@ -152,8 +152,8 @@ let sexp_of_toplevel = function
 
 let sexp_of_t ~compunit (top : Reorder.t) : Sexp.t =
   Sexp.List
-    (Sexp.Atom "COMPUNIT" :: Sexp.Atom compunit
-    :: List.map ~f:sexp_of_toplevel top)
+    (Sexp.Atom "COMPUNIT"
+     :: Sexp.Atom compunit :: List.map ~f:sexp_of_toplevel top)
 
 module Diagnostic = struct
   (** [print_source ~out source] prints [source] to [out] as an

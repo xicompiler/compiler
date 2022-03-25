@@ -45,4 +45,5 @@ module Infix = struct
   let ( * ) e1 e2 = `Bop (`Mult, e1, e2)
   let ( - ) e1 e2 = `Bop (`Minus, e1, e2)
   let ( := ) e1 e2 = `Move (e1, e2)
+  let ( ! ) e = `Mem e
 end

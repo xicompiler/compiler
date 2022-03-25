@@ -35,3 +35,19 @@ module Label : sig
   (** [generator gen] is the generator function used to create fresh
       labels *)
 end
+
+(** [Global] is a module used for generating fresh globals *)
+module Global : sig
+  val fresh : t -> label
+  (** [fresh gen] is a fresh value of type [t] *)
+
+  val fresh2 : t -> label * label
+  (** [fresh2 gen] is a pair of fresh globals *)
+
+  val fresh3 : t -> label * label * label
+  (** [fresh3 gen] is a triple of fresh globals *)
+
+  val generator : t -> unit -> label
+  (** [generator gen] is the generator function used to create fresh
+      globals *)
+end
