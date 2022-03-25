@@ -11,7 +11,7 @@ type stmt = expr Subtype.cjump2
 
 type toplevel =
   [ `Func of label * stmt list
-  | `Data of label * int64
+  | `Data of label * int64 list
   ]
 
 val log_neg : expr -> expr

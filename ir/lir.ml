@@ -8,7 +8,7 @@ type dest = expr Subtype.dest
 
 type toplevel =
   [ `Func of label * stmt list
-  | `Data of label * int64
+  | `Data of label * int64 list
   ]
 
 let log_neg = Subtype.log_neg
