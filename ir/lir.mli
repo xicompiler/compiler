@@ -3,6 +3,9 @@ open Subtype
 type expr = expr Subtype.expr
 (** An [expr] is a low-level intermediate representation expression *)
 
+type dest = expr Subtype.dest
+(** A [dest] is an expression that can be moved into *)
+
 type stmt = expr Subtype.cjump2
 (** A [stmt] is a low-level intermediate representation statement *)
 

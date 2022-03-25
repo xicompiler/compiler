@@ -14,10 +14,17 @@ and stmt =
   ]
 (** A [stmt] is a mid-level intermediate representation statement *)
 
+type dest = expr Subtype.dest
+(** A [dest] is an expression that can be moved into *)
+
 type toplevel =
   [ `Func of label * stmt list
   | `Data of label * int64
   ]
+
+val commute : expr -> expr -> bool
+(** [has_mem e] is [true] iff expression [e] contains a [`Mem] node in
+    its expression tree *)
 
 val translate : gensym:IrGensym.t -> Toplevel.source -> toplevel list
 (** [translate ~gensym src] is decorated ast source [src] translated to

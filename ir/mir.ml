@@ -28,11 +28,130 @@ type toplevel =
   | `Data of label * int64
   ]
 
+type dest = expr Subtype.dest
+
 (** [seq lst] is [`Seq lst] *)
 let seq lst = `Seq lst
 
 (** [empty] is an empty sequence of statements *)
 let empty : stmt = `Seq []
+
+(** [exists_expr ~f e] is [true] iff [e] contains a node satisfying
+    [f e] *)
+let rec exists_expr ~f : expr -> bool = function
+  | e when f e -> true
+  | `Bop (_, e1, e2) -> exists_expr2 ~f e1 e2
+  | `Call (_, e, es) -> exists_call ~f e es
+  | `ESeq (s, e) -> exists_stmt ~f s || exists_expr ~f e
+  | `Mem e -> exists_expr ~f e
+  | `Const _ | `Name _ | `Temp _ -> false
+
+(** [exists_call ~f e es] is [true] iff [`Call (e, es)] contains a node
+    [e] satisfying [f e] *)
+and exists_call ~f e es = exists_exprs ~f (e :: es)
+
+(** [exists_expr2 e1 e2] is [true] iff either there exists a node [e] in
+    [e1] or [e2] satisfying [f e]*)
+and exists_expr2 ~f e1 e2 = exists_expr ~f e1 || exists_expr ~f e2
+
+(** [exists_exprs es] is [true] iff any expression of [es] contains a
+    [`Mem] node *)
+and exists_exprs ~f es = List.exists ~f:(exists_expr ~f) es
+
+(** [stmt_has_mem s] is [true] iff statement [s] contains a [`Mem] node *)
+and exists_stmt ~f = function
+  | `CJump (e, _, _) | `Jump e -> exists_expr ~f e
+  | `Move (e1, e2) -> exists_expr2 ~f (e1 :> expr) e2
+  | `Label _ -> false
+  | `Call (_, e, es) -> exists_call ~f e es
+  | `Return es -> exists_exprs ~f es
+  | `Seq seq -> List.exists ~f:(exists_stmt ~f) seq
+
+(** [def_expr ~init e] is the union of [init] and the temps modified by
+    [e] *)
+let rec def_expr ~init : expr -> String.Set.t = function
+  | `Bop (_, e1, e2) -> def_expr2 ~init e1 e2
+  | `Call (_, e, es) -> def_call ~init e es
+  | `ESeq (s, e) -> def_expr ~init:(def_stmt ~init s) e
+  | `Mem e -> def_expr ~init e
+  | `Temp _ | `Const _ | `Name _ -> init
+
+(** [def_call ~init e es] the union of [init] and all temps modified in
+    [`Call (e, es)] *)
+and def_call ~init e es = def_exprs ~init (e :: es)
+
+(** [def_expr2 ~init e1 e2] is the union of [init], the temps modified
+    by [e1], and the temps modified by [e2]*)
+and def_expr2 ~init e1 e2 = def_expr ~init:(def_expr ~init e1) e2
+
+(** [def_exprs ~init es] is the union of [init] and each of the sets of
+    temps modified by each expression in [es] *)
+and def_exprs ~init es =
+  List.fold es ~init ~f:(fun acc -> def_expr ~init:acc)
+
+(** [def_stmt ~init s] is the union of [init] and every temp used by [s] *)
+and def_stmt ~init = function
+  | `CJump (e, _, _) | `Jump e -> def_expr ~init e
+  | `Move (`Temp t, e) -> def_expr ~init:(String.Set.add init t) e
+  | `Move (e1, e2) -> def_expr2 ~init (e1 :> expr) e2
+  | `Label _ -> init
+  | `Call (_, e, es) -> def_call ~init e es
+  | `Return es -> def_exprs ~init es
+  | `Seq seq -> def_stmts ~init seq
+
+(** [def_stmts ~init stmts] is the union of [init] and every temp
+    modified in [stmts] *)
+and def_stmts ~init stmts =
+  List.fold stmts ~init ~f:(fun acc -> def_stmt ~init:acc)
+
+(** [use_expr ~init e] is the union of [init] and the temps used in [e] *)
+let rec use_expr ~init : expr -> String.Set.t = function
+  | `Bop (_, e1, e2) -> use_expr2 ~init e1 e2
+  | `Call (_, e, es) -> use_call ~init e es
+  | `ESeq (s, e) -> use_expr ~init:(use_stmt ~init s) e
+  | `Temp t -> String.Set.add init t
+  | `Mem e -> use_expr ~init e
+  | `Const _ | `Name _ -> init
+
+(** [use_call ~init e es] the union of [init] and all temps used in
+    [`Call (e, es)] *)
+and use_call ~init e es = use_exprs ~init (e :: es)
+
+(** [use_expr2 ~init e1 e2] is the union of [init], the temps used by
+    [e1], and the temps used by [e2]*)
+and use_expr2 ~init e1 e2 = use_expr ~init:(use_expr ~init e1) e2
+
+(** [use_exprs ~init es] is the union of [init] and each of the sets of
+    temps used by each expression in [es] *)
+and use_exprs ~init es =
+  List.fold es ~init ~f:(fun acc -> use_expr ~init:acc)
+
+(** [use_stmt ~init s] is the union of [init] and every temp used by [s] *)
+and use_stmt ~init = function
+  | `CJump (e, _, _) | `Jump e | `Move (`Temp _, e) -> use_expr ~init e
+  | `Move (e1, e2) -> use_expr2 ~init (e1 :> expr) e2
+  | `Label _ -> init
+  | `Call (_, e, es) -> use_call ~init e es
+  | `Return es -> use_exprs ~init es
+  | `Seq seq -> use_stmts ~init seq
+
+(** [use_stmts ~init stmts] is the union of [init] and every temp used
+    in [stmts] *)
+and use_stmts ~init stmts =
+  List.fold stmts ~init ~f:(fun acc -> use_stmt ~init:acc)
+
+(** [has_mem e] is [true] iff [e] contains a [`Mem _] node *)
+let has_mem = exists_expr ~f:(function `Mem _ -> true | _ -> false)
+
+(** [disjoint ~use ~def] is [true] if the temps used by [use] and the
+    temps defined by [def] are disjoint *)
+let disjoint ~use ~def =
+  let use = use_expr ~init:String.Set.empty use in
+  let def = def_expr ~init:String.Set.empty def in
+  String.Set.are_disjoint use def
+
+let commute e1 e2 =
+  (not (has_mem e1 && has_mem e2)) && disjoint ~use:e1 ~def:e2
 
 (** [xi_alloc] is the xi function for allocating space *)
 let xi_alloc = `Name "_xi_alloc"

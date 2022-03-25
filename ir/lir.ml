@@ -4,6 +4,7 @@ open IrGensym
 
 type expr = expr Subtype.expr
 type stmt = expr Subtype.cjump2
+type dest = expr Subtype.dest
 
 type toplevel =
   [ `Func of label * stmt list
@@ -17,16 +18,31 @@ type t = toplevel list
 (** [rv1] is the virtual egister storing the first return value *)
 let rv1 = `Temp "_RV1"
 
+(** [corece e] is [e :> expr] *)
+let coerce e = (e :> expr)
+
 (** [rev_lower_expr ~init:\[sm; ...; s1\] s] is
     [sn; ...; sm-1; sm; ... s1] if [sm-1; ...; sn] are the sequence of
     lowered IR expressions equivalent to IR statement [s] *)
 let rec rev_lower_expr ~gensym ~init : Mir.expr -> stmt list * expr =
   function
-  | (`Const _ | `Name _ | `Temp _) as e -> (init, e)
+  | (`Const _ | `Name _) as e -> (init, e)
   | `Call (i, e, es) -> rev_lower_call ~gensym ~init i e es
   | `ESeq (s, e) -> rev_lower_eseq ~gensym ~init s e
   | `Bop (op, e1, e2) -> rev_lower_bop ~gensym ~init op e1 e2
+  | #Mir.dest as e -> rev_lower_dest_coerce ~gensym ~init e
+
+(** [rev_lower_dest ~init:\[sm; ...; s1\] s] is
+    [sn; ...; sm-1; sm; ... s1] if [sm-1; ...; sn] are the sequence of
+    lowered IR expressions equivalent to IR statement [s] *)
+and rev_lower_dest ~gensym ~init = function
+  | `Temp _ as e -> (init, e)
   | `Mem e -> rev_lower_mem ~gensym ~init e
+
+(** Same as [rev_lower_dest] but the lowered pure destination is coerced
+    to an exprssion *)
+and rev_lower_dest_coerce ~gensym ~init e =
+  e |> rev_lower_dest ~gensym ~init |> Tuple2.map_snd ~f:coerce
 
 (** [rev_lower_call ~init:\[sm; ...; s1\] e es] is
     ([sn; ...; sm-1; sm; ... s1], e') if [sm-1; ...; sn] are the
@@ -46,17 +62,45 @@ and rev_lower_eseq ~gensym ~init s e =
   let s' = rev_lower_stmt ~gensym ~init s in
   rev_lower_expr ~gensym ~init:s' e
 
+(** [expr2_general ~gensym ~init e1 e2] is a triple [(s, e1', e2')]
+    where [s] is a sequence of statements having the effects of [init],
+    [e1], and [e2] in reverse, [e1'] is the pure expression computing
+    the same value of [e1], and [e2'] is the pure expression computing
+    the same value as [e2], assuming [e1] and [e2] do not commute *)
+and expr2_general ~gensym ~init e1 e2 : stmt list * dest * expr =
+  let t = Temp.fresh gensym in
+  let s1, e1' = rev_lower_expr ~gensym ~init e1 in
+  let init = `Move (t, e1') :: s1 in
+  let s2, e2' = rev_lower_expr ~gensym ~init e2 in
+  (s2, t, e2')
+
+(** [expr2_commute ~gensym ~init e1 e2] is a triple [(s, e1', e2')]
+    where [s] is a sequence of statements having the effects of [init],
+    [e1], and [e2] in reverse, [e1'] is the pure expression computing
+    the same value of [e1], and [e2'] is the pure expression computing
+    the same value as [e2], assuming [e1] and [e2] commute. *)
+and expr2_commute ~gensym ~init e1 e2 =
+  let s1, e1 = rev_lower_expr ~gensym ~init e1 in
+  let s2, e2 = rev_lower_expr ~gensym ~init:s1 e2 in
+  (s2, e1, e2)
+
+(** [rev_lower_expr2 ~gensym ~init e1 e2] is a triple [(s, e1', e2')]
+    where [s] is a sequence of statements having the effects of [init],
+    [e1], and [e2] in reverse, [e1'] is the pure expression computing
+    the same value of [e1], and [e2'] is the pure expression computing
+    the same value as [e2]. *)
+and rev_lower_expr2 ~gensym ~init e1 e2 =
+  if Mir.commute e1 e2 then expr2_commute ~gensym ~init e1 e2
+  else Tuple3.map_snd (expr2_general ~gensym ~init e1 e2) ~f:coerce
+
 (** [rev_lower_bop ~init:\[sm; ...; s1\] op e1 e2] is
     ([sn; ...; sm-1; sm; ... s1], e') if [sm-1; ...; sn] are the
     sequence of lowered IR expressions having the same side effects as
     IR statement [`Bop (op, e1, e2)] and [e'] is the pure, lowered IR
     expression equivalent to the result computed by [`Bop (op, e1, e2)] *)
 and rev_lower_bop ~gensym ~init op e1 e2 =
-  let t = Temp.fresh gensym in
-  let s1, e1' = rev_lower_expr ~gensym ~init e1 in
-  let init = `Move (t, e1') :: s1 in
-  let s2, e2' = rev_lower_expr ~gensym ~init e2 in
-  (s2, `Bop (op, t, e2'))
+  let s, e1, e2 = rev_lower_expr2 ~gensym ~init e1 e2 in
+  (s, `Bop (op, e1, e2))
 
 (** [rev_lower_mem ~init:\[sm; ...; s1\] e] is
     ([sn; ...; sm-1; sm; ... s1], e') if [sm-1; ...; sn] are the
@@ -81,14 +125,34 @@ and rev_lower_stmt ~gensym ~init : Mir.stmt -> stmt list = function
   | `CJump (e, l1, l2) -> rev_lower_cjump ~gensym ~init e l1 l2
   | `Seq sv -> rev_lower_seq ~gensym ~init sv
 
+(** [dest_expr_commute ~gensym ~init dst src] is a triple
+    [(s, dst', src')] where [s] is a sequence of statements having the
+    effects of [init], [dst], and [src] in reverse, [dst'] is the pure
+    expression computing the same value of [dst], and [src'] is the pure
+    expression computing the same value as [src], assuming [dst] and
+    [src] commute *)
+and dest_expr_commute ~gensym ~init dst src =
+  let s, dst = rev_lower_dest ~gensym ~init dst in
+  let s, src = rev_lower_expr ~gensym ~init:s src in
+  (s, dst, src)
+
+(** [dest_expr_commute ~gensym ~init dst src] is a triple
+    [(s, dst', src')] where [s] is a sequence of statements having the
+    effects of [init], [dst], and [src] in reverse, [dst'] is the pure
+    expression computing the same value of [dst], and [src'] is the pure
+    expression computing the same value as [src] *)
+and rev_lower_dest_expr ~gensym ~init dst src =
+  let e_dst = (dst :> Mir.expr) in
+  if Mir.commute e_dst src then dest_expr_commute ~gensym ~init dst src
+  else expr2_general ~gensym ~init e_dst src
+
 (** [rev_lower_move ~init:\[sm; ...; s1\] dst e] is
     [sn; ...; sm-1; sm; ... s1] if [sm-1; ...; sn] are the sequence of
     lowered IR expressions having the same side effects as IR statement
     [`Move (dst, e)] *)
 and rev_lower_move ~gensym ~init dst src =
-  match dst with
-  | `Temp _ as t -> rev_lower_move_temp ~gensym ~init t src
-  | `Mem addr -> rev_lower_move_mem ~gensym ~init addr src
+  let s, dst, src = rev_lower_dest_expr ~gensym ~init dst src in
+  `Move (dst, src) :: s
 
 (** [rev_move_temp ~init:\[sm; ...; s1\] dst src] is
     [sn; ...; sm-1; sm; ... s1] if [sm-1; ...; sn] are the sequence of
