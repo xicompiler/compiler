@@ -1,5 +1,6 @@
 open Core
 open Subtype
+open Infix
 open IrGensym
 
 type expr = expr Subtype.expr
@@ -136,15 +137,19 @@ and dest_expr_commute ~gensym ~init dst src =
   let s, src = rev_lower_expr ~gensym ~init:s src in
   (s, dst, src)
 
-(** [dest_expr_commute ~gensym ~init dst src] is a triple
+(** [rev_lower_dest_expr ~gensym ~init dst src] is a triple
     [(s, dst', src')] where [s] is a sequence of statements having the
     effects of [init], [dst], and [src] in reverse, [dst'] is the pure
     expression computing the same value of [dst], and [src'] is the pure
     expression computing the same value as [src] *)
 and rev_lower_dest_expr ~gensym ~init dst src =
-  let e_dst = (dst :> Mir.expr) in
-  if Mir.commute e_dst src then dest_expr_commute ~gensym ~init dst src
-  else expr2_general ~gensym ~init e_dst src
+  let commute () = dest_expr_commute ~gensym ~init dst src in
+  match dst with
+  | `Temp _ -> commute ()
+  | `Mem _ when Mir.commute (dst :> Mir.expr) src -> commute ()
+  | `Mem e ->
+      let f = Fn.compose ( ! ) coerce in
+      Tuple3.map_snd ~f (expr2_general ~gensym ~init e src)
 
 (** [rev_lower_move ~init:\[sm; ...; s1\] dst e] is
     [sn; ...; sm-1; sm; ... s1] if [sm-1; ...; sn] are the sequence of
@@ -161,17 +166,6 @@ and rev_lower_move ~gensym ~init dst src =
 and rev_lower_move_temp ~gensym ~init t src =
   let s, e = rev_lower_expr ~gensym ~init src in
   `Move (t, e) :: s
-
-(** [rev_lower_move_mem ~init:\[sm; ...; s1\] addr src] is
-    [sn; ...; sm-1; sm; ... s1] if [sm-1; ...; sn] are the sequence of
-    lowered IR expressions having the same side effects as IR statement
-    [`Move (`Mem addr, src)] *)
-and rev_lower_move_mem ~gensym ~init addr src =
-  let s_addr, addr' = rev_lower_expr ~gensym ~init addr in
-  let t = Temp.fresh gensym in
-  let init = `Move (t, addr') :: s_addr in
-  let s_src, src' = rev_lower_expr ~gensym ~init src in
-  `Move (`Mem t, src') :: s_src
 
 (** [rev_lower_move ~init:\[sm; ...; s1\] e] is
     [sn; ...; sm-1; sm; ... s1] if [sm-1; ...; sn] are the sequence of

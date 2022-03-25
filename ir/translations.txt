@@ -20,7 +20,7 @@ E [e1 + e2] = ESEQ (
     MOVE(MEM(base), both),
     MOVE(ptr, base + 8),
     $WHILE_LT ti len1 MOVE(MEM(ti * 8 + ptr), MEM(ti * 8 + t1))
-    MOVE(begin, MEM(len1 * 8 + ptr)),
+    MOVE(begin, len1 * 8 + ptr),
     $WHILE_LT tj len2 MOVE(MEM(tj * 8 + begin), MEM(tj * 8 + t2))
   ),
   ptr

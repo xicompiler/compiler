@@ -440,7 +440,7 @@ and translate_concat ~gensym ~map e1 e2 : expr =
   let open Subtype.Infix in
   let t1, len1, ti = Temp.fresh3 gensym in
   let t2, len2, tj = Temp.fresh3 gensym in
-  let both, base, ptr = Temp.fresh3 gensym in
+  let total, base, ptr = Temp.fresh3 gensym in
   let start = Temp.fresh gensym in
   let body1 = !((ti * eight) + ptr) := !((ti * eight) + t1) in
   let body2 = !((tj * eight) + start) := !((tj * eight) + t2) in
@@ -451,12 +451,12 @@ and translate_concat ~gensym ~map e1 e2 : expr =
           t2 := translate_expr ~gensym ~map e2;
           len1 := !(t1 - eight);
           len2 := !(t2 - eight);
-          both := !(len1 + len2);
-          base := alloc_array both;
-          !base := both;
+          total := len1 + len2;
+          base := alloc_array total;
+          !base := total;
           ptr := base + eight;
           while_lt ~gensym ti len1 body1;
-          start := !((len1 * eight) + ptr);
+          start := (len1 * eight) + ptr;
           while_lt ~gensym tj len2 body2;
         ],
       ptr )
