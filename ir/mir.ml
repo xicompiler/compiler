@@ -259,9 +259,7 @@ and factor_bop ~gensym ~map e1 e2 =
   factor_expr ~gensym ~map e2
 
 and factor_uop ~gensym ~map e = factor_expr ~gensym ~map e
-
 and factor_fn_call ~gensym ~map es = factor_es ~gensym ~map es
-
 and factor_length ~gensym ~map e = factor_expr ~gensym ~map e
 
 and factor_index ~gensym ~map e1 e2 =
@@ -301,7 +299,6 @@ and factor_while ~gensym ~map e s =
   factor_stmt ~gensym ~map s
 
 and factor_array_decl ~gensym ~map es = factor_e_options ~gensym ~map es
-
 and factor_assign ~gensym ~map e = factor_expr ~gensym ~map e
 
 and factor_arr_assign ~gensym ~map e1 e2 e3 =
@@ -310,13 +307,9 @@ and factor_arr_assign ~gensym ~map e1 e2 e3 =
   factor_expr ~gensym ~map e3
 
 and factor_expr_stmt ~gensym ~map es = factor_es ~gensym ~map es
-
 and factor_var_init ~gensym ~map e = factor_expr ~gensym ~map e
-
 and factor_multi_assign ~gensym ~map es = factor_es ~gensym ~map es
-
 and factor_pr_call ~gensym ~map es = factor_es ~gensym ~map es
-
 and factor_return ~gensym ~map es = factor_es ~gensym ~map es
 
 and factor_stmts ~gensym ~map stmts =
@@ -602,36 +595,60 @@ and translate_arr_assign_simple ~gensym ~map ~set ta ti e =
   let move = index ta ti := translate_expr ~gensym ~map ~set e in
   `Seq [ `Seq (check_bounds ~gensym ta ti); move ]
 
+(** [move_of_expr ~gensym ~map e] is a pair [(mov, t)] where [t] is a
+    fresh temporary and [mov] is a move statement moving the translation
+    of [e] into [t] *)
+and move_of_expr ~gensym ~map ~set e =
+  let t = Temp.fresh gensym in
+  (`Move (t, translate_expr ~gensym ~map ~set e), t)
+
+(** [moves_of_exprs ~gensym \[e1; ...; en\]] is a pair
+    [(moves, \[t1; ...; tn\])] where each [ti] is fresh and [moves] is a
+    sequence of statements moving the translation of each of [ei] into
+    [ti] *)
+and moves_of_exprs ~gensym ~map ~set es =
+  let f (moves, ts) e =
+    let move, t = move_of_expr ~gensym ~map ~set e in
+    (move :: moves, t :: ts)
+  in
+  let moves, ts = List.fold ~init:([], []) ~f es in
+  (`Seq (List.rev moves), List.rev ts)
+
+(** Same as [moves_of_exprs_opt], but takes in a list of optional
+    expressions. [None] values are ignored. *)
+and moves_of_exprs_opt ~gensym ~map ~set es =
+  es |> List.filter_opt |> moves_of_exprs ~gensym ~map ~set
+
 (** [translate_array_decl_helper name es] is the mir representation of
     an array declaration for [name] with lengths [es] *)
-and translate_array_decl_helper ~gensym ~map ~set name = function
-  | Some e :: es ->
-      let e = translate_expr ~gensym ~map ~set e in
-      let len, base, ptr = Temp.fresh3 gensym in
+and translate_array_decl_helper ~gensym name = function
+  | t :: ts ->
+      let base, ptr = Temp.fresh2 gensym in
       let ti, nested_name = Temp.fresh2 gensym in
       let nested =
         `Seq
           [
-            translate_array_decl_helper ~gensym ~map ~set nested_name es;
+            translate_array_decl_helper ~gensym nested_name ts;
             index ptr ti := nested_name;
           ]
       in
       `Seq
         [
-          len := e;
-          base := alloc_array len;
-          !base := len;
+          base := alloc_array t;
+          !base := t;
           ptr := base + eight;
           name := ptr;
-          while_lt ~gensym ti len nested;
+          while_lt ~gensym ti t nested;
         ]
-  | None :: _ | [] -> empty
+  | [] -> empty
 
 (** [translate_array_decl id es] is the mir representation of an array
     declaration for variable [id] with lengths [es] *)
 and translate_array_decl ~gensym ~map ~set id es =
-  let name = translate_id ~set id in
-  translate_array_decl_helper ~gensym ~map ~set name es
+  let name = `Temp (PosNode.get id) in
+  let moves, ts = moves_of_exprs_opt ~gensym ~map ~set es in
+  let decl = translate_array_decl_helper ~gensym name ts in
+  `Seq [ moves; decl ]
 
 (** [translate_assign id e] is the mir representation of an assignment
     of [e] to [id] *)
