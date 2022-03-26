@@ -7,8 +7,7 @@ open Int64
     [name] asserting that the constant folded IR of [prog] is
     structurally equal to [expect] *)
 let const_fold_test ~name ~expect prog =
-  let reordered = const_fold prog in
-  name >:: fun _ -> assert_equal expect reordered
+  name >:: fun _ -> assert_equal expect (const_fold prog)
 
 (** [const_fold_same ~name prog] tests that no constant folding occurs
     on [prog] *)
@@ -219,6 +218,41 @@ let bitwise_tests : (string * Reorder.t * Reorder.t) list =
           );
       ],
       [ `Func ("xor", [ `Move (`Temp "x", `Const 3L) ]) ] );
+    ( "nested double negation",
+      [
+        `Func
+          ( "xor",
+            [
+              `Move
+                ( `Temp "x",
+                  `Bop
+                    ( `Xor,
+                      `Bop (`Xor, `Temp "y", `Const one),
+                      `Const one ) );
+            ] );
+      ],
+      [ `Func ("xor", [ `Move (`Temp "x", `Temp "y") ]) ] );
+    ( "nested triple negation",
+      [
+        `Func
+          ( "xor",
+            [
+              `Move
+                ( `Temp "x",
+                  `Bop
+                    ( `Xor,
+                      `Bop
+                        ( `Xor,
+                          `Bop (`Xor, `Temp "y", `Const one),
+                          `Const one ),
+                      `Const one ) );
+            ] );
+      ],
+      [
+        `Func
+          ( "xor",
+            [ `Move (`Temp "x", `Bop (`Xor, `Temp "y", `Const one)) ] );
+      ] );
   ]
 
 let unsigned_tests : (string * Reorder.t * Reorder.t) list =
@@ -257,13 +291,9 @@ let unsigned_tests : (string * Reorder.t * Reorder.t) list =
   ]
 
 let arith_test_cases = const_fold_tests arith_tests
-
 let cmp_test_cases = const_fold_tests cmp_tests
-
 let log_test_cases = const_fold_tests log_tests
-
 let bitwise_test_cases = const_fold_tests bitwise_tests
-
 let unsigned_test_cases = const_fold_tests unsigned_tests
 
 let suite =

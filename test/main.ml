@@ -9,7 +9,7 @@ let suite =
          ReorderTests.suite;
          IrConstFoldTests.suite;
          IrRunTests.suite;
-         CommuteTests.suite;
+         IrCommuteTests.suite;
        ]
 
 let _ = run_test_tt_main suite

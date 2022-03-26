@@ -30,4 +30,7 @@ main(args:int[][]) {
     println(booleanstring(1<=0))
     println(booleanstring(1>=1))
     println(booleanstring(0>=1))
+    println(booleanstring(!!true))
+    println(booleanstring(!!!false))
+    println(booleanstring(!!!!false))
 }
