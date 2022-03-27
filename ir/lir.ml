@@ -16,9 +16,6 @@ let log_neg = Subtype.log_neg
 
 type t = toplevel list
 
-(** [rv1] is the virtual egister storing the first return value *)
-let rv1 = `Temp "_RV1"
-
 (** [corece e] is [e :> expr] *)
 let coerce e = (e :> expr)
 
@@ -52,7 +49,8 @@ and rev_lower_dest_coerce ~gensym ~init e =
     expression equivalent to the result computed by [`Call (e, es)] *)
 and rev_lower_call ~gensym ~init i e es =
   let t = Temp.fresh gensym in
-  (`Move (t, rv1) :: rev_lower_call_stmt ~gensym ~init i e es, t)
+  let move = `Move (t, IrGensym.rv1) in
+  (move :: rev_lower_call_stmt ~gensym ~init i e es, t)
 
 (** [rev_lower_eseq ~init:\[sm; ...; s1\] s e] is
     ([sn; ...; sm-1; sm; ... s1], e') if [sm-1; ...; sn] are the

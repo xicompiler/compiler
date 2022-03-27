@@ -9,7 +9,7 @@ type t =
   ]
 
 let cast = function
-  | `Char u -> `Int (u |> Uchar.to_scalar |> Int64.of_int)
+  | `Char u -> `Int (Util.Int64.of_uchar u)
   | #base as b -> b
 
 let typeof = function `Int _ | `Char _ -> `Int | `Bool _ -> `Bool

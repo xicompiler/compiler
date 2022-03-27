@@ -8,6 +8,17 @@ val create : unit -> t
 (** [create ()] is a fresh symbol generator, capable of generating fresh
     labels and fresh temps *)
 
+val rv : int -> [> temp ]
+(** [rv n] is a temporary corresponding to the [n]th virtual return
+    value register *)
+
+val rv1 : [> temp ]
+(** [rv1] is the first virtual return register *)
+
+val arg : int -> [> temp ]
+(** [arg n] is a temporary corresponding to the [n]th virtual argument
+    value register *)
+
 (** [Temp] is a module used for generating fresh temporaries *)
 module Temp : sig
   val fresh : t -> [> temp ]
@@ -20,34 +31,30 @@ module Temp : sig
   (** [fresh3 gen] is a triple of fresh temps *)
 end
 
-(** [Label] is a module used for generating fresh labels *)
-module Label : sig
-  val fresh : t -> label
-  (** [fresh gen] is a fresh value of type [t] *)
+(** [Gen] is the module type of a generated symbol *)
+module type Gen = sig
+  type sym
+  (** [sym] is the type of a generated symbol *)
 
-  val fresh2 : t -> label * label
-  (** [fresh2 gen] is a pair of fresh labels *)
-
-  val fresh3 : t -> label * label * label
-  (** [fresh3 gen] is a triple of fresh labels *)
-
-  val generator : t -> unit -> label
+  val generator : t -> unit -> sym
   (** [generator gen] is the generator function used to create fresh
       labels *)
-end
 
-(** [Global] is a module used for generating fresh globals *)
-module Global : sig
-  val fresh : t -> label
+  val fresh : t -> sym
   (** [fresh gen] is a fresh value of type [t] *)
 
-  val fresh2 : t -> label * label
-  (** [fresh2 gen] is a pair of fresh globals *)
+  val fresh2 : t -> sym * sym
+  (** [fresh2 gen] is a pair of fresh labels *)
 
-  val fresh3 : t -> label * label * label
-  (** [fresh3 gen] is a triple of fresh globals *)
-
-  val generator : t -> unit -> label
-  (** [generator gen] is the generator function used to create fresh
-      globals *)
+  val fresh3 : t -> sym * sym * sym
+  (** [fresh3 gen] is a triple of fresh labels *)
 end
+
+module type LabelGen = Gen with type sym := label
+(** [LabelGen] is the type of a label generator *)
+
+module Label : LabelGen
+(** [Label] is a module used for generating fresh labels *)
+
+module Global : LabelGen
+(** [Global] is a module used for generating fresh globals *)

@@ -1,5 +1,4 @@
 open Core
-open Int64
 open Subtype
 module PosNode = Node.Position
 module DecNode = Context.Node.Decorated
@@ -11,6 +10,7 @@ open Toplevel
 open Primitive
 open Type
 open IrGensym
+open Option.Let_syntax
 module Map = String.Map
 module Set = String.Set
 
@@ -164,16 +164,31 @@ let xi_out_of_bounds = `Name "_xi_out_of_bounds"
 
 let ir_pr_call name = `Call (0, name, [])
 
-(** [to_addr n] is [n] converted to a memory address *)
-let to_addr n = (8L * n) + 8L
+(** [alloc space] is the mir representation of a call to allocate space *)
+let alloc space = `Call (1, xi_alloc, [ space ])
+
+(** [alloc_array_const len] is a pointer to [8 * len + 8] bytes of
+    memory *)
+let alloc_array_const len =
+  let size = Int64.(8L * succ len) in
+  alloc (`Const size)
 
 open Infix
 
 (** [index_addr p m] is [p + m * 8] as an IR expression *)
 let index_addr p m = p + (m * eight)
 
+(** [alloc_array len] is a [`Call] to [alloc] requesting [8 * len + 8]
+    bytes of memory *)
+let alloc_array len = alloc (index_addr eight len)
+
 (** [index e1 e2] is the array index expression [e1\[e2\]] *)
 let index e1 e2 = !(index_addr e1 e2)
+
+(** [index_const e1 e2] is the index expression [e1\[`Const e2\]] *)
+let index_const e1 e2 =
+  let idx = Int64.of_int Int.(e2 * 8) in
+  !(e1 + `Const idx)
 
 (** [length e] is the length of the array beginning at pointer [e] *)
 let length e = !(e - eight)
@@ -252,7 +267,7 @@ and factor_arr ~gensym ~map arr = factor_es ~gensym ~map arr
 
 and factor_string ~gensym ~map s =
   let g = Global.fresh gensym in
-  match Map.add ~key:s ~data:g map with `Ok m -> m | _ -> map
+  match Map.add ~key:s ~data:g map with `Ok m -> m | `Duplicate -> map
 
 and factor_bop ~gensym ~map e1 e2 =
   let map = factor_expr ~gensym ~map e1 in
@@ -339,20 +354,13 @@ let global_definitions ~gensym ~set defns =
 (** [translate_primitive p] is the mir representation of primitive [p] *)
 let translate_primitive = function
   | `Int i -> i
-  | `Bool b -> b |> Bool.to_int |> Int64.of_int
-  | `Char c -> c |> Uchar.to_scalar |> Int64.of_int
+  | `Bool b -> Util.Int64.of_bool b
+  | `Char u -> Util.Int64.of_uchar u
 
 (** [translate_primitive id] is the mir representation of [id] *)
 let translate_id ~set id =
   let id = PosNode.get id in
-  if Set.mem set id then `Mem (`Name id) else `Temp id
-
-(** [alloc space] is the mir representation of a call to allocate space *)
-let alloc space = `Call (1, xi_alloc, [ space ])
-
-(** [alloc_array len] is a [`Call] to [alloc] requesting [8 * len + 8]
-    bytes of memory *)
-let alloc_array len = alloc (index_addr eight len)
+  if Set.mem set id then !(`Name id) else `Temp id
 
 (** [while_seq c s lh lt lf] is a while sequence with control statement
     [c], body [s], header label [lh], true label [lt], and false label
@@ -381,7 +389,7 @@ let rec translate_expr ~gensym ~map ~set enode =
   match DecNode.Expr.get enode with
   | Primitive p -> `Const (translate_primitive p)
   | Id id -> translate_id ~set id
-  | Array arr -> translate_arr ~gensym ~map ~set arr
+  | Array arr -> translate_array ~gensym ~map ~set arr
   | String s -> translate_string ~gensym ~map ~set s
   | Bop (op, e1, e2) -> translate_bop ~gensym ~map ~set op e1 e2
   | Uop (op, e) -> translate_uop ~gensym ~map ~set op e
@@ -394,24 +402,20 @@ let rec translate_expr ~gensym ~map ~set enode =
 and translate_exprs ~gensym ~map ~set es =
   List.map ~f:(translate_expr ~gensym ~map ~set) es
 
-(** [translate_arr arr] is the mir representation of [arr] *)
-and translate_arr ~gensym ~map ~set arr =
-  arr |> translate_exprs ~gensym ~map ~set |> translate_arr_lst ~gensym
+(** [translate_array arr] is the mir representation of [arr] *)
+and translate_array ~gensym ~map ~set es =
+  es |> translate_exprs ~gensym ~map ~set |> array_literal ~gensym
 
-(** [translate_arr_lst lst] is the mir representation of a list [lst] *)
-and translate_arr_lst ~gensym lst =
-  let n = Util.List.length lst in
+(** [array_literal ~gensym elts] is the mir representation of a list
+    [lst] *)
+and array_literal ~gensym elts =
+  let len = Util.List.length elts in
   let tm = Temp.fresh gensym in
-  let f (len, acc) e =
-    let move = !(tm + `Const (to_addr len)) := e in
-    (succ len, move :: acc)
-  in
-  let add_elts =
-    lst |> List.fold ~f ~init:(Int64.zero, []) |> snd |> List.rev
-  in
-  let move = tm := alloc (`Const (to_addr n)) in
-  let add_len = !tm := `Const n in
-  `ESeq (`Seq (move :: add_len :: add_elts), tm + eight)
+  let f i e = index_const tm (Int.succ i) := e in
+  let add_elts = List.mapi ~f elts in
+  let alloc = tm := alloc_array_const len in
+  let set_len = !tm := `Const len in
+  `ESeq (`Seq (alloc :: set_len :: add_elts), tm + eight)
 
 (** [translate_string str] is the mir representation of [str] *)
 and translate_string ~gensym ~map ~set str =
@@ -420,9 +424,9 @@ and translate_string ~gensym ~map ~set str =
     let t1, t2 = Temp.fresh2 gensym in
     `ESeq (`Seq [ t2 := `Name global; t1 := t2 + eight ], t1)
   else
-    let f s = `Const (s |> int_of_char |> Int64.of_int) in
+    let f c = `Const (Util.Int64.of_char c) in
     str |> String.to_list_rev |> List.rev_map ~f
-    |> translate_arr_lst ~gensym
+    |> array_literal ~gensym
 
 (** [translate_uop uop e] is the mir representation of unary operator
     expression [uop e] *)
@@ -435,12 +439,12 @@ and translate_uop ~gensym ~map ~set uop e =
     negation of [e] *)
 and translate_int_neg ~gensym ~map ~set e =
   match DecNode.Expr.get e with
-  | Primitive (`Int i) -> `Const ~-i
+  | Primitive (`Int i) -> `Const (Int64.neg i)
   | _ -> `Bop (`Minus, zero, translate_expr ~gensym ~map ~set e)
 
 (** [translate_call ctx id es] is the mir representation of a function
     call with function id [id], arguments [es], and context [ctx] *)
-and translate_call ~gensym ~map ~set ~ctx id es : expr Subtype.call =
+and translate_call ~gensym ~map ~set ~ctx id es =
   let name = mangle id ~ctx in
   let rets = num_returns id ~ctx in
   `Call (rets, `Name name, translate_exprs ~gensym ~map ~set es)
@@ -521,8 +525,7 @@ and translate_or ~gensym ~map ~set e1 e2 =
 (** [translate_length e] is the mir representation of a length function
     call with argument [e] *)
 and translate_length ~gensym ~map ~set e =
-  let open Infix in
-  !(translate_expr ~gensym ~map ~set e - eight)
+  length (translate_expr ~gensym ~map ~set e)
 
 (** [translate_index e1 e2] is the mir representation of an indexing of
     [e1] at position [e2] *)
@@ -607,12 +610,9 @@ and move_of_expr ~gensym ~map ~set e =
     sequence of statements moving the translation of each of [ei] into
     [ti] *)
 and moves_of_exprs ~gensym ~map ~set es =
-  let f (moves, ts) e =
-    let move, t = move_of_expr ~gensym ~map ~set e in
-    (move :: moves, t :: ts)
-  in
-  let moves, ts = List.fold ~init:([], []) ~f es in
-  (`Seq (List.rev moves), List.rev ts)
+  es
+  |> List.map ~f:(move_of_expr ~gensym ~map ~set)
+  |> List.unzip |> Tuple2.map_fst ~f:seq
 
 (** Same as [moves_of_exprs_opt], but takes in a list of optional
     expressions. [None] values are ignored. *)
@@ -654,8 +654,7 @@ and translate_array_decl ~gensym ~map ~set id es =
     of [e] to [id] *)
 
 and translate_assign ~gensym ~map ~set id e =
-  let name = translate_id ~set id in
-  name := translate_expr ~gensym ~map ~set e
+  translate_id ~set id := translate_expr ~gensym ~map ~set e
 
 (** [translate_arr_assign e1 e2 e3] is the mir representation of a array
     assignment statement with array reference [e1], position [e2], and
@@ -673,20 +672,13 @@ and translate_arr_assign ~gensym ~map ~set e1 e2 e3 =
     multi-assignment with declarations [ds], and function [id], and
     arguments [es] *)
 and translate_multi_assign ~gensym ~map ~set ~ctx ds id es =
-  let name = mangle id ~ctx in
-  let rets = num_returns id ~ctx in
-  let expr_lst = translate_exprs ~gensym ~map ~set es in
-  let call = `Call (rets, `Name name, expr_lst) in
-  let f (rv, acc) = function
-    | None -> (Int.succ rv, acc)
-    | Some (v, _) ->
-        let t = Printf.sprintf "_RV%d" rv in
-        let name = translate_id ~set v in
-        let move = name := `Temp t in
-        (Int.succ rv, move :: acc)
+  let call = (translate_call ~gensym ~map ~set ~ctx id es :> stmt) in
+  let f i d =
+    let%map id, _ = d in
+    let ret = IrGensym.rv (Int.succ i) in
+    translate_id ~set id := ret
   in
-  let assign = ds |> List.fold ~f ~init:(1, []) |> snd |> List.rev in
-  `Seq (call :: assign)
+  `Seq (call :: List.filter_mapi ~f ds)
 
 (** [translate_return es] is the mir representation of a return
     statement with expressions [es] *)
@@ -696,7 +688,7 @@ and translate_return ~gensym ~map ~set es =
 (** [translate_block stmts] is the mir representation of a statement
     block with statements [stmts] *)
 and translate_block ~gensym ~map ~set stmts =
-  `Seq (List.map ~f:(translate_stmt ~gensym ~map ~set) stmts)
+  stmts |> List.map ~f:(translate_stmt ~gensym ~map ~set) |> seq
 
 (** [translate_control enode t f] translates booleans to control flow *)
 and translate_control ~gensym ~map ~set enode t f =
@@ -704,22 +696,23 @@ and translate_control ~gensym ~map ~set enode t f =
   | Primitive (`Bool b) -> `Jump (`Name (if b then t else f))
   | Uop (`LogNeg, e) -> translate_control ~gensym ~map ~set e f t
   | Bop (`And, e1, e2) ->
-      let label = Label.fresh gensym in
-      `Seq
-        [
-          translate_control ~gensym ~map ~set e1 label f;
-          `Label label;
-          translate_control ~gensym ~map ~set e2 t f;
-        ]
+      translate_short_circuit ~short:false ~gensym ~map ~set e1 e2 t f
   | Bop (`Or, e1, e2) ->
-      let label = Label.fresh gensym in
-      `Seq
-        [
-          translate_control ~gensym ~map ~set e1 t label;
-          `Label label;
-          translate_control ~gensym ~map ~set e2 t f;
-        ]
+      translate_short_circuit ~short:true ~gensym ~map ~set e1 e2 t f
   | _ -> `CJump (translate_expr ~gensym ~map ~set enode, t, f)
+
+(** [translate_short_cricuit ~short ~gensym ~map ~set e1 e2 t f] is s
+    statement computing [`CJump (e1 | e2, t, f)] if [short] is [true],
+    and the translation of [`CJump (e1 & e2, t, f)] otherwise *)
+and translate_short_circuit ~short ~gensym ~map ~set e1 e2 t f =
+  let label = Label.fresh gensym in
+  let t', f' = if short then (t, label) else (label, f) in
+  `Seq
+    [
+      translate_control ~gensym ~map ~set e1 t' f';
+      `Label label;
+      translate_control ~gensym ~map ~set e2 t f;
+    ]
 
 (** [returns_unit ctx id] is true if the function associated with [id]
     in [ctx] has a return of type Unit, false otherwise *)
@@ -736,21 +729,18 @@ let translate_fn_defn
     ({ id; params } : Ast.signature)
     block =
   let name = mangle id ~ctx in
-  let f (arg, acc) ((param, _) : Ast.decl) : int * stmt list =
-    let t = Printf.sprintf "_ARG%d" arg in
-    let move = `Temp (PosNode.get param) := `Temp t in
-    (Int.succ arg, move :: acc)
+  let f i (id, _) =
+    let arg = IrGensym.arg (Int.succ i) in
+    `Temp (PosNode.get id) := arg
   in
-  let moves =
-    params |> List.fold ~f ~init:(1, []) |> snd |> List.rev |> seq
-  in
+  let moves = List.mapi ~f params in
   let block = translate_block ~gensym ~map ~set block in
-  let body =
+  let ret =
     if returns_unit ~ctx id then
-      [ moves; block; translate_return ~gensym ~map ~set [] ]
-    else [ moves; block ]
+      [ translate_return ~gensym ~map ~set [] ]
+    else []
   in
-  `Func (name, body)
+  `Func (name, `Seq moves :: block :: ret)
 
 (** [translate_global_init id typ p] is the mir representation of a
     global initialization of [id] with type [typ] and primitive [p] as
@@ -771,9 +761,9 @@ let translate_defn ~gensym ~map ~set def =
   | GlobalInit (id, _, p) -> Some (translate_global_init id p)
 
 let data_of_string id s =
-  let f str = str |> int_of_char |> Int64.of_int in
-  let lst = s |> String.to_list_rev |> List.rev_map ~f in
-  `Data (id, (lst |> List.length |> Int64.of_int) :: lst)
+  let open Util.Int64 in
+  let lst = s |> String.to_list_rev |> List.rev_map ~f:of_char in
+  `Data (id, Util.List.length lst :: lst)
 
 let get_data_from_map map =
   let f ~key ~data acc = data_of_string data key :: acc in

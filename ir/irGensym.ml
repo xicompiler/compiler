@@ -25,6 +25,13 @@ let create () =
     gen_global = Gensym.create global_fmt;
   }
 
+(** [reg ~fmt n] is the n[th] register with format [fmt] *)
+let reg ~fmt n = `Temp (Printf.sprintf fmt n)
+
+let rv = reg ~fmt:(format_of_string "_RV%d")
+let rv1 = rv 1
+let arg = reg ~fmt:(format_of_string "_ARG%d")
+
 (** [fresh2 ~fresh gen] is a pair of fresh values generated using
     [fresh] *)
 let fresh2 ~fresh gen = Tuple2.map ~f:fresh (gen, gen)
@@ -35,27 +42,45 @@ let fresh3 ~fresh gen = Tuple3.map ~f:fresh (gen, gen, gen)
 
 module Temp = struct
   let fresh { gen_temp } = `Temp (gen_temp ())
-
   let fresh2 = fresh2 ~fresh
   let fresh3 = fresh3 ~fresh
 end
 
-module Label = struct
+(** [Params] is the module type of parameters used to created a
+    generated *)
+module type Params = sig
+  type sym
+
+  val generator : t -> unit -> sym
+end
+
+(** [Gen] is the module type of a generated symbol *)
+module type Gen = sig
+  include Params
+
+  val fresh : t -> sym
+  val fresh2 : t -> sym * sym
+  val fresh3 : t -> sym * sym * sym
+end
+
+module type LabelGen = Gen with type sym := label
+
+module Make (Args : Params) = struct
+  include Args
+
+  let fresh gen = generator gen ()
+  let fresh2 = fresh2 ~fresh
+  let fresh3 = fresh3 ~fresh
+end
+
+module Label = Make (struct
+  type sym = label
+
   let generator = gen_label
+end)
 
-  let fresh { gen_label } = gen_label ()
+module Global = Make (struct
+  type sym = label
 
-  let fresh2 = fresh2 ~fresh
-
-  let fresh3 = fresh3 ~fresh
-end
-
-module Global = struct
   let generator = gen_global
-
-  let fresh { gen_global } = gen_global ()
-
-  let fresh2 = fresh2 ~fresh
-
-  let fresh3 = fresh3 ~fresh
-end
+end)

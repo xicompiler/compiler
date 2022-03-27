@@ -335,8 +335,7 @@ let reorder_stmts ~gensym stmts =
   |> List.concat_map ~f:(Vertex.map ~f:BasicBlock.to_list)
   |> List.map ~f:remove_false_label
 
-let reorder_toplevel ~gensym (top : Lir.toplevel) : toplevel =
-  match top with
+let reorder_toplevel ~gensym : Lir.toplevel -> toplevel = function
   | `Data _ as d -> d
   | `Func (l, b) -> `Func (l, reorder_stmts ~gensym b)
 
