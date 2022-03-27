@@ -22,6 +22,10 @@ type toplevel =
   | `Data of label * int64 list
   ]
 
+val mangle : Context.Error.id -> ctx:Context.t -> label
+(** [mangle id ~ctx] is the mangled function name of [id] in context
+    [ctx] *)
+
 val commute : expr -> expr -> bool
 (** [commute e1 e2] is [true] iff expressions [e1] and [e2] commute *)
 

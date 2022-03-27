@@ -8,8 +8,8 @@ open Mir
     name [name] asserting that [commute e1 e2] is equal to [expect] *)
 let commute_test ~name ~expect e1 e2 =
   name >:: fun _ ->
-  let real = commute e1 e2 in
-  assert_equal expect real ~printer:Bool.to_string
+  let actual = commute e1 e2 in
+  assert_equal expect actual ~printer:Bool.to_string
 
 let t1 = `Temp "t1"
 let t2 = `Temp "t2"

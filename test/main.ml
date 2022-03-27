@@ -6,10 +6,11 @@ let suite =
          LexingTests.suite;
          ParsingTests.suite;
          TypeCheckingTests.suite;
+         MangleTests.suite;
          ReorderTests.suite;
          IrConstFoldTests.suite;
-         IrRunTests.suite;
          IrCommuteTests.suite;
+         IrRunTests.suite;
        ]
 
 let _ = run_test_tt_main suite

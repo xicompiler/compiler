@@ -233,8 +233,6 @@ let encode_args args = args |> List.map ~f:encode_expr |> String.concat
 (** [mangle_fmt] is the format used to mangle identifiers *)
 let mangle_fmt = format_of_string "_I%s_%s%s"
 
-(** [mangle id ctx] is the mangled function name of [id] in context
-    [ctx] *)
 let mangle id ~ctx =
   let arg, ret = Context.find_fn_exn ~id ctx in
   let name = id |> PosNode.get |> encode_name in
