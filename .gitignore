@@ -9,6 +9,9 @@
 _build
 build*
 
+# vscode
+.vscode
+
 # bisect
 _coverage
 bisect*.coverage

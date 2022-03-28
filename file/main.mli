@@ -2,7 +2,7 @@ val no_such_file : string -> string
 (** [no_such_file s] is "s: No such file" *)
 
 type error = string
-(** [error] is the type of a file error, the name of the unbound file ] *)
+(** [error] is the type of a file error, the name of the unbound file *)
 
 type nonrec 'a result = ('a, error) result
 (** A [result] is either [Ok] of ['a] or [Error] *)

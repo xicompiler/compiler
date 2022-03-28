@@ -6,7 +6,6 @@
 let io_buffer_size = 65536 (* IO_BUFFER_SIZE 4.0.0 *)
 
 let pp = Format.fprintf
-
 let invalid_encode () = invalid_arg "expected `Await encode"
 
 let invalid_bounds j l =
@@ -18,11 +17,8 @@ let invalid_bounds j l =
    module. He won't be upset. *)
 
 let unsafe_chr = Char.unsafe_chr
-
 let unsafe_blit = Bytes.unsafe_blit
-
 let unsafe_array_get = Array.unsafe_get
-
 let unsafe_byte s j = Char.code (Bytes.unsafe_get s j)
 
 let unsafe_set_byte s j byte =
@@ -56,27 +52,12 @@ let encoding_of_string s =
   | "UTF-16" -> Some `UTF_16
   | "UTF-16LE" -> Some `UTF_16LE
   | "UTF-16BE" -> Some `UTF_16BE
-  | "ANSI_X3.4-1968"
-  | "ISO-IR-6"
-  | "ANSI_X3.4-1986"
-  | "ISO_646.IRV:1991"
-  | "ASCII"
-  | "ISO646-US"
-  | "US-ASCII"
-  | "US"
-  | "IBM367"
-  | "CP367"
-  | "CSASCII" ->
+  | "ANSI_X3.4-1968" | "ISO-IR-6" | "ANSI_X3.4-1986"
+  | "ISO_646.IRV:1991" | "ASCII" | "ISO646-US" | "US-ASCII" | "US"
+  | "IBM367" | "CP367" | "CSASCII" ->
       Some `US_ASCII
-  | "ISO_8859-1:1987"
-  | "ISO-IR-100"
-  | "ISO_8859-1"
-  | "ISO-8859-1"
-  | "LATIN1"
-  | "L1"
-  | "IBM819"
-  | "CP819"
-  | "CSISOLATIN1" ->
+  | "ISO_8859-1:1987" | "ISO-IR-100" | "ISO_8859-1" | "ISO-8859-1"
+  | "LATIN1" | "L1" | "IBM819" | "CP819" | "CSISOLATIN1" ->
       Some `ISO_8859_1
   | _ -> None
 
@@ -905,10 +886,7 @@ let pp_nln_none d = function
           ncount d;
           nline d;
           v
-      | 0x0085
-      | 0x000C
-      | 0x2028
-      | 0x2029 (* NEL | FF | LS | PS *) ->
+      | 0x0085 | 0x000C | 0x2028 | 0x2029 (* NEL | FF | LS | PS *) ->
           cr d false;
           ncount d;
           nline d;
@@ -940,10 +918,7 @@ let pp_nln_readline d = function
           ncount d;
           nline d;
           `Uchar d.nl
-      | 0x0085
-      | 0x000C
-      | 0x2028
-      | 0x2029 (* NEL | FF | LS | PS *) ->
+      | 0x0085 | 0x000C | 0x2028 | 0x2029 (* NEL | FF | LS | PS *) ->
           cr d false;
           ncount d;
           nline d;
@@ -980,9 +955,7 @@ let pp_nln_nlf d = function
           ncount d;
           nline d;
           `Uchar d.nl
-      | 0x000C
-      | 0x2028
-      | 0x2029 (* FF | LS | PS *) ->
+      | 0x000C | 0x2028 | 0x2029 (* FF | LS | PS *) ->
           cr d false;
           ncount d;
           nline d;
@@ -1014,10 +987,7 @@ let pp_nln_ascii d = function
           ncount d;
           nline d;
           `Uchar d.nl
-      | 0x0085
-      | 0x000C
-      | 0x2028
-      | 0x2029 (* NEL | FF | LS | PS *) ->
+      | 0x0085 | 0x000C | 0x2028 | 0x2029 (* NEL | FF | LS | PS *) ->
           cr d false;
           ncount d;
           nline d;
@@ -1077,21 +1047,13 @@ let decoder ?nln ?encoding src =
   }
 
 let decode d = d.k d
-
 let decoder_line d = d.line
-
 let decoder_col d = d.col
-
 let decoder_byte_count d = d.byte_count
-
 let decoder_count d = d.count
-
 let decoder_removed_bom d = d.removed_bom
-
 let decoder_src d = d.src
-
 let decoder_nln d = d.nln
-
 let decoder_encoding d = d.encoding
 
 let set_decoder_encoding d e =
@@ -1152,9 +1114,7 @@ let dst e s j l =
 
 let partial k e = function
   | `Await -> k e
-  | `Uchar _
-  | `End ->
-      invalid_encode ()
+  | `Uchar _ | `End -> invalid_encode ()
 
 let flush k e =
   match e.dst with
@@ -1355,8 +1315,7 @@ let encoder encoding dst =
   let o, o_pos, o_max =
     match dst with
     | `Manual -> (Bytes.empty, 1, 0) (* implies o_rem e = 0. *)
-    | `Buffer _
-    | `Channel _ ->
+    | `Buffer _ | `Channel _ ->
         (Bytes.create io_buffer_size, 0, io_buffer_size - 1)
   in
   {
@@ -1372,18 +1331,14 @@ let encoder encoding dst =
   }
 
 let encode e v = e.k e (v :> encode)
-
 let encoder_encoding e = e.encoding
-
 let encoder_dst e = e.dst
 
 (* Manual sources and destinations. *)
 
 module Manual = struct
   let src = src
-
   let dst = dst
-
   let dst_rem = o_rem
 end
 
@@ -1413,9 +1368,7 @@ module String = struct
           else loop (f acc i (r_utf_8 s i need)) f s (i + need) last
     in
     let len =
-      match len with
-      | None -> String.length s - pos
-      | Some l -> l
+      match len with None -> String.length s - pos | Some l -> l
     in
     let last = pos + len - 1 in
     loop acc f (Bytes.unsafe_of_string s) pos last
@@ -1438,9 +1391,7 @@ module String = struct
                   f s (i + 4) last
     in
     let len =
-      match len with
-      | None -> String.length s - pos
-      | Some l -> l
+      match len with None -> String.length s - pos | Some l -> l
     in
     let last = pos + len - 1 in
     loop acc f (Bytes.unsafe_of_string s) pos last
@@ -1464,9 +1415,7 @@ module String = struct
                   f s (i + 4) last
     in
     let len =
-      match len with
-      | None -> String.length s - pos
-      | Some l -> l
+      match len with None -> String.length s - pos | Some l -> l
     in
     let last = pos + len - 1 in
     loop acc f (Bytes.unsafe_of_string s) pos last

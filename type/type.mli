@@ -1,9 +1,6 @@
 open Core
-
 include module type of Definitions
-
 include module type of TypeError
-
 include module type of Conversions
 
 module Tau : module type of Tau

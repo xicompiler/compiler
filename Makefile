@@ -30,5 +30,11 @@ bisect: bisect-clean
 bisect-clean:
 	rm -rf _coverage bisect*.coverage
 
+format:
+	ocamlformat */*.ml */*.mli --inplace
+
+format-check:
+	ocamlformat */*.ml */*.mli --check
+
 zip: clean
 	zip bfs45_dc854_vmj5_zak33.zip -r . -x@exclude.lst

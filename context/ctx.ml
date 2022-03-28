@@ -15,9 +15,7 @@ type t = {
 [@@deriving sexp_of]
 
 let empty = { context = Map.empty; ret = `Unit }
-
 let ret { ret } = ret
-
 let with_ret ~ret ctx = { ctx with ret = (ret :> term) }
 
 let find ~id { context } =
@@ -98,5 +96,4 @@ let of_args f ~id ~arg ~ret =
   f ~id ~fn
 
 let add_fn_decl ~id ~arg ~ret = of_args add_fn_decl ~id ~arg ~ret
-
 let add_fn_defn ~id ~arg ~ret = of_args add_fn_defn ~id ~arg ~ret

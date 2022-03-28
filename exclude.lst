@@ -1,8 +1,9 @@
+.DS_Store
 _build/*
 build*
 output/*
 .git/*
-.DS_Store
+.github/*
 .gitignore
 _coverage/*
 bisect*.coverage

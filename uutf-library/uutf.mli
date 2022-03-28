@@ -475,9 +475,9 @@ end
               loop fd s d buf acc
           | `Await ->
               let rec unix_read fd s j l =
-                try Unix.read fd s j l with
-                | Unix.Unix_error (Unix.EINTR, _, _) ->
-                    unix_read fd s j l
+                try Unix.read fd s j l
+                with Unix.Unix_error (Unix.EINTR, _, _) ->
+                  unix_read fd s j l
               in
               let rc = unix_read fd s 0 (Bytes.length s) in
               Uutf.Manual.src d s 0 rc;
@@ -539,8 +539,9 @@ end
           | `Partial ->
               let rec unix_write fd s j l =
                 let rec write fd s j l =
-                  try Unix.single_write fd s j l with
-                  | Unix.Unix_error (Unix.EINTR, _, _) -> write fd s j l
+                  try Unix.single_write fd s j l
+                  with Unix.Unix_error (Unix.EINTR, _, _) ->
+                    write fd s j l
                 in
                 let wc = write fd s j l in
                 if wc < l then unix_write fd s (j + wc) (l - wc) else ()
@@ -560,9 +561,9 @@ end
               loop fdi fdo ds es d e
           | `Await ->
               let rec unix_read fd s j l =
-                try Unix.read fd s j l with
-                | Unix.Unix_error (Unix.EINTR, _, _) ->
-                    unix_read fd s j l
+                try Unix.read fd s j l
+                with Unix.Unix_error (Unix.EINTR, _, _) ->
+                  unix_read fd s j l
               in
               let rc = unix_read fdi ds 0 (Bytes.length ds) in
               Uutf.Manual.src d ds 0 rc;

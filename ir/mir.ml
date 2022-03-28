@@ -194,7 +194,7 @@ let index_const e1 e2 =
 let length e = !(e - eight)
 
 (** [check_bounds e1 e2] is jumps to an error location of [e2] is not a
-    valid index for [e1], or does nothing otherwise ]*)
+    valid index for [e1], or does nothing otherwise *)
 let check_bounds ~gensym e1 e2 =
   let lok, lerr = Label.fresh2 gensym in
   [
