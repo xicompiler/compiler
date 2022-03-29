@@ -155,6 +155,15 @@ let disjoint ~use ~def =
 let commute e1 e2 =
   (not (has_mem e1 && has_mem e2)) && disjoint ~use:e1 ~def:e2
 
+(** [constant e] is [true] iff [e] is a constant expression, containing
+    no mem, eseq, call, or temp nodes *)
+let constant e =
+  let impure = function
+    | `ESeq _ | `Call _ | `Mem _ | `Temp _ -> true
+    | #expr -> false
+  in
+  not (exists_expr ~f:impure e)
+
 (** [xi_alloc] is the xi function for allocating space *)
 let xi_alloc = `Name "_xi_alloc"
 
@@ -596,47 +605,53 @@ and translate_arr_assign_simple ~gensym ~map ~set ta ti e =
   let move = index ta ti := translate_expr ~gensym ~map ~set e in
   `Seq [ `Seq (check_bounds ~gensym ta ti); move ]
 
-(** [move_of_expr ~gensym ~map e] is a pair [(mov, t)] where [t] is a
-    fresh temporary and [mov] is a move statement moving the translation
-    of [e] into [t] *)
-and move_of_expr ~gensym ~map ~set e =
+(** [move_of_expr ~gensym e] is a pair [(mov, t)] where [t] is a fresh
+    temporary and [mov] is a move statement moving [e] into [t] *)
+and move_of_expr ~gensym e =
   let t = Temp.fresh gensym in
-  (`Move (t, translate_expr ~gensym ~map ~set e), t)
+  (`Move (t, e), t)
 
-(** [moves_of_exprs ~gensym \[e1; ...; en\]] is a pair
-    [(moves, \[t1; ...; tn\])] where each [ti] is fresh and [moves] is a
-    sequence of statements moving the translation of each of [ei] into
-    [ti] *)
-and moves_of_exprs ~gensym ~map ~set es =
-  es
-  |> List.map ~f:(move_of_expr ~gensym ~map ~set)
-  |> List.unzip |> Tuple2.map_fst ~f:seq
+(** [pure_exprs ~gensym ~map ~set es] is a pair [(moves, es')] where
+    [moves] is a sequence of moves needed to move each of the impure
+    expressions of [es'] into a temporary, and [es'] is the translation
+    of [es], where each impure expression (that is not the first) has
+    been moved into a temporary. *)
+and pure_exprs ~gensym ~map ~set es =
+  let f (moves, es) e =
+    let e = translate_expr ~gensym ~map ~set e in
+    if constant e then (moves, e :: es)
+    else
+      let s, t = move_of_expr ~gensym e in
+      (s :: moves, t :: es)
+  in
+  let moves, es = List.fold ~f ~init:([], []) es in
+  (`Seq (List.rev moves), List.rev es)
 
-(** Same as [moves_of_exprs_opt], but takes in a list of optional
-    expressions. [None] values are ignored. *)
-and moves_of_exprs_opt ~gensym ~map ~set es =
-  es |> List.filter_opt |> moves_of_exprs ~gensym ~map ~set
+(** Same as [pure_exprs] but takes a list of optional expressions.
+    [None]'s are ignored.*)
+and pure_exprs_opt ~gensym ~map ~set es =
+  es |> List.filter_opt |> pure_exprs ~gensym ~map ~set
 
 (** [translate_array_decl_helper name es] is the mir representation of
     an array declaration for [name] with lengths [es] *)
 and translate_array_decl_helper ~gensym name = function
-  | t :: ts ->
+  | e :: es ->
       let base, ptr = Temp.fresh2 gensym in
       let ti, nested_name = Temp.fresh2 gensym in
       let nested =
         `Seq
           [
-            translate_array_decl_helper ~gensym nested_name ts;
+            translate_array_decl_helper ~gensym nested_name es;
             index ptr ti := nested_name;
           ]
       in
       `Seq
         [
-          base := alloc_array t;
-          !base := t;
+          base := alloc_array e;
+          !base := e;
           ptr := base + eight;
           name := ptr;
-          while_lt ~gensym ti t nested;
+          while_lt ~gensym ti e nested;
         ]
   | [] -> empty
 
@@ -644,8 +659,8 @@ and translate_array_decl_helper ~gensym name = function
     declaration for variable [id] with lengths [es] *)
 and translate_array_decl ~gensym ~map ~set id es =
   let name = `Temp (PosNode.get id) in
-  let moves, ts = moves_of_exprs_opt ~gensym ~map ~set es in
-  let decl = translate_array_decl_helper ~gensym name ts in
+  let moves, es = pure_exprs_opt ~gensym ~map ~set es in
+  let decl = translate_array_decl_helper ~gensym name es in
   `Seq [ moves; decl ]
 
 (** [translate_assign id e] is the mir representation of an assignment
