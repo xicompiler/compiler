@@ -72,9 +72,11 @@ module Make (Key : Key) = struct
       v.unmarked_pred <- Int.succ v.unmarked_pred
 
     let mark v =
-      v.marked <- true;
-      let f { dst } = decr_unmarked_pred dst in
-      List.iter ~f v.outgoing
+      if unmarked v then begin
+        v.marked <- true;
+        let f { dst } = decr_unmarked_pred dst in
+        List.iter ~f v.outgoing
+      end
 
     let has_unmarked_pred { unmarked_pred } = unmarked_pred > 0
 
@@ -84,16 +86,18 @@ module Make (Key : Key) = struct
       add_outgoing ~edge src;
       if unmarked src then incr_unmarked_pred dst
 
+    let equal v1 v2 = Key.compare v1.key v2.key = 0
+
     (** [filter_incoming ~src ~dst] is the list of all edges [(u, dst)]
         with [u] not equal to [src] *)
     let filter_incoming ~src ~dst =
-      let f { src = u } = not (phys_equal src u) in
+      let f { src = u } = not (equal src u) in
       List.rev_filter ~f dst.incoming
 
     (** [filter_outgoing ~src ~dst] is the list of all edges [(src, v)]
         with [v] not equal to [dst] *)
     let filter_outgoing ~src ~dst =
-      let f { dst = v } = not (phys_equal dst v) in
+      let f { dst = v } = not (equal dst v) in
       List.rev_filter ~f src.outgoing
 
     (** [remove_outgoing ~src ~dst] deletes all edges [(src, dst)]
@@ -126,8 +130,6 @@ module Make (Key : Key) = struct
         incoming = [];
         outgoing = [];
       }
-
-    let equal v1 v2 = Key.compare v1.key v2.key = 0
   end
 
   let graphviz ~string_of_vertex ~string_of_weight nodes =
