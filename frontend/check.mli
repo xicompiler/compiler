@@ -19,7 +19,11 @@ type cache = (Ast.Toplevel.intf option, exn) result String.Table.t
 (** [cache] caches interfaces used in type-checking *)
 
 type error = Error.t
+(** [error] is an alias for [Error.t] *)
+
 type nonrec result = (Ast.Decorated.t, error) result
+(** [result] is the type of a result from type-checking; either a
+    decorated AST, or error *)
 
 type dependencies = {
   lib_dir : string;
@@ -40,14 +44,24 @@ val type_check_file :
 (** same as [type_check] but takes a filename as argument *)
 
 module Diagnostic : sig
-  val file_to_file_iter :
+  (** [Error] represents a Diagnostic Error *)
+  module Error : sig
+    val to_string : error -> string
+    (** [to_string e] is the serialization of error [e] 9*)
+  end
+
+  val iter_file :
     ?cache:cache ->
     src:string ->
     out:string ->
     deps:dependencies ->
-    f:(Out_channel.t -> Ast.Decorated.t -> unit) ->
+    f:(Ast.Decorated.t -> unit) ->
     unit ->
     unit File.Xi.result
+  (** [iter_file ?cache ~src ~out ~deps ~f ()] applies f to the
+      decorated AST constructed from the file at [src] if possible
+      resolving dependentcies from [deps], or is [()] if this is not
+      possible. *)
 
   val file_to_file :
     ?cache:cache ->
@@ -62,6 +76,4 @@ module Diagnostic : sig
       [Error e] on failure. If not provided, [lib_dir] defaults to ".".
       If [cache] is [Some tbl], AST nodes are memoized in [tbl].
       [std_dir] is used to resolve references to the standard library. *)
-
-  val print_error : Out_channel.t -> error -> unit
 end

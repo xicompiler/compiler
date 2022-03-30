@@ -1,8 +1,10 @@
+open Fn
 open Core
 
 let xi s = s ^ ".xi"
 let ixi s = s ^ ".ixi"
 let ixi_of_dir ~dir file = Filename.concat dir (ixi file)
+let is_xi = Caml.Filename.extension >> String.equal ".xi"
 
 let accessible path =
   match Sys.file_exists path with
@@ -30,3 +32,6 @@ let create_out_path ~dir ~file ext =
 
 let diagnostic ~dir ~src = create_out_path ~dir ~file:src
 let base = Fn.compose Filename.chop_extension Filename.basename
+
+let println s ~out =
+  Out_channel.with_file ~f:(fun oc -> Printf.fprintf oc "%s\n" s) out

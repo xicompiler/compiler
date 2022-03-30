@@ -9,10 +9,8 @@ build-interpreter:
 test:
 	./xic-build
 	dune exec ./test/main.exe
-	
 
 clean: bisect-clean
-	dune clean
 	find . -name '*.lexed' -delete
 	find . -name '*.parsed' -delete
 	find . -name '*.typed' -delete
@@ -20,7 +18,10 @@ clean: bisect-clean
 	find . -name '*.conflicts' -delete
 	rm -f xic *.zip *.log
 
-cloc: clean
+clean-all: clean
+	dune clean
+
+cloc: clean-all
 	cloc --by-file --include-lang=OCaml . --exclude-dir=uutf-library
 
 bisect: bisect-clean
@@ -36,5 +37,5 @@ format:
 format-check:
 	ocamlformat */*.ml */*.mli --check
 
-zip: clean
+zip: clean-all
 	zip bfs45_dc854_vmj5_zak33.zip -r . -x@exclude.lst

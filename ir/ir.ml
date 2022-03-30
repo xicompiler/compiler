@@ -166,13 +166,11 @@ module Diagnostic = struct
       [out] as an s-expression *)
   let print_source ~out ~compunit ~optimize source =
     source |> translate ~optimize |> sexp_of_t ~compunit
-    |> SexpPrinter.pp out
+    |> Sexp.to_string_hum |> Util.File.println ~out
 
   let file_to_file ?cache ~src ~out ~deps ~optimize () =
     let compunit = Util.File.base src in
     let open Ast.Decorated in
-    let f out =
-      iter_source ~f:(print_source ~out ~compunit ~optimize)
-    in
-    Check.Diagnostic.file_to_file_iter ?cache ~src ~out ~deps ~f ()
+    let f = iter_source ~f:(print_source ~out ~compunit ~optimize) in
+    Check.Diagnostic.iter_file ?cache ~src ~out ~deps ~f ()
 end

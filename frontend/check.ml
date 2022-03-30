@@ -100,22 +100,18 @@ module Diagnostic = struct
       is semantically valid *)
   let valid_xi_program = "Valid Xi Program"
 
-  let print_error out e =
-    e |> Error.to_string |> Printf.fprintf out "%s\n"
+  (** [iter_result ~out ~f r] prints an error message serializing [e] to
+      [out] if [r] is [Error e] and is [f ast] if [r] is [Ok ast] *)
+  let iter_result ~out ~f = function
+    | Ok ast -> f ast
+    | Error e -> e |> Error.to_string |> Util.File.println ~out
 
-  let print_result ~out ~f = function
-    | Ok ast -> f out ast
-    | Error e -> print_error out e
-
-  let print_to_file ~out ~f r =
-    Out_channel.with_file ~f:(fun oc -> print_result ~out:oc ~f r) out
-
-  let file_to_file_iter ?cache ~src ~out ~deps ~f () =
+  let iter_file ?cache ~src ~out ~deps ~f () =
     let r = type_check_file ?cache ~deps src in
-    Result.iter ~f:(print_to_file ~out ~f) r;
+    Result.iter ~f:(iter_result ~out ~f) r;
     Result.ignore_m r
 
   let file_to_file ?cache ~src ~out ~deps =
-    let f out _ = Printf.fprintf out "%s\n" valid_xi_program in
-    file_to_file_iter ?cache ~src ~out ~deps ~f
+    let f _ = Util.File.println valid_xi_program ~out in
+    iter_file ?cache ~src ~out ~deps ~f
 end
