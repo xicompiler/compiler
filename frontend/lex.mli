@@ -20,10 +20,8 @@ module Diagnostic : sig
   type nonrec result = (Parser.token, error) result
   (** A [result] is either a token or a lexical error *)
 
-  module Error : sig
-    val to_string : error -> string
-    (** [to_string e] is the diagnostic error message for [e] *)
-  end
+  module Error : Util.Stringable.S with type t := error
+  (** [Error] represents a lexical error *)
 
   val lex : Lexing.lexbuf -> result list
   (** [lex_tok buf] consumes all tokens in [buf] and returns them as a

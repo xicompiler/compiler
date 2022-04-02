@@ -10,14 +10,18 @@ module Lir : module type of struct
   include Lir
 end
 
-(** [Subtype] is the subtype of an IR node *)
-module Subtype : module type of struct
+include module type of struct
   include Subtype
 end
 
 (** [Reorder] contains functions for reordering lowered IR *)
 module Reorder : module type of struct
   include Reorder
+end
+
+(** [Op] represents an Op in Ir *)
+module Op : module type of struct
+  include Op
 end
 
 val translate : Ast.Decorated.Toplevel.source -> Reorder.t
@@ -36,14 +40,13 @@ val translate :
 (** [translate ~optimize ast] is decorated ast [ast] translated to
     lowered (canonical) IR, with optimizations if [optimize] is true *)
 
-open Frontend
-
+(** [Diagnostic] represents the diagnostic functions needed for IR *)
 module Diagnostic : sig
   val file_to_file :
-    ?cache:Check.cache ->
+    ?cache:Frontend.Check.cache ->
     src:string ->
     out:string ->
-    deps:Check.dependencies ->
+    deps:Frontend.Check.dependencies ->
     optimize:bool ->
     unit ->
     unit File.Xi.result

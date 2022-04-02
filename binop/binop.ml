@@ -28,12 +28,12 @@ type t =
   ]
 
 let to_string = function
-  | `Mult -> "*"
-  | `HighMult -> "*>>"
+  | `Mul -> "*"
+  | `HMul -> "*>>"
   | `Div -> "/"
   | `Mod -> "%"
-  | `Plus -> "+"
-  | `Minus -> "-"
+  | `Add -> "+"
+  | `Sub -> "-"
   | `Lt -> "<"
   | `Leq -> "<="
   | `Geq -> ">="
@@ -66,4 +66,4 @@ let eval_primitive op x1 x2 =
   | `Int _, `Bool _ | `Bool _, `Int _ -> None
 
 let eval_array op a1 a2 =
-  match op with `Plus -> Some (a1 @ a2) | #t -> None
+  match op with `Add -> Some (a1 @ a2) | #t -> None

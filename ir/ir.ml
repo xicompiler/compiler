@@ -5,6 +5,7 @@ module Mir = Mir
 module Lir = Lir
 module Reorder = Reorder
 module Subtype = Subtype
+module Op = Op
 open IrGensym
 
 (** [const_of_base b] is [`Const r] if [b] is [Some r] and [None]
@@ -174,3 +175,5 @@ module Diagnostic = struct
     let f = iter_source ~f:(print_source ~out ~compunit ~optimize) in
     Check.Diagnostic.iter_file ?cache ~src ~out ~deps ~f ()
 end
+
+include Subtype

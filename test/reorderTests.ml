@@ -23,7 +23,7 @@ let prog : Lir.t =
           `Label "L1";
           `Move (`Temp "x", `Temp "y");
           `Label "L2";
-          `Move (`Temp "x", `Bop (`Plus, `Temp "x", `Temp "y"));
+          `Move (`Temp "x", `Bop (`Add, `Temp "x", `Temp "y"));
           `Jump (`Name "L1");
           `Label "L3";
           `Call (1, `Name "f", [ `Temp "x" ]);
@@ -39,7 +39,7 @@ let reordered : Reorder.t =
         [
           `CJump (Lir.log_neg (`Temp "e"), "L3");
           `Label "L2";
-          `Move (`Temp "x", `Bop (`Plus, `Temp "x", `Temp "y"));
+          `Move (`Temp "x", `Bop (`Add, `Temp "x", `Temp "y"));
           `Move (`Temp "x", `Temp "y");
           `Jump (`Name "L2");
           `Label "L3";

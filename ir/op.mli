@@ -36,10 +36,9 @@ type negatable =
 val coerce : [< t ] -> t
 (** [coerce bop] coerces [bop] to a [t] *)
 
-val to_string : t -> string
-(** [to_string op] converts [op] to a string *)
-
 val log_neg : negatable -> negatable
 (** [log_neg op] is the negated operator of [op] *)
 
 val eval : t -> int64 -> int64 -> int64 option
+
+include Util.Stringable.S with type t := t

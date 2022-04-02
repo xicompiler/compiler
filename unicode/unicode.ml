@@ -1,3 +1,5 @@
+type t = Uchar.t
+
 let printable_ascii_min = Char.chr 32
 let printable_ascii_max = Char.chr 127
 

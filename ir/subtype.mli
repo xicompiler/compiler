@@ -57,13 +57,13 @@ module Infix : sig
   (** ['expr binop] is the type of a binary operator operator on ['expr] *)
 
   val ( + ) : 'expr binop
-  (** [e1 + e2] is [`Bop (`Plus, e1, e2)] *)
+  (** [e1 + e2] is [`Bop (`Add, e1, e2)] *)
 
   val ( * ) : 'expr binop
   (** [e1 * e2] is [`Bop (`Mult, e1, e2)] *)
 
   val ( - ) : 'expr binop
-  (** [e1 - e2] is [`Bop (`Minus, e1, e2)] *)
+  (** [e1 - e2] is [`Bop (`Sub, e1, e2)] *)
 
   val ( < ) : 'expr binop
   (** [e1 < e2] is [`Bop (`Lt, e1, e2)] *)

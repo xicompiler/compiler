@@ -1,5 +1,7 @@
 (library
- (name tau)
+ (name instr)
  (libraries core util)
  (preprocess
   (pps ppx_jane)))
+
+(include_subdirs unqualified)

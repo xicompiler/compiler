@@ -1,6 +1,5 @@
 open OUnit2
 open Ir
-open Subtype
 open Infix
 open Mir
 

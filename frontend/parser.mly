@@ -173,12 +173,12 @@ bracketed(X):
 
 (** A [binop] is a binary operator in Xi *)
 %inline binop:
-  | MULT { `Mult }
-  | HIGHMULT { `HighMult }
+  | MULT { `Mul }
+  | HIGHMULT { `HMul }
   | DIV { `Div }
   | MOD { `Mod }
-  | PLUS { `Plus }
-  | MINUS { `Minus }
+  | PLUS { `Add }
+  | MINUS { `Sub }
   | LT { `Lt }
   | LEQ { `Leq}
   | GEQ { `Geq }

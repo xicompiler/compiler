@@ -16,8 +16,7 @@ type t =
 (** A type in Xi is either a primitive type or an array of a type, where
     an Array is represented by a pair (contents, length) *)
 
-val to_string : t -> string
-(** [to_string t] is the string representing [t] *)
+include Util.Stringable.S with type t := t
 
 val sexp_of_t : t -> Sexp.t
 (** [sexp_of_t typ] is the s-expression serialization of [typ] *)

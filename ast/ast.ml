@@ -109,7 +109,7 @@ and type_check_bop ~ctx ~pos op e1 e2 =
   match (op, DecNode.Expr.typ dec1, DecNode.Expr.typ dec2) with
   | #Binop.arith, `Int, `Int ->
       Ok (DecNode.Expr.make ~ctx ~typ:`Int ~pos e)
-  | `Plus, `Array t1, `Array t2 ->
+  | `Add, `Array t1, `Array t2 ->
       if Tau.equal t1 t2 then
         Ok (DecNode.Expr.make ~ctx ~typ:(`Array t1) ~pos e)
       else Error (Positioned.make ~pos OpMismatch)

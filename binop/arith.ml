@@ -1,12 +1,16 @@
 open Core
 open Int64
 
-type t =
-  [ `Mult
-  | `HighMult
-  | `Plus
-  | `Minus
+type base =
+  [ `Add
+  | `Sub
   | `Div
+  | `Mul
+  ]
+
+type t =
+  [ base
+  | `HMul
   | `Mod
   ]
 
@@ -18,10 +22,10 @@ let high_mult i1 i2 =
   Big_int.int64_of_big_int high
 
 let eval_exn = function
-  | `Mult -> ( * )
-  | `HighMult -> high_mult
-  | `Plus -> ( + )
-  | `Minus -> ( - )
+  | `Mul -> ( * )
+  | `HMul -> high_mult
+  | `Add -> ( + )
+  | `Sub -> ( - )
   | `Div -> ( / )
   | `Mod -> ( % )
 

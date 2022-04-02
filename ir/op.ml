@@ -36,10 +36,10 @@ type negatable =
 let coerce bop = (bop :> t)
 
 let to_string = function
-  | `Plus -> "ADD"
-  | `Minus -> "SUB"
-  | `Mult -> "MUL"
-  | `HighMult -> "HMUL"
+  | `Add -> "ADD"
+  | `Sub -> "SUB"
+  | `Mul -> "MUL"
+  | `HMul -> "HMUL"
   | `Div -> "DIV"
   | `Mod -> "MOD"
   | `And -> "AND"

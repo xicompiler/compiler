@@ -21,7 +21,7 @@ let arith_tests : (string * Reorder.t * Reorder.t) list =
       [
         `Func
           ( "mult",
-            [ `Move (`Temp "x", `Bop (`Mult, `Const 2L, `Const 3L)) ] );
+            [ `Move (`Temp "x", `Bop (`Mul, `Const 2L, `Const 3L)) ] );
       ],
       [ `Func ("mult", [ `Move (`Temp "x", `Const 6L) ]) ] );
     ( "highmult",
@@ -31,8 +31,7 @@ let arith_tests : (string * Reorder.t * Reorder.t) list =
             [
               `Move
                 ( `Temp "x",
-                  `Bop (`HighMult, `Const max_value, `Const max_value)
-                );
+                  `Bop (`HMul, `Const max_value, `Const max_value) );
             ] );
       ],
       [
@@ -48,9 +47,7 @@ let arith_tests : (string * Reorder.t * Reorder.t) list =
       [
         `Func
           ( "highmult zeros",
-            [
-              `Move (`Temp "x", `Bop (`HighMult, `Const 2L, `Const 3L));
-            ] );
+            [ `Move (`Temp "x", `Bop (`HMul, `Const 2L, `Const 3L)) ] );
       ],
       [ `Func ("highmult zeros", [ `Move (`Temp "x", `Const zero) ]) ]
     );
@@ -58,7 +55,7 @@ let arith_tests : (string * Reorder.t * Reorder.t) list =
       [
         `Func
           ( "plus",
-            [ `Move (`Temp "x", `Bop (`Plus, `Const one, `Const one)) ]
+            [ `Move (`Temp "x", `Bop (`Add, `Const one, `Const one)) ]
           );
       ],
       [ `Func ("plus", [ `Move (`Temp "x", `Const 2L) ]) ] );
@@ -66,8 +63,7 @@ let arith_tests : (string * Reorder.t * Reorder.t) list =
       [
         `Func
           ( "minus",
-            [ `Move (`Temp "x", `Bop (`Minus, `Const 4L, `Const one)) ]
-          );
+            [ `Move (`Temp "x", `Bop (`Sub, `Const 4L, `Const one)) ] );
       ],
       [ `Func ("minus", [ `Move (`Temp "x", `Const 3L) ]) ] );
     ( "div",
@@ -105,9 +101,9 @@ let arith_tests : (string * Reorder.t * Reorder.t) list =
               `Move
                 ( `Temp "x",
                   `Bop
-                    ( `Plus,
-                      `Bop (`Mult, `Const 2L, `Const 3L),
-                      `Bop (`Minus, `Const 4L, `Const one) ) );
+                    ( `Add,
+                      `Bop (`Mul, `Const 2L, `Const 3L),
+                      `Bop (`Sub, `Const 4L, `Const one) ) );
             ] );
       ],
       [ `Func ("nested", [ `Move (`Temp "x", `Const 9L) ]) ] );

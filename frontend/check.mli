@@ -44,11 +44,8 @@ val type_check_file :
 (** same as [type_check] but takes a filename as argument *)
 
 module Diagnostic : sig
+  module Error : Util.Stringable.S with type t := error
   (** [Error] represents a Diagnostic Error *)
-  module Error : sig
-    val to_string : error -> string
-    (** [to_string e] is the serialization of error [e] 9*)
-  end
 
   val iter_file :
     ?cache:cache ->

@@ -447,7 +447,7 @@ and translate_uop ~gensym ~map ~set uop e =
 and translate_int_neg ~gensym ~map ~set e =
   match DecNode.Expr.get e with
   | Primitive (`Int i) -> `Const (Int64.neg i)
-  | _ -> `Bop (`Minus, zero, translate_expr ~gensym ~map ~set e)
+  | _ -> `Bop (`Sub, zero, translate_expr ~gensym ~map ~set e)
 
 (** [translate_call ctx id es] is the mir representation of a function
     call with function id [id], arguments [es], and context [ctx] *)
@@ -462,7 +462,7 @@ and translate_bop ~gensym ~map ~set bop e1 e2 =
   match (bop, DecNode.Expr.get e1, DecNode.Expr.get e2) with
   | `And, _, _ -> translate_and ~gensym ~map ~set e1 e2
   | `Or, _, _ -> translate_or ~gensym ~map ~set e1 e2
-  | `Plus, _, _ when Expr.is_array (DecNode.Expr.typ e1) ->
+  | `Add, _, _ when Expr.is_array (DecNode.Expr.typ e1) ->
       translate_concat ~gensym ~map ~set e1 e2
   | #Ast.Op.binop, _, _ ->
       let e1 = translate_expr ~gensym ~map ~set e1 in

@@ -50,5 +50,4 @@ val to_list : t -> Lir.stmt list
 (** [to_list block] is the representation of [block] as a list of Lir
     statements *)
 
-val to_string : t -> string
-(** [to_string block] is the string representation of [block] *)
+include Util.Stringable.S with type t := t

@@ -60,11 +60,8 @@ val map : start:'a start -> f:('a -> 'b) -> Lexing.lexbuf -> 'b result
 module Diagnostic : sig
   include File.Diagnostic
 
+  module Error : Util.Stringable.S with type t := error
   (** [Error] represents a lexical or syntax diagnostic error *)
-  module Error : sig
-    val to_string : error -> string
-    (** [to_string e] is the diagnostic error message for [e] *)
-  end
 end
 
 (** [File] contains functions for parsing files *)

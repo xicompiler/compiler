@@ -14,8 +14,7 @@ module Error : sig
   val not_xi_file : string -> string
   (** [not_xi_file s] is "s: Not a Xi file" *)
 
-  val to_string : t -> string
-  (** [to_string err] is the string representing [err] *)
+  include Util.Stringable.S with type t := t
 end
 
 type error = Error.t
