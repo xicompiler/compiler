@@ -5,11 +5,11 @@
   unicode
   position
   core
+  entry
   file
   op
   primitive
   sexpPrinter
-  node
   type
   util)
  (preprocess

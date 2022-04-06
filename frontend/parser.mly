@@ -1,17 +1,16 @@
 %{
-  module Pos = Node.Position
   open Core
   open Ast
+  open Undecorated
   open Expr
   open Stmt
   open Toplevel
-  open Position
 
-  let node ~pos t = Pos.make ~pos:(get_position pos) t
+  let node ~pos t = Entry.create ~key:t ~data:(Position.of_lexer pos)
 
   let int_err pos i =
-    let pos = get_position pos in
-    let err = Position.Error.make ~pos i in
+    let pos = Position.of_lexer pos in
+    let err = Position.Error.create ~pos i in
     raise (Exception.InvalidIntLiteral err)
 
   type unsafe_int =
@@ -107,9 +106,9 @@
 (* A primitive type *)
 %token <Type.Tau.primitive> TYPE
 
-%start <Ast.t> prog
-%start <Ast.Toplevel.source> source
-%start <Ast.Toplevel.intf> intf
+%start <Undecorated.t> prog
+%start <Undecorated.source> source
+%start <Undecorated.intf> intf
 
 %left OR
 %left AND
@@ -215,10 +214,10 @@ intf:
 
 (** A [source_file] derives a source file in  Xi *)
 source_file:
-  | definitions = definitions
-    { { uses = []; definitions } }
-  | uses = node(use)+; definitions = definitions
-    { { uses; definitions } }
+  | defs = definitions
+    { Source.create ~uses:[] ~defs }
+  | uses = node(use)+; defs = definitions
+    { Source.create ~uses ~defs  }
   ;
 
 id:
@@ -332,7 +331,7 @@ uop_expr:
 
 call_expr:
   | index = index(call_expr)
-    { SafeExpr (Index index) }
+    { let (e1, e2) = index in SafeExpr (Index (e1, e2)) }
   | e = parens(expr)
     { SafeExpr e }
   | v = primitive
@@ -376,7 +375,7 @@ array:
   ;
 
 call:
-  | id = id; args = parens(enodes);
+  | id = id; args = parens(enodes)
     { (id, args) }
   ;
 
@@ -393,7 +392,7 @@ array_assign_expr:
     [e1[e2] = e3] *)
 array_assign_lhs:
   | index = index(array_assign_lhs)
-    { SafeExpr (Index index) }
+    { let (e1, e2) = index in SafeExpr (Index (e1, e2)) }
   | e = array_assign_expr
     { SafeExpr e }
 
@@ -403,8 +402,8 @@ fn:
   ;
 
 signature:
-  | id = id; LPAREN; params = params; RPAREN; types = loption(types)
-    { { id; params; types } }
+  | name = id; LPAREN; params = params; RPAREN; ret = loption(types)
+    { Sig.create ~name ~params ~ret }
   ;
 
 params:

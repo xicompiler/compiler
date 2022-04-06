@@ -42,10 +42,10 @@ let lexing_file_test name ~src ~reference =
 let lexing_file_tests = map_file_tests ~f:lexing_file_test ".lexedsol"
 
 let str_error =
-  Position.Error.make ~pos:{ line = 1; column = 1 } InvalidString
+  Position.Error.create ~pos:{ line = 1; column = 1 } InvalidString
 
 let char_error =
-  Position.Error.make ~pos:{ line = 1; column = 1 } InvalidChar
+  Position.Error.create ~pos:{ line = 1; column = 1 } InvalidChar
 
 (** [lexing_test_cases] is a list of unit tests for [lex_string]. *)
 let lexing_test_cases =

@@ -1,5 +1,7 @@
 (library
  (name type)
- (libraries core node position tau util)
+ (libraries core position util)
  (preprocess
   (pps ppx_jane)))
+
+(include_subdirs unqualified)

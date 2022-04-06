@@ -1,15 +1,13 @@
 open Core
 open Subtype
-module PosNode = Node.Position
-module DecNode = Context.Node.Decorated
-open Ast.Op
-open Ast.Decorated
-open Expr
-open Stmt
-open Toplevel
 open Primitive
 open Type
 open IrGensym
+open Util.Fn
+open Ast.Expr
+open Ast.Stmt
+open Ast.Toplevel
+open Ast.Decorated
 open Option.Let_syntax
 module Map = String.Map
 module Set = String.Set
@@ -218,7 +216,7 @@ let rec encode_tau = function
   | `Int -> "i"
   | `Bool -> "b"
   | `Array t -> "a" ^ encode_tau t
-  | `Poly -> failwith "Unexpected <poly>"
+  | `Bot -> failwith "Unexpected <poly>"
 
 (** [encode_expr t] is [t] encoded for function mangling *)
 let encode_expr = function
@@ -244,19 +242,19 @@ let mangle_fmt = format_of_string "_I%s_%s%s"
 
 let mangle id ~ctx =
   let arg, ret = Context.find_fn_exn ~id ctx in
-  let name = id |> PosNode.get |> encode_name in
+  let name = id |> Entry.key |> encode_name in
   let return = encode_term ret in
-  let args = arg |> tau_list_of_term |> encode_args in
+  let args = arg |> Term.to_tau_list |> encode_args in
   Printf.sprintf mangle_fmt name return args
 
 (** [num_returns id ctx] is the number of values that the function [id]
     returns. *)
 let num_returns id ~ctx =
   let arg, ret = Context.find_fn_exn ~id ctx in
-  ret |> tau_list_of_term |> List.length
+  ret |> Term.to_tau_list |> List.length
 
 let rec factor_expr ~gensym ~map enode =
-  match DecNode.Expr.get enode with
+  match Entry.key enode with
   | Array arr -> factor_arr ~gensym ~map arr
   | String s -> factor_string ~gensym ~map s
   | Bop (op, e1, e2) -> factor_bop ~gensym ~map e1 e2
@@ -292,7 +290,7 @@ and factor_e_options ~gensym ~map es =
   es |> List.filter_opt |> factor_es ~gensym ~map
 
 let rec factor_stmt ~gensym ~map snode =
-  match DecNode.Stmt.get snode with
+  match Entry.key snode with
   | If (e, s) -> factor_if ~gensym ~map e s
   | IfElse (e, s1, s2) -> factor_if_else ~gensym ~map e s1 s2
   | While (e, s) -> factor_while ~gensym ~map e s
@@ -341,7 +339,7 @@ and factor_stmts ~gensym ~map stmts =
 and factor_block ~gensym ~map stmts = factor_stmts ~gensym ~map stmts
 
 let factor_defn ~gensym ~map def =
-  match DecNode.Toplevel.get def with
+  match Entry.key def with
   | FnDefn (signature, block) -> factor_stmts ~gensym ~map block
   | _ -> map
 
@@ -350,8 +348,8 @@ let factor_definitions ~gensym ~map defns =
   List.fold ~f ~init:map defns
 
 let global_defn ~gensym ~set def =
-  match DecNode.Toplevel.get def with
-  | GlobalInit (id, _, _) -> Set.add set (PosNode.get id)
+  match Entry.key def with
+  | GlobalInit (id, _, _) -> Set.add set (Entry.key id)
   | _ -> set
 
 let global_definitions ~gensym ~set defns =
@@ -366,7 +364,7 @@ let translate_primitive = function
 
 (** [translate_primitive id] is the mir representation of [id] *)
 let translate_id ~set id =
-  let id = PosNode.get id in
+  let id = Entry.key id in
   if Set.mem set id then !(`Name id) else `Temp id
 
 (** [while_seq c s lh lt lf] is a while sequence with control statement
@@ -392,8 +390,8 @@ let while_lt ~gensym e1 e2 s : stmt =
 (** [translate_expr enode] is the mir representation of expression node
     [enode] *)
 let rec translate_expr ~gensym ~map ~set enode =
-  let ctx = DecNode.Expr.context enode in
-  match DecNode.Expr.get enode with
+  let ctx = Data.Expr.context @@ Entry.data enode in
+  match Entry.key enode with
   | Primitive p -> `Const (translate_primitive p)
   | Id id -> translate_id ~set id
   | Array arr -> translate_array ~gensym ~map ~set arr
@@ -445,7 +443,7 @@ and translate_uop ~gensym ~map ~set uop e =
 (** [translate_int_neg e] is the mir representation of an integer
     negation of [e] *)
 and translate_int_neg ~gensym ~map ~set e =
-  match DecNode.Expr.get e with
+  match Entry.key e with
   | Primitive (`Int i) -> `Const (Int64.neg i)
   | _ -> `Bop (`Sub, zero, translate_expr ~gensym ~map ~set e)
 
@@ -459,10 +457,11 @@ and translate_call ~gensym ~map ~set ~ctx id es =
 (** [translate_bop bop e1 e2] is the mir representation of binary
     operator expression [bop e1 e2] *)
 and translate_bop ~gensym ~map ~set bop e1 e2 =
-  match (bop, DecNode.Expr.get e1, DecNode.Expr.get e2) with
+  let typ = Data.Expr.typ @@ Entry.data e1 in
+  match (bop, Entry.key e1, Entry.key e2) with
   | `And, _, _ -> translate_and ~gensym ~map ~set e1 e2
   | `Or, _, _ -> translate_or ~gensym ~map ~set e1 e2
-  | `Add, _, _ when Expr.is_array (DecNode.Expr.typ e1) ->
+  | `Add, _, _ when Expr.is_array typ ->
       translate_concat ~gensym ~map ~set e1 e2
   | #Ast.Op.binop, _, _ ->
       let e1 = translate_expr ~gensym ~map ~set e1 in
@@ -546,8 +545,8 @@ and translate_index ~gensym ~map ~set e1 e2 =
 (** [translate_stmt snode] is the mir representation of statement node
     [snode] *)
 and translate_stmt ~gensym ~map ~set snode =
-  let ctx = DecNode.Stmt.context snode in
-  match DecNode.Stmt.get snode with
+  let ctx = Data.Stmt.context @@ Entry.data snode in
+  match Entry.key snode with
   | If (e, s) -> translate_if ~gensym ~map ~set e s
   | IfElse (e, s1, s2) -> translate_if_else ~gensym ~map ~set e s1 s2
   | While (e, s) -> translate_while ~gensym ~map ~set e s
@@ -658,7 +657,7 @@ and translate_array_decl_helper ~gensym name = function
 (** [translate_array_decl id es] is the mir representation of an array
     declaration for variable [id] with lengths [es] *)
 and translate_array_decl ~gensym ~map ~set id es =
-  let name = `Temp (PosNode.get id) in
+  let name = `Temp (Entry.key id) in
   let moves, es = pure_exprs_opt ~gensym ~map ~set es in
   let decl = translate_array_decl_helper ~gensym name es in
   `Seq [ moves; decl ]
@@ -705,7 +704,7 @@ and translate_block ~gensym ~map ~set stmts =
 
 (** [translate_control enode t f] translates booleans to control flow *)
 and translate_control ~gensym ~map ~set enode t f =
-  match DecNode.Expr.get enode with
+  match Entry.key enode with
   | Primitive (`Bool b) -> `Jump (`Name (if b then t else f))
   | Uop (`LogNeg, e) -> translate_control ~gensym ~map ~set e f t
   | Bop (`And, e1, e2) ->
@@ -734,19 +733,14 @@ let returns_unit ~ctx id =
 
 (** [translate_fn_defn sign] is the mir representation of a function
     definition with signature [sign] *)
-let translate_fn_defn
-    ~gensym
-    ~map
-    ~set
-    ~ctx
-    ({ id; params } : Ast.signature)
-    block =
+let translate_fn_defn ~gensym ~map ~set ~ctx signature block =
+  let id = Sig.name signature in
   let name = mangle id ~ctx in
   let f i (id, _) =
     let arg = IrGensym.arg (Int.succ i) in
-    `Temp (PosNode.get id) := arg
+    `Temp (Entry.key id) := arg
   in
-  let moves = List.mapi ~f params in
+  let moves = List.mapi ~f @@ Sig.params signature in
   let block = translate_block ~gensym ~map ~set block in
   let ret =
     if returns_unit ~ctx id then
@@ -759,14 +753,15 @@ let translate_fn_defn
     global initialization of [id] with type [typ] and primitive [p] as
     its value *)
 let translate_global_init id p =
-  `Data (PosNode.get id, [ translate_primitive p ])
+  `Data (Entry.key id, [ translate_primitive p ])
 
 (** [translate_defn def] is the mir representation of source toplevel
     definition [def] *)
 let translate_defn ~gensym ~map ~set def =
-  match DecNode.Toplevel.get def with
+  match Entry.key def with
   | FnDefn (signature, block) ->
-      let ctx = DecNode.Toplevel.context def in
+      let ctx = Data.Toplevel.context @@ Entry.data def in
+      (* TODO : fix this formatting *)
       Some
         (translate_fn_defn ~gensym ~map ~set ~ctx signature block
           :> toplevel)
@@ -782,9 +777,9 @@ let get_data_from_map map =
   let f ~key ~data acc = data_of_string data key :: acc in
   Map.fold ~f ~init:[] map
 
-let translate ~gensym { uses; definitions } =
-  let map = factor_definitions ~gensym ~map:Map.empty definitions in
-  let set = global_definitions ~gensym ~set:Set.empty definitions in
+let translate ~gensym src =
+  let defs = Source.defs src in
+  let map = factor_definitions ~gensym ~map:Map.empty defs in
+  let set = global_definitions ~gensym ~set:Set.empty defs in
   let globals = get_data_from_map map in
-  globals
-  @ List.filter_map ~f:(translate_defn ~gensym ~map ~set) definitions
+  globals @ List.filter_map ~f:(translate_defn ~gensym ~map ~set) defs

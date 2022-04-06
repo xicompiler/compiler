@@ -24,10 +24,6 @@ module Op : module type of struct
   include Op
 end
 
-val translate : Ast.Decorated.Toplevel.source -> Reorder.t
-(** [translate ast] is decorated ast [ast] translated to lowered
-    (canonical) IR *)
-
 val sexp_of_t : compunit:string -> Reorder.t -> Sexp.t
 (** [sexp_of_t ~compunit tlist] is the s-expression representation of
     the reordered toplevel list with COMPUNIT name [compunit] *)
@@ -35,8 +31,7 @@ val sexp_of_t : compunit:string -> Reorder.t -> Sexp.t
 val const_fold : Reorder.t -> Reorder.t
 (** [const_fold stmts] is [stmts] constant folded at the IR level *)
 
-val translate :
-  optimize:bool -> Ast.Decorated.Toplevel.source -> Reorder.t
+val translate : optimize:bool -> Ast.Decorated.source -> Reorder.t
 (** [translate ~optimize ast] is decorated ast [ast] translated to
     lowered (canonical) IR, with optimizations if [optimize] is true *)
 

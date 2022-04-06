@@ -1,5 +1,5 @@
 (library
- (name tau)
- (libraries core util)
+ (name entry)
+ (libraries core)
  (preprocess
   (pps ppx_jane)))

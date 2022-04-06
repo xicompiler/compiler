@@ -1,11 +1,15 @@
 open Core
 open Sexplib.Std
+open Util.Fn
 
 type t =
   [ Tau.t
   | `Tuple of Tau.t list
   ]
 [@@deriving sexp_of]
+
+let to_tau = function `Tuple _ -> None | #Tau.t as t -> Some t
+let is_tau = to_tau >> Option.is_some
 
 let to_string = function
   | #Tau.t as t -> Tau.to_string t

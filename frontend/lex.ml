@@ -100,7 +100,7 @@ module Diagnostic = struct
   let lex_pos_rev lexbuf =
     let rec help acc =
       let res = read_result lexbuf in
-      let pos = Position.get_position_lb lexbuf in
+      let pos = Position.of_lexbuf lexbuf in
       match res with
       | Ok EOF -> acc
       | Ok _ -> help ((res, pos) :: acc)

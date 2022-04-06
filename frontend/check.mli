@@ -4,10 +4,10 @@ open Core
 module Error : sig
   type t =
     [ Parse.error
-    | `SemanticError of Type.Error.Positioned.error
+    | `SemanticError of Type.Error.Positioned.t
     ]
 
-  val string_of_cause : Type.error -> string
+  val string_of_cause : Type.Error.t -> string
   (** [string_of_cause e] is the error message corresponding to [e] *)
 
   val to_string : string -> t -> string
@@ -15,7 +15,7 @@ module Error : sig
       error [e] in [filename] *)
 end
 
-type cache = (Ast.Toplevel.intf option, exn) result String.Table.t
+type cache = (Ast.Undecorated.intf option, exn) result String.Table.t
 (** [cache] caches interfaces used in type-checking *)
 
 type error = Error.t
@@ -32,7 +32,8 @@ type dependencies = {
 (** [dependecies] represents a type for representing the external
     dependencies for a fil e*)
 
-val type_check : ?cache:cache -> deps:dependencies -> Ast.t -> result
+val type_check :
+  ?cache:cache -> deps:dependencies -> Ast.Undecorated.t -> result
 (** [type_check ~cache { lib_dir; std_dir } lb] returns [Ok ast] where
     [ast] is the decorated ast of [lb], or [Error err] where [err] is a
     parsing error or type error. If [cache] is [Some tbl], AST nodes are

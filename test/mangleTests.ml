@@ -8,7 +8,7 @@ let pos =
   { line = 0; column = 0 }
 
 (** [id_with_pos id] is [id] with dummy position information *)
-let id_with_pos = Node.Position.make ~pos
+let id_with_pos id = Entry.create ~key:id ~data:pos
 
 (** [mangle_test ~name ~expect ~ctx id] constructs an OUnit test with
     name [name] asserting that [mangle id ~ctx] is equal to [expect] *)

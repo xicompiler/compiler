@@ -1,7 +1,7 @@
 open Core
 open Definitions
 
-type error =
+type t =
   | Unbound of string
   | Bound of string
   | ExpectedTau
@@ -11,7 +11,7 @@ type error =
   | ExpectedVoid
   | FnMismatch of string
   | OpMismatch
-  | Mismatch of expr * expr
+  | ExprMismatch of expr * expr
   | StmtMismatch of stmt * stmt
   | CountMismatch
   | IllegalArrayDecl
@@ -28,7 +28,7 @@ let to_string = function
   | FnMismatch s ->
       "Function declaration " ^ s ^ " does not match signature"
   | OpMismatch -> "Operation mismatch"
-  | Mismatch (e1, e2) ->
+  | ExprMismatch (e1, e2) ->
       let str1 = Expr.to_string e1 in
       let str2 = Expr.to_string e2 in
       Printf.sprintf "Expression mismatch, types %s and %s" str1 str2
@@ -41,19 +41,18 @@ let to_string = function
   | UnboundIntf s -> "Unbound interface: " ^ s
 
 module Positioned = struct
-  include Position.Error
+  type nonrec t = t Position.Error.t
+  type nonrec 'a result = ('a, t) result
 
-  type nonrec error = error t
-  type nonrec 'a result = ('a, error) result
+  let expr_mismatch pos ~expect ~got =
+    let cause = ExprMismatch ((expect :> expr), (got :> expr)) in
+    Position.Error.create ~pos cause
 
-  let mismatch pos ~expect got =
-    let cause = Mismatch ((expect :> expr), (got :> expr)) in
-    make ~pos cause
-
-  let count_mismatch pos = make ~pos CountMismatch
-  let illegal_arr_decl pos = make ~pos IllegalArrayDecl
-  let expected_unit pos = make ~pos ExpectedUnit
-  let expected_array pos = make ~pos ExpectedArray
+  let count_mismatch pos = Position.Error.create ~pos CountMismatch
+  let op_mismatch pos = Position.Error.create ~pos OpMismatch
+  let illegal_arr_decl pos = Position.Error.create ~pos IllegalArrayDecl
+  let expected_unit pos = Position.Error.create ~pos ExpectedUnit
+  let expected_array pos = Position.Error.create ~pos ExpectedArray
 end
 
-type nonrec 'a result = ('a, error) result
+type nonrec 'a result = ('a, t) result

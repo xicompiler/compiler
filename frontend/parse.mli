@@ -36,17 +36,17 @@ val parse : start:'a start -> Lexing.lexbuf -> 'a result
     [Error SyntaxError] if [start lexbuf] raises a syntax error, and
     [Error LexicalError] if [start lexbuf] raises a lexical error. *)
 
-val parse_prog : Lexing.lexbuf -> Ast.t result
+val parse_prog : Lexing.lexbuf -> Ast.Undecorated.t result
 (** [parse_prog lexbuf] is [Ok ast] if [start lexbuf] [ast],
     [Error SyntaxError] if [start lexbuf] raises a syntax error, and
     [Error LexicalError] if [start lexbuf] raises a lexical error. *)
 
-val parse_source : Lexing.lexbuf -> Ast.Toplevel.source result
+val parse_source : Lexing.lexbuf -> Ast.Undecorated.source result
 (** [parse_source lexbuf] is [Ok ast] if [start lexbuf] [ast],
     [Error SyntaxError] if [start lexbuf] raises a syntax error, and
     [Error LexicalError] if [start lexbuf] raises a lexical error. *)
 
-val parse_intf : Lexing.lexbuf -> Ast.Toplevel.intf result
+val parse_intf : Lexing.lexbuf -> Ast.Undecorated.intf result
 (** [parse_intf lexbuf] is [Ok ast] if [start lexbuf] [ast],
     [Error SyntaxError] if [start lexbuf] raises a syntax error, and
     [Error LexicalError] if [start lexbuf] raises a lexical error. *)
@@ -66,16 +66,17 @@ end
 
 (** [File] contains functions for parsing files *)
 module File : sig
-  val parse_intf : string -> Ast.Toplevel.intf result File.result
+  val parse_intf : string -> Ast.Undecorated.intf result File.result
   (** [parse_intf_file src] is the result of parsing the file located at
       [src], not checking the file extension *)
 
-  type 'a source = Ast.Toplevel.source -> 'a
-  (** An ['a source] maps [Ast.Toplevel.source] to ['a] *)
+  type 'a source = Ast.Undecorated.source -> 'a
+  (** An ['a source] maps [Ast.Undecorated.source] to ['a] *)
 
-  type 'a intf = Ast.Toplevel.intf -> 'a
-  (** An ['a source] maps [Ast.Toplevel.source] to ['a] *)
+  type 'a intf = Ast.Undecorated.intf -> 'a
+  (** An ['a source] maps [Ast.Undecorated.source] to ['a] *)
 
-  val map_ast : f:(Ast.t -> 'a) -> string -> 'a result File.Xi.result
+  val map_ast :
+    f:(Ast.Undecorated.t -> 'a) -> string -> 'a result File.Xi.result
   (** [map_ast ~f file] applies [f] to the AST parsed from [file] *)
 end

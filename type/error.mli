@@ -1,8 +1,8 @@
 open Core
 open Definitions
 
-(** An [error] is the type of a Xi type error *)
-type error =
+(** An [t] is the type of a Xi type error *)
+type t =
   | Unbound of string
   | Bound of string
   | ExpectedTau
@@ -12,42 +12,42 @@ type error =
   | ExpectedVoid
   | FnMismatch of string
   | OpMismatch
-  | Mismatch of expr * expr
+  | ExprMismatch of expr * expr
   | StmtMismatch of stmt * stmt
   | CountMismatch
   | IllegalArrayDecl
   | UnboundIntf of string
 
-val to_string : error -> string
-(** [to_string error] is the string describing [error] *)
+include Util.Stringable.S with type t := t
 
 (** [Positioned] represents an error with a position *)
 module Positioned : sig
-  include module type of struct
-    include Position.Error
-  end
-
-  type nonrec error = error t
+  type nonrec t = t Position.Error.t
   (** an [error] represents a type error with an associated position *)
 
-  type nonrec 'a result = ('a, error) result
+  type nonrec 'a result = ('a, t) result
   (** An ['a result] is either [Ok 'a] or a semantic error *)
 
-  val mismatch : Position.t -> expect:[< expr ] -> [< expr ] -> error
-  (** [mismatch pos expect got] is [make ~pos Mismatch(expect,got)] *)
+  val expr_mismatch :
+    Position.t -> expect:[< expr ] -> got:[< expr ] -> t
+  (** [mismatch pos expect got] is [make ~pos ExprMismatch(expect,got)] *)
 
-  val count_mismatch : Position.t -> error
+  val op_mismatch : Position.t -> t
+  (** [op_mismatch pos] is an error occuring at positon [pos] describing
+      a mismatch of operands *)
+
+  val count_mismatch : Position.t -> t
   (** [count_mismatch pos] is [make ~pos CountMismatch] *)
 
-  val illegal_arr_decl : Position.t -> error
+  val illegal_arr_decl : Position.t -> t
   (** [illegal_arr_decl pos] is [make ~pos IllegalArrayDecl] *)
 
-  val expected_unit : Position.t -> error
+  val expected_unit : Position.t -> t
   (** [expected_unit pos] is [make ~pos ExpectedUnit] *)
 
-  val expected_array : Position.t -> error
+  val expected_array : Position.t -> t
   (** [expected_array pos] is [make ~pos ExpectedArray] *)
 end
 
-type nonrec 'a result = ('a, error) result
+type nonrec 'a result = ('a, t) result
 (** An ['a result] is either [Ok 'a] or [Error error] *)

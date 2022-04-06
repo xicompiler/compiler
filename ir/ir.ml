@@ -171,7 +171,7 @@ module Diagnostic = struct
 
   let file_to_file ?cache ~src ~out ~deps ~optimize () =
     let compunit = Util.File.base src in
-    let open Ast.Decorated in
+    let open Ast in
     let f = iter_source ~f:(print_source ~out ~compunit ~optimize) in
     Check.Diagnostic.iter_file ?cache ~src ~out ~deps ~f ()
 end

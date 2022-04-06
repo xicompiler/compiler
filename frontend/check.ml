@@ -3,11 +3,9 @@ open Result.Let_syntax
 open Ast
 
 module Error = struct
-  type type_error = Decorated.Error.error
-
   type t =
     [ Parse.error
-    | `SemanticError of type_error
+    | `SemanticError of Type.Error.Positioned.t
     ]
 
   (** [desc e] is the error description corresponding to [e] *)
@@ -25,7 +23,7 @@ module Error = struct
 end
 
 type error = Error.t
-type cache = (Ast.Toplevel.intf option, exn) result String.Table.t
+type cache = (Ast.Undecorated.intf option, exn) result String.Table.t
 
 type dependencies = {
   lib_dir : string;
@@ -79,7 +77,7 @@ let semantic_error e = `SemanticError e
 let type_check ?cache ~deps ast =
   try
     ast
-    |> type_check ~find_intf:(find_intf_exn ?cache ~deps)
+    |> Undecorated.type_check ~find_intf:(find_intf_exn ?cache ~deps)
     |> Result.map_error ~f:semantic_error
   with Parse.Exn e -> Error (coerce e)
 

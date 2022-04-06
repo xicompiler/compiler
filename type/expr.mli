@@ -7,8 +7,13 @@ type t =
 [@@deriving sexp_of]
 (** [t] is the type of an expression node in Xi. *)
 
-val to_string : t -> string
-(** [to_string expr] is the string representing [expr] *)
+include Util.Stringable.S with type t := t
+
+val to_tau : t -> Tau.t option
+(** [to_tau e] is [Some t] if [e] is tau type [t] and [None] otherwise *)
+
+val is_tau : t -> bool
+(** [is_tau t] is [true] iff [t] is not [`Tuple _] *)
 
 val equal : [< t ] -> [< t ] -> bool
 (** [equal t1 t2] is [true] iff [t1] and [t2] represent the same

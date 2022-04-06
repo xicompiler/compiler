@@ -37,9 +37,9 @@ let parse ~start lexbuf =
   try Ok (start Lex.read lexbuf) with
   | Lex.Error err -> Error (`LexicalError err)
   | Parser.Error ->
-      let pos = Position.get_position_lb lexbuf in
+      let pos = Position.of_lexbuf lexbuf in
       let cause = Lexing.lexeme lexbuf in
-      Error (`SyntaxError (Position.Error.make ~pos cause))
+      Error (`SyntaxError (Position.Error.create ~pos cause))
   | Exception.InvalidIntLiteral err -> Error (`SyntaxError err)
 
 let parse_prog = parse ~start:Parser.prog
@@ -47,11 +47,11 @@ let parse_source = parse ~start:Parser.source
 let parse_intf = parse ~start:Parser.intf
 
 (** [ast_of_source read lexbuf] wraps [Parser.source read lexbuf] up as
-    [Ast.t]*)
+    [Ast.Undecorated.t]*)
 let ast_of_source read lexbuf = Ast.Source (Parser.source read lexbuf)
 
 (** [ast_of_intf read lexbuf] wraps [Parser.intf read lexbuf] up as
-    [Ast.t]*)
+    [Ast.Undecorated.t]*)
 let ast_of_intf read lexbuf = Ast.Intf (Parser.intf read lexbuf)
 
 let map ~start ~f buf = parse ~start buf >>| f
@@ -95,8 +95,8 @@ module Diagnostic = struct
 end
 
 module File = struct
-  type 'a source = Ast.Toplevel.source -> 'a
-  type 'a intf = Ast.Toplevel.intf -> 'a
+  type 'a source = Ast.Undecorated.source -> 'a
+  type 'a intf = Ast.Undecorated.intf -> 'a
 
   (** Same as [map] but both [source] and [intf] return the same type *)
   let map_same ~source ~intf file : 'a result File.Xi.result =

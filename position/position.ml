@@ -17,7 +17,7 @@ module Error = struct
     position : position;
   }
 
-  let make ~pos cause = { cause; position = pos }
+  let create ~pos cause = { cause; position = pos }
   let cause { cause } = cause
   let position { position } = position
   let format { cause; position } ~f = cause |> f |> format position
@@ -28,8 +28,17 @@ end
 
 type 'a error = 'a Error.t
 
-let get_position (p : Lexing.position) =
+module Entry = struct
+  type 'a t = ('a, position) Entry.t
+
+  let error ~cause e =
+    let pos = Entry.data e in
+    Error.create ~pos cause
+end
+
+type 'a entry = 'a Entry.t
+
+let of_lexer (p : Lexing.position) =
   { line = p.pos_lnum; column = col_offset + p.pos_cnum - p.pos_bol }
 
-let get_position_lb ({ lex_start_p = p; _ } : Lexing.lexbuf) =
-  get_position p
+let of_lexbuf Lexing.{ lex_start_p; _ } = of_lexer lex_start_p

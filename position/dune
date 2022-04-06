@@ -1,2 +1,3 @@
 (library
- (name position))
+ (name position)
+ (libraries entry util))

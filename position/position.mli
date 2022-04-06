@@ -16,8 +16,8 @@ module Error : sig
   (** ['a t] is the type of an error with cause of type ['a], occurring
       at a specified position. *)
 
-  val make : pos:position -> 'a -> 'a t
-  (** [make ~pos cause] is a [t] ocurring at position [pos] with cause
+  val create : pos:position -> 'a -> 'a t
+  (** [create ~pos cause] is a [t] ocurring at position [pos] with cause
       [cause] *)
 
   val cause : 'a t -> 'a
@@ -36,13 +36,28 @@ module Error : sig
     fmt:('b -> string -> 'c, unit, string) format ->
     msg:'b ->
     'c
+  (** TODO : remove this confusing function *)
 end
 
 type 'a error = 'a Error.t
 (** [error] is an alias for [Error.t] *)
 
-val get_position : Lexing.position -> t
-(** [get_position pos] is the position [pos] *)
+(** [Entry] is the type of an entry carrying data of type position *)
+module Entry : sig
+  type 'a t = ('a, position) Entry.t
+  (** ['a t] represents an entry whose data is a [position] and whose
+      key is type ['a] *)
 
-val get_position_lb : Lexing.lexbuf -> t
-(** [get_position_lb lexbuf] is the current position of [lexbuf] *)
+  val error : cause:'err -> 'a t -> 'err error
+  (** [error ~cause e] is an error with cause [cause] occurring at the
+      position of [e] *)
+end
+
+type 'a entry = 'a Entry.t
+(** ['a entry] is an alias for ['a Entry.t] *)
+
+val of_lexer : Lexing.position -> t
+(** [of_lexer pos] is the position [pos] *)
+
+val of_lexbuf : Lexing.lexbuf -> t
+(** [of_lexbuf lexbuf] is the current position of [lexbuf] *)

@@ -29,6 +29,7 @@ val mangle : Context.Error.id -> ctx:Context.t -> label
 val commute : expr -> expr -> bool
 (** [commute e1 e2] is [true] iff expressions [e1] and [e2] commute *)
 
-val translate : gensym:IrGensym.t -> Toplevel.source -> toplevel list
+val translate :
+  gensym:IrGensym.t -> Ast.Decorated.source -> toplevel list
 (** [translate ~gensym src] is decorated ast source [src] translated to
     mid-level IR, generating fresh symbols using [gensym] *)
