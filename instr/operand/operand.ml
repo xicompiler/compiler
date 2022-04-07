@@ -1,25 +1,19 @@
-open Core
-open Option.Monad_infix
-open Util.Fn
+open! Core
 
-type dest =
-  [ Reg.t
-  | `Mem of Mem.t
-  ]
-
-type imm = int64
+type imm = [ `Imm of Imm.t ]
 
 type t =
-  [ dest
-  | `Imm of imm
+  [ Dest.t
+  | imm
   ]
 
-module Encoding = struct
-  type rm = [ `RM of Reg.t * dest ]
-  type mr = [ `MR of dest * Reg.t ]
-  type mi = [ `MI of dest * imm ]
-  type rmi = [ `RMI of Reg.t * dest * imm ]
-end
+type abstract =
+  [ Dest.abstract
+  | imm
+  ]
 
+module Encoding = Encoding
 module Reg = Reg
 module Mem = Mem
+module Imm = Imm
+module Dest = Dest

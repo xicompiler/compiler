@@ -9,10 +9,12 @@ type 'expr dest =
   | temp
   ]
 
+type name = [ `Name of label ]
+
 type 'expr expr =
-  [ `Const of int64
+  [ name
+  | `Const of int64
   | `Bop of Op.t * 'expr * 'expr
-  | `Name of label
   | 'expr dest
   ]
 

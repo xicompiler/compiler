@@ -1,7 +1,7 @@
 (** [Index] represents the index argument to a memory operand *)
 module Index : sig
-  type t
-  (** [t] represents an index of a memory operand, along with an
+  type 'a t
+  (** ['a t] represents an index of a memory operand, along with an
       optional scalar *)
 
   type scale =
@@ -13,14 +13,9 @@ module Index : sig
   (** [scale] is the type of a scalar multiplier used to scale the
       [scale] register *)
 
-  val make : ?scale:scale -> Reg.t -> t
-  (** make [make index ~scale] is an index argument of a memory operand *)
-
-  include Util.Stringable.S with type t := t
+  val create : ?scale:scale -> 'a -> 'a t
+  (** [create index ~scale] is an index argument of a memory operand *)
 end
-
-type t
-(** [t] represents a memory operand in Xi *)
 
 (** [Size] is the size specifier for a size directive. *)
 module Size : sig
@@ -34,9 +29,19 @@ module Size : sig
   include Util.Stringable.S with type t := t
 end
 
-val make : ?size:Size.t -> ?index:Index.t -> ?offset:int64 -> Reg.t -> t
-(** [make base ~size ~index ~offset] is the memory operand [\size ptr
+type 'a generic
+(** ['a generic] represents a memory operand in Xi *)
+
+val create :
+  ?size:Size.t -> ?index:'a Index.t -> ?offset:int64 -> 'a -> 'a generic
+(** [create base ~size ~index ~offset] is the memory operand [\size ptr
     [base + index * scale + offset\]]. If unspecified, [size] is
     [Qword]. *)
 
+type t = Reg.t generic
+(** [t] is the type of a memory operand for a concrete instruction *)
+
 include Util.Stringable.S with type t := t
+
+type abstract = Reg.abstract generic
+(** [abstract] is the type of an abstract memory operand *)

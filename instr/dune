@@ -1,6 +1,6 @@
 (library
  (name instr)
- (libraries core util)
+ (libraries core ir util)
  (preprocess
   (pps ppx_jane)))
 

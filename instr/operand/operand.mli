@@ -1,36 +1,32 @@
-type dest =
-  [ Reg.t
-  | `Mem of Mem.t
-  ]
-(** A [dest] is an operand that can be the destination of an instruction *)
+open! Core
 
-type imm = int64
-(** [imm] is the type of an immediate operand *)
+type imm = [ `Imm of Imm.t ]
+(** [imm] represents an immediate operand *)
 
 type t =
-  [ dest
-  | `Imm of imm
+  [ Dest.t
+  | imm
   ]
 (** [t] is the type of an operand in x86 *)
 
+type abstract =
+  [ Dest.abstract
+  | imm
+  ]
+(** [abstract] is the type of an abstract operand in x86 *)
+
+module Encoding : module type of Encoding
 (** [Encoding] represents an instruction encoding, as specified in the
     x86 manual *)
-module Encoding : sig
-  type rm = [ `RM of Reg.t * dest ]
-  (** [rm] is the type of a [RM] encoding, as described in the docs *)
-
-  type mr = [ `MR of dest * Reg.t ]
-  (** [mr] is the type of a [MR] encoding, as described in the docs *)
-
-  type mi = [ `MI of dest * imm ]
-  (** [mi] is the type of a [MI] encoding, as described in the docs *)
-
-  type rmi = [ `RMI of Reg.t * dest * imm ]
-  (** [rmi] is the type of a [RMI] encoding, as described in the docs *)
-end
 
 module Reg : module type of Reg
-(** [Reg] represents a module in Xi *)
+(** [Reg] represents a module in x86 *)
 
 module Mem : module type of Mem
 (** [Mem] represents a memory operand in x86 *)
+
+module Imm : module type of Imm
+(** [Imm] represents an immediate operand in x86 *)
+
+module Dest : module type of Dest
+(** [Dest] represents a destination operand in x86 *)

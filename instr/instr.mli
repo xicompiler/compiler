@@ -1,34 +1,47 @@
 open Core
+open Operand
 
-type label = string
-(** [label] is the type of an assembly label *)
+type jmp =
+  [ Dest.t
+  | Ir.name
+  ]
+(** [jmp] is the type of an operand to a concrete [jmp] instruction *)
+
+type mul =
+  [ Dest.t
+  | (Reg.t, Dest.t) Encoding.rm
+  | (Reg.t, Dest.t) Encoding.rmi
+  ]
+(** [mul] is the type of an operand to a concrete [mul] or [imul]
+    instruction *)
+
+type t =
+  < reg : Reg.t
+  ; reg8 : Reg.Bit8.t
+  ; dest : Dest.t
+  ; operand : Operand.t
+  ; jmp : jmp
+  ; mul : mul >
+  Generic.t
+(** [t] is the type of a concrete assembly instruction *)
 
 (** [Operand] represents an operand to an instruction *)
 module Operand : module type of struct
   include Operand
 end
 
-type operand = Operand.t
-(** [operand] is the type of an instruction operand in x86 *)
+(** [Generic] represents a generic assembly instruction, parameterized
+    over operand types *)
+module Generic : module type of struct
+  include Generic
+end
 
-open Operand
+(** [Abstract] represents an abstract assembly instruction *)
+module Abstract : module type of struct
+  include Abstract
+end
 
-(** [t] is the type of an instruction in x86 *)
-type t =
-  | Jmp of [ dest | `Name of label ]
-  | Jcc of ConditionCode.t * label
-  | Push of operand
-  | Pop of dest
-  | Mov of dest * operand
-  | IMul of [ dest | Encoding.rm | Encoding.rmi ]
-  | Inc of dest
-  | Dec of dest
-  | Call of dest
-  | IDiv of dest
-  | Shl of dest * imm
-  | Shr of dest * imm
-  | Sar of dest * imm
-  | Add of dest * operand
-  | Sub of dest * operand
-  | Lea of Reg.t * dest
-  | Ret
+(** [ConditionCode] is a condition code in x86 *)
+module ConditionCode : module type of struct
+  include ConditionCode
+end

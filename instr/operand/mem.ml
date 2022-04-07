@@ -20,12 +20,12 @@ module Index = struct
   (** [string_of_scale scale] is the string representation of [scale] *)
   let string_of_scale = int_of_scale >> string_of_int
 
-  type t = {
-    index : Reg.t;
+  type 'a t = {
+    index : 'a;
     scale : scale option;
   }
 
-  let make ?scale index = { index; scale }
+  let create ?scale index = { index; scale }
 
   let to_string { index; scale } =
     let index = Reg.to_string index in
@@ -47,15 +47,17 @@ module Size = struct
   let to_string = Variants.to_name >> String.lowercase
 end
 
-type t = {
+type 'a generic = {
   size : Size.t;
-  base : Reg.t;
-  index : Index.t option;
+  base : 'a;
+  index : 'a Index.t option;
   offset : int64 option;
 }
 
-let make ?(size = Size.Qword) ?index ?offset base =
+let create ?(size = Size.Qword) ?index ?offset base =
   { size; base; index; offset }
+
+type t = Reg.t generic
 
 let to_string { size; base; index; offset } =
   [ index >>| Index.to_string; offset >>| Int64.to_string ]
@@ -63,3 +65,5 @@ let to_string { size; base; index; offset } =
   |> List.cons (Reg.to_string base)
   |> String.concat ~sep:" + "
   |> Printf.sprintf "%s ptr [%s]" (Size.to_string size)
+
+type abstract = Reg.abstract generic

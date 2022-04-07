@@ -15,10 +15,13 @@ type 'expr dest =
   ]
 (** An ['expr dest] is an expression that can be the target of a move *)
 
+type name = [ `Name of label ]
+(** [name] represents an expression that is the address of a label *)
+
 type 'expr expr =
-  [ `Const of int64
+  [ name
+  | `Const of int64
   | `Bop of Op.t * 'expr * 'expr
-  | `Name of label
   | 'expr dest
   ]
 (** An ['expr expr] is the subtype of an IR expression *)
