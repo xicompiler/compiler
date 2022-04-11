@@ -1,17 +1,30 @@
 open OUnit2
-open Frontend
 open Common
+
+(** [deps] are the dependencies used for testing *)
+let deps : Frontend.Check.dependencies =
+  {
+    std_dir = Util.File.stdlib;
+    lib_dir = "./test/typecheck/interfaces";
+  }
 
 (** [ir_file_test name ~src ~reference] tests ir generation for [src],
     comparing the resulting files with [reference] *)
 let ir_file_test name ~src ~reference =
   let expected = file_contents reference in
+  let ir_out = output_file ~ext:"ir.output" src in
+  let ir_out_optimized = output_file ~ext:"ir.o.output" src in
+  ignore
+    (Ir.Diagnostic.file_to_file ~src ~out:ir_out ~deps ~optimize:false
+       ());
+  ignore
+    (Ir.Diagnostic.file_to_file ~src ~out:ir_out_optimized ~deps
+       ~optimize:true ());
   let out = output_file src in
   let out_optimized = output_file ~ext:"o.output" src in
   let command =
-    Printf.sprintf
-      "./xic --irrun -O %s > %s\nwait\n./xic --irrun %s > %s" src out
-      src out_optimized
+    Printf.sprintf "./irrun %s > %s\n./irrun %s > %s" ir_out out
+      ir_out_optimized out_optimized
   in
   ignore (Sys.command command);
   let actual = file_contents out in
