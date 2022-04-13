@@ -16,6 +16,12 @@ type unsigned =
   ]
 (** [unsigned] is the type of an unsigned comparison operator *)
 
+type cmp =
+  [ unsigned
+  | Binop.Cmp.t
+  ]
+(** [cmp] is the type of an IR comparison operator *)
+
 type t =
   [ bitwise
   | unsigned

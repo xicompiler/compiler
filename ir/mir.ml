@@ -333,7 +333,7 @@ and factor_pr_call ~gensym ~map es = factor_es ~gensym ~map es
 and factor_return ~gensym ~map es = factor_es ~gensym ~map es
 
 and factor_stmts ~gensym ~map stmts =
-  let f m stmt = factor_stmt ~gensym ~map:m stmt in
+  let f m = factor_stmt ~gensym ~map:m in
   List.fold ~f ~init:map stmts
 
 and factor_block ~gensym ~map stmts = factor_stmts ~gensym ~map stmts
@@ -424,14 +424,14 @@ and array_literal ~gensym elts =
 
 (** [translate_string str] is the mir representation of [str] *)
 and translate_string ~gensym ~map ~set str =
-  if Map.mem map str then
-    let global = Map.find_exn map str in
-    let t1, t2 = Temp.fresh2 gensym in
-    `ESeq (`Seq [ t2 := `Name global; t1 := t2 + eight ], t1)
-  else
-    let f c = `Const (Util.Int64.of_char c) in
-    str |> String.to_list_rev |> List.rev_map ~f
-    |> array_literal ~gensym
+  match Map.find map str with
+  | Some global ->
+      let t1, t2 = Temp.fresh2 gensym in
+      `ESeq (`Seq [ t2 := `Name global; t1 := t2 + eight ], t1)
+  | None ->
+      let f c = `Const (Util.Int64.of_char c) in
+      str |> String.to_list_rev |> List.rev_map ~f
+      |> array_literal ~gensym
 
 (** [translate_uop uop e] is the mir representation of unary operator
     expression [uop e] *)

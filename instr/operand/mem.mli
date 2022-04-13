@@ -33,10 +33,15 @@ type 'a generic
 (** ['a generic] represents a memory operand in Xi *)
 
 val create :
-  ?size:Size.t -> ?index:'a Index.t -> ?offset:int64 -> 'a -> 'a generic
-(** [create base ~size ~index ~offset] is the memory operand [\size ptr
-    [base + index * scale + offset\]]. If unspecified, [size] is
-    [Qword]. *)
+  ?segment:Ir.label ->
+  ?size:Size.t ->
+  ?index:'a Index.t ->
+  ?offset:int64 ->
+  'a ->
+  'a generic
+(** [create base ~segment ~size ~index ~offset] is the memory operand
+    [\size ptr segment[base + index * scale + offset\]]. If unspecified,
+    [size] is [Qword]. *)
 
 type t = Reg.t generic
 (** [t] is the type of a memory operand for a concrete instruction *)

@@ -48,22 +48,25 @@ module Size = struct
 end
 
 type 'a generic = {
+  segment : Ir.label option;
   size : Size.t;
   base : 'a;
   index : 'a Index.t option;
   offset : int64 option;
 }
 
-let create ?(size = Size.Qword) ?index ?offset base =
-  { size; base; index; offset }
+let create ?segment ?(size = Size.Qword) ?index ?offset base =
+  { segment; size; base; index; offset }
 
 type t = Reg.t generic
 
-let to_string { size; base; index; offset } =
+let to_string { segment; size; base; index; offset } =
+  let size = Size.to_string size in
+  let seg = Option.value segment ~default:"" in
   [ index >>| Index.to_string; offset >>| Int64.to_string ]
   |> List.filter_opt
   |> List.cons (Reg.to_string base)
   |> String.concat ~sep:" + "
-  |> Printf.sprintf "%s ptr [%s]" (Size.to_string size)
+  |> Printf.sprintf "%s ptr %s[%s]" size seg
 
 type abstract = Reg.abstract generic

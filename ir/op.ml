@@ -107,3 +107,8 @@ let eval (op : t) i1 i2 =
   | #arith as op -> Arith.eval op i1 i2
   | #cmp as op -> Some (Cmp.eval op i1 i2 |> int_of_bool)
   | #log as op -> Some (Log.eval_bits op i1 i2)
+
+type cmp =
+  [ unsigned
+  | Binop.Cmp.t
+  ]

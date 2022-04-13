@@ -1,11 +1,6 @@
 open Core
 open Option.Let_syntax
 open Frontend
-module Mir = Mir
-module Lir = Lir
-module Reorder = Reorder
-module Subtype = Subtype
-module Op = Op
 open IrGensym
 
 (** [const_of_base b] is [`Const r] if [b] is [Some r] and [None]
@@ -177,3 +172,9 @@ module Diagnostic = struct
 end
 
 include Subtype
+module Mir = Mir
+module Lir = Lir
+module Reorder = Reorder
+module Subtype = Subtype
+module Op = Op
+module Gensym = IrGensym
