@@ -92,7 +92,14 @@ module Expr = struct
       :: s,
       t1 )
 
-  and rev_munch_hmul ~init ~gensym e1 e2 = failwith "unimplemented"
+  and rev_munch_hmul ~init ~gensym e1 e2 =
+    let s, t1, t2 = rev_munch2 ~init ~gensym e1 e2 in
+    let tmp1 = `Temp t1 in
+    ( Mov (tmp1, `rdx)
+      :: IMul (`Temp t2)
+      :: Mov (`rax, tmp1)
+      :: s,
+      t1 )
 
   and rev_munch_mod ~init ~gensym e1 e2 =
     let s, t1, t2 = rev_munch2 ~init ~gensym e1 e2 in
@@ -104,13 +111,17 @@ module Expr = struct
       :: s,
       t1 )
 
-  and rev_munch_mul ~init ~gensym e1 e2 = failwith "unimplemented"
+  and rev_munch_mul ~init ~gensym e1 e2 =
+    let s, t1, t2 = rev_munch2 ~init ~gensym e1 e2 in
+    (IMul (`RM (`Temp t1, `Temp t2)) :: s, t1)
 
   and rev_munch_or ~init ~gensym e1 e2 =
     let s, t1, t2 = rev_munch2 ~init ~gensym e1 e2 in
     (Or (`Temp t1, `Temp t2) :: s, t1)
 
-  and rev_munch_sub ~init ~gensym e1 e2 = failwith "unimplemented"
+  and rev_munch_sub ~init ~gensym e1 e2 =
+    let s, t1, t2 = rev_munch2 ~init ~gensym e1 e2 in
+    (Sub (`Temp t1, `Temp t2) :: s, t1)
 
   and rev_munch_xor ~init ~gensym e1 e2 =
     let s, t1, t2 = rev_munch2 ~init ~gensym e1 e2 in
