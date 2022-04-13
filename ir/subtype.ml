@@ -3,10 +3,27 @@ open Ast.Op
 type label = string
 type temp = [ `Temp of string ]
 type 'expr call = [ `Call of int * 'expr * 'expr list ]
+type rv = [ `Rv of int ]
+
+module VirtualReg = struct
+  type t =
+    [ temp
+    | rv
+    | `Arg of int
+    ]
+
+  let rv = Printf.sprintf "_RV%d"
+  let arg = Printf.sprintf "_ARG%d"
+
+  let to_string : t -> string = function
+    | `Temp t -> t
+    | `Arg i -> arg i
+    | `Rv i -> rv i
+end
 
 type 'expr dest =
-  [ `Mem of 'expr
-  | temp
+  [ VirtualReg.t
+  | `Mem of 'expr
   ]
 
 type name = [ `Name of label ]

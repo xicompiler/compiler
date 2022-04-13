@@ -95,11 +95,7 @@ module Expr = struct
   and rev_munch_hmul ~init ~gensym e1 e2 =
     let s, t1, t2 = rev_munch2 ~init ~gensym e1 e2 in
     let tmp1 = `Temp t1 in
-    ( Mov (tmp1, `rdx)
-      :: IMul (`Temp t2)
-      :: Mov (`rax, tmp1)
-      :: s,
-      t1 )
+    (Mov (tmp1, `rdx) :: IMul (`Temp t2) :: Mov (`rax, tmp1) :: s, t1)
 
   and rev_munch_mod ~init ~gensym e1 e2 =
     let s, t1, t2 = rev_munch2 ~init ~gensym e1 e2 in
@@ -196,7 +192,7 @@ module Stmt = struct
 
   (** [rev_munch_move ~init ~gensym e1 e2] is the translation of
       [`Move (e1, e2)], in reverse order, followed by [init] *)
-  let rev_munch_move ~init ~gensym e1 e2 =
+  let rev_munch_move ~init ~gensym (e1 : Ir.Lir.dest) e2 =
     (* TODO : eliminate uneeded temps *)
     match e1 with
     | `Mem addr ->

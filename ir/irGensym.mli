@@ -8,17 +8,6 @@ val create : unit -> t
 (** [create ()] is a fresh symbol generator, capable of generating fresh
     labels and fresh temps *)
 
-val rv : int -> [> temp ]
-(** [rv n] is a temporary corresponding to the [n]th virtual return
-    value register *)
-
-val rv1 : [> temp ]
-(** [rv1] is the first virtual return register *)
-
-val arg : int -> [> temp ]
-(** [arg n] is a temporary corresponding to the [n]th virtual argument
-    value register *)
-
 (** [Temp] is a module used for generating fresh temporaries *)
 module Temp : sig
   val fresh : t -> [> temp ]

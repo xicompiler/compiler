@@ -34,7 +34,7 @@ let rec rev_lower_expr ~gensym ~init : Mir.expr -> stmt list * expr =
     [sn; ...; sm-1; sm; ... s1] if [sm-1; ...; sn] are the sequence of
     lowered IR expressions equivalent to IR statement [s] *)
 and rev_lower_dest ~gensym ~init = function
-  | `Temp _ as e -> (init, e)
+  | #VirtualReg.t as e -> (init, e)
   | `Mem e -> rev_lower_mem ~gensym ~init e
 
 (** Same as [rev_lower_dest] but the lowered pure destination is coerced
@@ -49,7 +49,7 @@ and rev_lower_dest_coerce ~gensym ~init e =
     expression equivalent to the result computed by [`Call (e, es)] *)
 and rev_lower_call ~gensym ~init i e es =
   let t = Temp.fresh gensym in
-  let move = `Move (t, IrGensym.rv1) in
+  let move = `Move (t, `Rv 1) in
   (move :: rev_lower_call_stmt ~gensym ~init i e es, t)
 
 (** [rev_lower_eseq ~init:\[sm; ...; s1\] s e] is
@@ -143,7 +143,7 @@ and dest_expr_commute ~gensym ~init dst src =
 and rev_lower_dest_expr ~gensym ~init dst src =
   let commute () = dest_expr_commute ~gensym ~init dst src in
   match dst with
-  | `Temp _ -> commute ()
+  | `Temp _ | `Arg _ | `Rv _ -> commute ()
   | `Mem _ when Mir.commute (dst :> Mir.expr) src -> commute ()
   | `Mem e ->
       let f = Fn.compose ( ! ) coerce in

@@ -2,6 +2,7 @@ open Core
 open Option.Let_syntax
 open Frontend
 open IrGensym
+open Subtype
 
 (** [const_of_base b] is [`Const r] if [b] is [Some r] and [None]
     otherwise *)
@@ -19,7 +20,7 @@ let rec const_fold_expr : Lir.expr -> Lir.expr = function
 and const_fold_dest : Lir.expr Subtype.dest -> Lir.expr Subtype.dest =
   function
   | `Mem e -> `Mem (const_fold_expr e)
-  | `Temp _ as t -> t
+  | #VirtualReg.t as t -> t
 
 (** [const_fold_bop_opt bop e1 e2] is the IR node [e1 bop e2] where all
     constant expressions have been folded *)
@@ -81,7 +82,7 @@ and sexp_of_bop op e1 e2 =
 (** [sexp_of_dest d] is the sexp representation of [dest] *)
 and sexp_of_dest = function
   | `Mem e -> sexp_of_mem e
-  | `Temp t -> sexp_of_temp t
+  | #VirtualReg.t as t -> sexp_of_temp (VirtualReg.to_string t)
 
 (** [sexp_of_mem e] is the sexp representation of [`Mem e] *)
 and sexp_of_mem e = Sexp.List [ Sexp.Atom "MEM"; sexp_of_expr e ]

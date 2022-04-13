@@ -25,13 +25,6 @@ let create () =
     gen_global = Gensym.create global_fmt;
   }
 
-(** [reg ~fmt n] is the n[th] register with format [fmt] *)
-let reg ~fmt n = `Temp (Printf.sprintf fmt n)
-
-let rv = reg ~fmt:(format_of_string "_RV%d")
-let rv1 = rv 1
-let arg = reg ~fmt:(format_of_string "_ARG%d")
-
 (** [fresh2 ~fresh gen] is a pair of fresh values generated using
     [fresh] *)
 let fresh2 ~fresh gen = Tuple2.map ~f:fresh (gen, gen)

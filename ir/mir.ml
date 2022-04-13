@@ -44,7 +44,7 @@ let rec exists_expr ~f : expr -> bool = function
   | `Call (_, e, es) -> exists_call ~f e es
   | `ESeq (s, e) -> exists_stmt ~f s || exists_expr ~f e
   | `Mem e -> exists_expr ~f e
-  | `Const _ | `Name _ | `Temp _ -> false
+  | `Const _ | `Name _ | #VirtualReg.t -> false
 
 (** [exists_call ~f e es] is [true] iff [`Call (e, es)] contains a node
     [e] satisfying [f e] *)
@@ -74,7 +74,7 @@ let rec def_expr ~init : expr -> String.Set.t = function
   | `Call (_, e, es) -> def_call ~init e es
   | `ESeq (s, e) -> def_expr ~init:(def_stmt ~init s) e
   | `Mem e -> def_expr ~init e
-  | `Temp _ | `Const _ | `Name _ -> init
+  | #VirtualReg.t | `Const _ | `Name _ -> init
 
 (** [def_call ~init e es] the union of [init] and all temps modified in
     [`Call (e, es)] *)
@@ -109,7 +109,7 @@ let rec use_expr ~init : expr -> String.Set.t = function
   | `Bop (_, e1, e2) -> use_expr2 ~init e1 e2
   | `Call (_, e, es) -> use_call ~init e es
   | `ESeq (s, e) -> use_expr ~init:(use_stmt ~init s) e
-  | `Temp t -> String.Set.add init t
+  | #VirtualReg.t as t -> String.Set.add init (VirtualReg.to_string t)
   | `Mem e -> use_expr ~init e
   | `Const _ | `Name _ -> init
 
@@ -687,8 +687,7 @@ and translate_multi_assign ~gensym ~map ~set ~ctx ds id es =
   let call = (translate_call ~gensym ~map ~set ~ctx id es :> stmt) in
   let f i d =
     let%map id, _ = d in
-    let ret = IrGensym.rv (Int.succ i) in
-    translate_id ~set id := ret
+    translate_id ~set id := `Rv (Int.succ i)
   in
   `Seq (call :: List.filter_mapi ~f ds)
 
@@ -736,10 +735,7 @@ let returns_unit ~ctx id =
 let translate_fn_defn ~gensym ~map ~set ~ctx signature block =
   let id = Sig.name signature in
   let name = mangle id ~ctx in
-  let f i (id, _) =
-    let arg = IrGensym.arg (Int.succ i) in
-    `Temp (Entry.key id) := arg
-  in
+  let f i (id, _) = `Temp (Entry.key id) := `Arg (Int.succ i) in
   let moves = List.mapi ~f @@ Sig.params signature in
   let block = translate_block ~gensym ~map ~set block in
   let ret =

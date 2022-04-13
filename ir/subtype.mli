@@ -6,11 +6,35 @@ type label = string
 type temp = [ `Temp of string ]
 (** [temp] represents the type of a temporary variable in Xi *)
 
+type rv = [ `Rv of int ]
+(** [rv] represents a virtual return register *)
+
+(** [VirtualReg] represents a virtual register at the IR level *)
+module VirtualReg : sig
+  type t =
+    [ temp
+    | rv
+    | `Arg of int
+    ]
+  (** [VirtualReg.t] is the type of a virtual register in abstract
+      assembly *)
+
+  val rv : int -> string
+  (** [rv n] is a temporary corresponding to the [n]th virtual return
+      value register *)
+
+  val arg : int -> string
+  (** [arg n] is a temporary corresponding to the [n]th virtual argument
+      value register *)
+
+  include Util.Stringable.S with type t := t
+end
+
 type 'expr call = [ `Call of int * 'expr * 'expr list ]
 (** ['expr call] represents a function or procedure call in Xi *)
 
 type 'expr dest =
-  [ temp
+  [ VirtualReg.t
   | `Mem of 'expr
   ]
 (** An ['expr dest] is an expression that can be the target of a move *)
