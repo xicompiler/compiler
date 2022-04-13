@@ -38,9 +38,6 @@ module Expr = struct
     let t = gensym () in
     (Mov (`Temp t, `Imm i) :: init, t)
 
-  let rev_munch_mem ~init ~gensym e : translation =
-    failwith "unimplemented"
-
   let rec rev_munch ~init ~gensym : Ir.Lir.expr -> translation =
     function
     | `Name l -> rev_munch_name ~init ~gensym l
@@ -53,6 +50,13 @@ module Expr = struct
     let s1, t1 = rev_munch ~init ~gensym e1 in
     let s2, t2 = rev_munch ~init:s1 ~gensym e2 in
     (s2, t1, t2)
+
+  and rev_munch_mem ~init ~gensym e : translation =
+    (* TODO : better tiling *)
+    let s, t = rev_munch ~init ~gensym e in
+    let tmp = `Temp t in
+    let mem = Mem.create tmp in
+    (Mov (tmp, `Mem mem) :: s, t)
 
   and rev_munch_bop ~init ~gensym op e1 e2 =
     match op with
@@ -129,7 +133,7 @@ module Stmt = struct
       [\[Jmp t; sm; ...; s1; ...; sn\]] where [t] is a fresh temporary
       and [sm; ...; sm-1] effect the move of the translation of [e] into
       [t] *)
-  let rev_munch_jump_general ~init ~gensym e =
+  let rev_munch_jump_general ~init ~gensym e : translation =
     let s, t = Expr.rev_munch ~init ~gensym e in
     Jmp (`Temp t) :: s
 
@@ -145,8 +149,10 @@ module Stmt = struct
       translation of the lowered, reordered IR statement
       [`CJump (op (e1, e2), l)] in reverse order followed by [init] *)
   let rev_munch_jcc ~init ~gensym l op e1 e2 : translation =
+    (* TODO : take advantage of memory, immediate operands in cmp *)
     let s, t1, t2 = Expr.rev_munch2 ~init ~gensym e1 e2 in
-    Jcc (ConditionCode.of_cmp op, l) :: Cmp (`Temp t1, `Temp t2) :: s
+    let cc = ConditionCode.of_cmp op in
+    Jcc (cc, l) :: Cmp (`Temp t1, `Temp t2) :: s
 
   (** [rev_munch_cjump ~init:\[s1; ...; sn\] ~gensym e l] is the
       translation of the lowered, reordered IR statement [`CJump (e, l)]
@@ -154,6 +160,7 @@ module Stmt = struct
       is used, i.e. [test t, t] followed by [jnz t], where [t] is a
       temporary holding the translation of [e] *)
   let rev_munch_cjump_general ~init ~gensym e l : translation =
+    (* TODO : take advantage of memory, immediate operands in test *)
     let s, t = Expr.rev_munch ~init ~gensym e in
     let tmp = `Temp t in
     jnz l :: Test (tmp, tmp) :: s
@@ -178,7 +185,16 @@ module Stmt = struct
 
   (** [rev_munch_move ~init ~gensym e1 e2] is the translation of
       [`Move (e1, e2)], in reverse order, followed by [init] *)
-  let rev_munch_move ~init ~gensym e1 e2 = failwith "unimplemented"
+  let rev_munch_move ~init ~gensym e1 e2 =
+    (* TODO : eliminate uneeded temps *)
+    match e1 with
+    | `Mem addr ->
+        let s, addr, t2 = Expr.rev_munch2 ~init ~gensym addr e2 in
+        let mem = Mem.create (`Temp addr) in
+        Mov (`Mem mem, `Temp t2) :: s
+    | `Temp _ as t1 ->
+        let s, t2 = Expr.rev_munch ~init ~gensym e2 in
+        Mov (t1, `Temp t2) :: s
 
   (** [rev_munch_return ~init ~gensym es] is the translation of
       [`Return es], in reverse order, followed by [init] *)
