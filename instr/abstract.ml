@@ -174,7 +174,7 @@ module Stmt = struct
 
   (** [rev_munch_call ~init ~gensym i e es] is the translation of
       [`Call (i, e, es)], in reverse order, followed by [init] *)
-  let rev_munch_call ~init ~gensym i e es = failwith "unimplemented" v
+  let rev_munch_call ~init ~gensym i e es = failwith "unimplemented"
 
   (** [rev_munch_move ~init ~gensym e1 e2] is the translation of
       [`Move (e1, e2)], in reverse order, followed by [init] *)
