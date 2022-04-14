@@ -48,6 +48,7 @@ type t =
 type abstract =
   [ t
   | Ir.temp
+  | Ir.rv
   ]
 (** [abstract] is the type of an abstract register *)
 

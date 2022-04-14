@@ -1,5 +1,6 @@
 (** [t] is the type of a generic instruction in x86 *)
 type 'a t =
+  | Label of Ir.label
   | Jmp of 'jmp
   | Jcc of ConditionCode.t * Ir.label
   | Setcc of ConditionCode.t * 'reg8

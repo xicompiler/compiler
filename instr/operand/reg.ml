@@ -49,6 +49,7 @@ type t =
 type abstract =
   [ t
   | Ir.temp
+  | Ir.rv
   ]
 
 let to_string : [< t ] -> string = function

@@ -51,6 +51,26 @@ module Expr = struct
     let s2, t2 = rev_munch ~init:s1 ~gensym e2 in
     (s2, t1, t2)
 
+  (** [rev_munch2_map ~f ~init:\[sn; ...; s1\] ~gensym e1 e2] is
+      [\[f t1 t2; si; ...; sj; ...; sn; ... s1\]] where
+      [\[sj; ...; sn+1\]] move the translation of [e1] into [t1] in
+      reverse order and [si; ...; sj+1] move the translation of [e2]
+      into [t2] in reverse order *)
+  and rev_munch2_map ~f ~init ~gensym e1 e2 =
+    let s, t1, t2 = rev_munch2 ~init ~gensym e1 e2 in
+    (f t1 t2 :: s, t1)
+
+  (** [rev_munch_list ~init:\[si; ...; sj\] ~gensym \[e1; ...; en\]] is
+      a pair [(\[s1; ...; si; ...; sj\], \[t1; ...; tn\])] where
+      [\[s1; ...; si-1\]] effects the moves of the translation of each
+      [ei] into [ti] *)
+  and rev_munch_list ~init ~gensym es =
+    let f (init, ts) e =
+      let s, t = rev_munch ~init ~gensym e in
+      (s, t :: ts)
+    in
+    es |> List.fold ~init:(init, []) ~f |> Tuple2.map_snd ~f:List.rev
+
   and rev_munch_mem ~init ~gensym e : translation =
     (* TODO : better tiling *)
     let s, t = rev_munch ~init ~gensym e in
@@ -78,9 +98,9 @@ module Expr = struct
     let t3 = gensym () in
     (Lea (`Temp t3, sum) :: s, t3)
 
-  and rev_munch_and ~init ~gensym e1 e2 =
-    let s, t1, t2 = rev_munch2 ~init ~gensym e1 e2 in
-    (And (`Temp t1, `Temp t2) :: s, t1)
+  and rev_munch_and ~init =
+    let f t1 t2 = And (`Temp t1, `Temp t2) in
+    rev_munch2_map ~f ~init
 
   and rev_munch_div ~init ~gensym e1 e2 =
     let s, t1, t2 = rev_munch2 ~init ~gensym e1 e2 in
@@ -107,21 +127,21 @@ module Expr = struct
       :: s,
       t1 )
 
-  and rev_munch_mul ~init ~gensym e1 e2 =
-    let s, t1, t2 = rev_munch2 ~init ~gensym e1 e2 in
-    (IMul (`RM (`Temp t1, `Temp t2)) :: s, t1)
+  and rev_munch_mul ~init =
+    let f t1 t2 = IMul (`RM (`Temp t1, `Temp t2)) in
+    rev_munch2_map ~f ~init
 
-  and rev_munch_or ~init ~gensym e1 e2 =
-    let s, t1, t2 = rev_munch2 ~init ~gensym e1 e2 in
-    (Or (`Temp t1, `Temp t2) :: s, t1)
+  and rev_munch_or ~init =
+    let f t1 t2 = Or (`Temp t1, `Temp t2) in
+    rev_munch2_map ~f ~init
 
-  and rev_munch_sub ~init ~gensym e1 e2 =
-    let s, t1, t2 = rev_munch2 ~init ~gensym e1 e2 in
-    (Sub (`Temp t1, `Temp t2) :: s, t1)
+  and rev_munch_sub ~init =
+    let f t1 t2 = Sub (`Temp t1, `Temp t2) in
+    rev_munch2_map ~f ~init
 
-  and rev_munch_xor ~init ~gensym e1 e2 =
-    let s, t1, t2 = rev_munch2 ~init ~gensym e1 e2 in
-    (Xor (`Temp t1, `Temp t2) :: s, t1)
+  and rev_munch_xor ~init =
+    let f t1 t2 = Xor (`Temp t1, `Temp t2) in
+    rev_munch2_map ~f ~init
 
   and rev_munch_cmp ~init ~gensym op e1 e2 =
     let s, t1, t2 = rev_munch2 ~init ~gensym e1 e2 in
@@ -184,7 +204,7 @@ module Stmt = struct
 
   (** [rev_munch_label ~init l] is the translation of [`Label l], in
       reverse order, followed by [init] *)
-  let rev_munch_label ~init l = failwith "unimplemented"
+  let rev_munch_label ~init l = Label l :: init
 
   (** [rev_munch_call ~init ~gensym i e es] is the translation of
       [`Call (i, e, es)], in reverse order, followed by [init] *)
@@ -192,7 +212,7 @@ module Stmt = struct
 
   (** [rev_munch_move ~init ~gensym e1 e2] is the translation of
       [`Move (e1, e2)], in reverse order, followed by [init] *)
-  let rev_munch_move ~init ~gensym (e1 : Ir.Lir.dest) e2 =
+  let rev_munch_move ~init ~gensym (e1 : Ir.Lir.dest) e2 : translation =
     (* TODO : eliminate uneeded temps *)
     match e1 with
     | `Mem addr ->
@@ -205,7 +225,10 @@ module Stmt = struct
 
   (** [rev_munch_return ~init ~gensym es] is the translation of
       [`Return es], in reverse order, followed by [init] *)
-  let rev_munch_return ~init ~gensym es = failwith "unimplemented"
+  let rev_munch_return ~init ~gensym es : translation =
+    let s, ts = Expr.rev_munch_list ~init ~gensym es in
+    let f i s t = Mov (`Rv (Int.succ i), `Temp t) :: s in
+    Ret :: List.foldi ts ~init:s ~f
 
   (** [rev_munch ~init ~gensym e] is the translation of [e], in reverse
       order, followed by [init] *)
