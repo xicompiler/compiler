@@ -24,10 +24,6 @@ let command =
     Command.Let_syntax.(
       let%map_open files =
         anon (sequence ("filename" %: Filename.arg_type))
-      and out_dir =
-        flag "-D"
-          (optional_with_default "." string)
-          ~doc:" Specify where to place generated diagnostic files."
       and src_dir =
         flag "-sourcepath"
           (optional_with_default "." string)
@@ -36,6 +32,15 @@ let command =
         flag "-libpath"
           (optional_with_default "." string)
           ~doc:" Specify where to find library interface files."
+      and diag_out_dir =
+        flag "-D"
+          (optional_with_default "." string)
+          ~doc:" Specify where to place generated diagnostic files."
+      and asm_out_dir =
+        flag "-d"
+          (optional_with_default "." string)
+          ~doc:
+            " Specify where to place generated assembly output files."
       and lex =
         flag "--lex" no_arg
           ~doc:" Generate output from lexical analysis."
@@ -52,20 +57,27 @@ let command =
           ~doc:" Generate and interpret immediate code."
       and disable_optimize =
         flag "-O" no_arg ~doc:" Disable optimizations."
+      and target =
+        flag "-target"
+          (optional_with_default "linux" string)
+          ~doc:
+            " Specify the operating system for which to generate code."
       in
       let args =
         {
           files;
-          out_dir;
           src_dir;
           lib_dir;
           std_dir = Util.File.stdlib;
+          diag_out_dir;
+          asm_out_dir;
           lex;
           parse;
           typecheck;
           irgen;
           irrun;
           disable_optimize;
+          target;
         }
       in
       fun () -> try_compile args)

@@ -46,21 +46,30 @@ let ir_out ?cache ~args ~dir ~src ~deps () =
 let deps_of_args { lib_dir; std_dir; _ } : Check.dependencies =
   { lib_dir; std_dir }
 
-(** [compile_file ~args file] compiles file at path [file] and is
+(** [target_of_args args] is the target corresponding to [args], or
+    ["linux"] if the target is not supported *)
+let target_of_args { target; _ } =
+  if not (String.equal target "linux") then
+    Printf.printf "%s is not a supported target\n" target;
+  "linux"
+
+(** [compile_file ?cache ~args src] compiles file at path [src] and is
     [Ok ()] on success or [Error e] on failure, where [e] is an error
     message. *)
 let compile_file ?cache ~args file =
   let src_path = Filename.concat args.src_dir file in
   let deps = deps_of_args args in
+  (* let dir = args.asm_out_dir in
+   * let target = target_of_args args in *)
   let%map r = Check.type_check_file ?cache ~deps src_path in
   r
   |> Result.map_error ~f:(Check.Error.to_string src_path)
   |> Result.ignore_m
 
-(** [compile_file_options args file] compiles file [file] with command
-    line arguments [args] *)
+(** [compile_file_options ?cache ~args src] compiles file at path [src]
+    with command line arguments [args] *)
 let compile_file_options ?cache ~args src =
-  let dir = args.out_dir in
+  let dir = args.diag_out_dir in
   let deps = deps_of_args args in
   if args.lex then ignore (lex_out ~dir ~src);
   if args.parse then ignore (parse_out ~dir ~src);
