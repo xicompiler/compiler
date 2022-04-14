@@ -279,7 +279,9 @@ and factor_bop ~gensym ~map e1 e2 =
   factor_expr ~gensym ~map e2
 
 and factor_uop ~gensym ~map e = factor_expr ~gensym ~map e
+
 and factor_fn_call ~gensym ~map es = factor_es ~gensym ~map es
+
 and factor_length ~gensym ~map e = factor_expr ~gensym ~map e
 
 and factor_index ~gensym ~map e1 e2 =
@@ -319,6 +321,7 @@ and factor_while ~gensym ~map e s =
   factor_stmt ~gensym ~map s
 
 and factor_array_decl ~gensym ~map es = factor_e_options ~gensym ~map es
+
 and factor_assign ~gensym ~map e = factor_expr ~gensym ~map e
 
 and factor_arr_assign ~gensym ~map e1 e2 e3 =
@@ -327,9 +330,13 @@ and factor_arr_assign ~gensym ~map e1 e2 e3 =
   factor_expr ~gensym ~map e3
 
 and factor_expr_stmt ~gensym ~map es = factor_es ~gensym ~map es
+
 and factor_var_init ~gensym ~map e = factor_expr ~gensym ~map e
+
 and factor_multi_assign ~gensym ~map es = factor_es ~gensym ~map es
+
 and factor_pr_call ~gensym ~map es = factor_es ~gensym ~map es
+
 and factor_return ~gensym ~map es = factor_es ~gensym ~map es
 
 and factor_stmts ~gensym ~map stmts =
@@ -662,11 +669,39 @@ and translate_array_decl ~gensym ~map ~set id es =
   let decl = translate_array_decl_helper ~gensym name es in
   `Seq [ moves; decl ]
 
+(** [memcopy_string s] is a copy of the global string [s] if it is
+    stored in a global data node, otherwise it is the string [s]
+    converted to an array literal *)
+and memcopy_string ~gensym ~map ~set s =
+  if Map.mem map s then
+    let global = Map.find_exn map s in
+    let t1, ti = Temp.fresh2 gensym in
+    let len, base, ptr = Temp.fresh3 gensym in
+    let start = Temp.fresh gensym in
+    let body = index ptr ti := index t1 ti in
+    `ESeq
+      ( `Seq
+          [
+            t1 := `Name global + eight;
+            len := length t1;
+            base := alloc_array len;
+            !base := len;
+            ptr := base + eight;
+            while_lt ~gensym ti len body;
+            start := index_addr ptr len;
+          ],
+        ptr )
+  else
+    let f c = `Const (Util.Int64.of_char c) in
+    s |> String.to_list_rev |> List.rev_map ~f |> array_literal ~gensym
+
 (** [translate_assign id e] is the mir representation of an assignment
     of [e] to [id] *)
-
 and translate_assign ~gensym ~map ~set id e =
-  translate_id ~set id := translate_expr ~gensym ~map ~set e
+  match Entry.key e with
+  | String s ->
+      translate_id ~set id := memcopy_string ~gensym ~map ~set s
+  | _ -> translate_id ~set id := translate_expr ~gensym ~map ~set e
 
 (** [translate_arr_assign e1 e2 e3] is the mir representation of a array
     assignment statement with array reference [e1], position [e2], and
