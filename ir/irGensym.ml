@@ -10,13 +10,13 @@ type t = {
 
 (** [temp_fmt] is the format of a temporary *)
 
-let temp_fmt = format_of_string "t%d"
+let temp_fmt = format_of_string "_t%d"
 
 (** [label_fmt] is the format of labels, in accordance with the calling
     convention*)
-let label_fmt = format_of_string "l%d"
+let label_fmt = format_of_string "_l%d"
 
-let global_fmt = format_of_string "g%d"
+let global_fmt = format_of_string "_g%d"
 
 let create () =
   {

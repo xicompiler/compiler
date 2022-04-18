@@ -1,13 +1,16 @@
 open Core
 open Generic
+open Util.Fn
 
 type t = Operand.Abstract.t Generic.t
 
-(** [zero e] zeroes the contents of [e] *)
-let zero e : t = Xor (e, (e :> Operand.Abstract.t))
-
+(** [Expr] contains functions for manipulating IR expressions and
+    translating them into abstract assembly *)
 module Expr = struct
   type translation = t list * string
+  (** A [translation] is a pair [(s, t)] where [s] is a sequence of
+      abstract assembly instructions necessary to effect the movement of
+      the translation of an expression into temporary [t] *)
 
   (** [rev_munch_name ~init ~gensym l] is the translation of the
       lowered, reordered IR statement [`Name l], followed by init *)
@@ -52,7 +55,8 @@ module Expr = struct
       into [t2] in reverse order *)
   and rev_munch2_map ~f ~init ~gensym e1 e2 =
     let s, t1, t2 = rev_munch2 ~init ~gensym e1 e2 in
-    (f t1 t2 :: s, t1)
+    let dst = gensym () in
+    (f (`Temp dst) (`Temp t2) :: Mov (`Temp dst, `Temp t1) :: s, dst)
 
   (** [rev_munch_mem ~init ~gensym e] is the translation of the lowered,
       reordered IR statement [`Mem e], followed by init *)
@@ -92,9 +96,7 @@ module Expr = struct
   (** [rev_munch_and ~init ~gensym e1 e2] is the translation of the
       lowered, reordered IR statement [`Bop (`And, e1, e2)], followed by
       init *)
-  and rev_munch_and ~init =
-    let f t1 t2 = And (`Temp t1, `Temp t2) in
-    rev_munch2_map ~f ~init
+  and rev_munch_and ~init = rev_munch2_map ~f:and_ ~init
 
   (** [rev_munch_div ~init ~gensym e1 e2] is the translation of the
       lowered, reordered IR statement [`Bop (`Div, e1, e2)], followed by
@@ -135,29 +137,23 @@ module Expr = struct
       lowered, reordered IR statement [`Bop (`Mul, e1, e2)], followed by
       init *)
   and rev_munch_mul ~init =
-    let f t1 t2 = IMul (`RM (`Temp t1, `Temp t2)) in
+    let f t1 t2 = IMul (`RM (t1, t2)) in
     rev_munch2_map ~f ~init
 
   (** [rev_munch_or ~init ~gensym e1 e2] is the translation of the
       lowered, reordered IR statement [`Bop (`Or, e1, e2)], followed by
       init *)
-  and rev_munch_or ~init =
-    let f t1 t2 = Or (`Temp t1, `Temp t2) in
-    rev_munch2_map ~f ~init
+  and rev_munch_or ~init = rev_munch2_map ~f:or_ ~init
 
   (** [rev_munch_sub ~init ~gensym e1 e2] is the translation of the
       lowered, reordered IR statement [`Bop (`Sub, e1, e2)], followed by
       init *)
-  and rev_munch_sub ~init =
-    let f t1 t2 = Sub (`Temp t1, `Temp t2) in
-    rev_munch2_map ~f ~init
+  and rev_munch_sub ~init = rev_munch2_map ~f:sub ~init
 
   (** [rev_munch_xor ~init ~gensym e1 e2] is the translation of the
       lowered, reordered IR statement [`Bop (`Xors, e1, e2)], followed
       by init *)
-  and rev_munch_xor ~init =
-    let f t1 t2 = Xor (`Temp t1, `Temp t2) in
-    rev_munch2_map ~f ~init
+  and rev_munch_xor ~init = rev_munch2_map ~f:xor ~init
 
   (** [rev_munch_cmp ~init ~gensym e1 e2] is the translation of the
       lowered, reordered IR statement [`Bop (cmp, e1, e2)], where [cmp]
@@ -172,12 +168,12 @@ module Expr = struct
       a pair [(\[sj; ...; si; ...; s1\], \[tn; ...; t1\])] where
       [\[s1; ...; si-1\]] effects the moves of the translation of each
       [ei] into [ti] *)
-  let rev_munch_list ~init ~gensym es =
+  let rev_munch_list ~init ~gensym =
     let f (init, ts) e =
       let s, t = rev_munch ~init ~gensym e in
       (s, t :: ts)
     in
-    es |> List.fold ~init:(init, []) ~f
+    List.fold ~init:(init, []) ~f
 
   (** [rev_munch_label ~init ~gensym e] is [(init, `Name l)] if [e] is
       [`Name l] and [(s, `Temp t)] where [(s, t)] is
@@ -188,12 +184,18 @@ module Expr = struct
         let s, t = rev_munch ~init ~gensym e in
         (s, `Temp t)
 
+  (** [munch ~gensym e] is a pair [(s, t)] where [s] is a sequence of
+      abstract assembly instructions necessary to effect the movement of
+      the translation of [e] into temporary [t] *)
   let munch ~gensym e =
     e |> rev_munch ~init:[] ~gensym |> Tuple2.map_fst ~f:List.rev
 end
 
+(** [Stmt] contains functions for manipulating IR statements and
+    translating them into abstract assembly *)
 module Stmt = struct
   type translation = t list
+  (** A [translation] is a list of abstract assembly instruction *)
 
   (** [rev_munch_jump  ~init:\[s1; ...; sn\] ~gensym e] is the
       translation of the lowered, reordered IR statement [`Jump e],
@@ -259,28 +261,28 @@ module Stmt = struct
     let seg_size = 8 * (m - 2) in
     Mov (`rdi, `rsp) :: Sub (`rsp, Imm.of_int seg_size) :: init
 
-  (** [rev_dealloc_args ~init es] is a sequence of instructions that
-      frees any stack space used to store the translations of arguments
-      [es], in reverse order, followed by [init] *)
-  let rev_dealloc_args ~init es : translation =
-    (* number of args *)
-    let n = List.length es in
-    (* if <= 6 args, none were pushed to stack *)
-    if n <= 6 then init
+  (** [rev_dealloc_args ~init ~n ~m es] is a sequence of instructions
+      that frees any stack space used to store the translations of
+      arguments [es], in reverse order, followed by [init] *)
+  let rev_dealloc_args ~init ~n ~m es : translation =
+    let on_stack = if m <= 2 then 6 else 5 in
+    (* if [n <= on_stack] args, none were pushed to stack *)
+    if n <= on_stack then init
     else
       (* stack space occupied by args *)
-      let size = 8 * (n - 6) in
+      let size = 8 * (n - on_stack) in
       Add (`rsp, Imm.of_int size) :: init
 
-  (** [rev_pass_args ~init ~m ts] is a sequence of instructions that
+  (** [rev_pass_args ~init ~m ~n ts] is a sequence of instructions that
       passes the arguments stored in [ts] in reverse order assuming the
-      function to be called has [m] return values , followed by init.*)
-  let rev_pass_args ~init ~m ts =
+      function to be called has [m] return values and [n] args, followed
+      by init *)
+  let rev_pass_args ~init ~m ~n =
     let init, off =
-      if m <= 2 then (init, 1) else (rev_alloc_ret ~init m, 2)
+      if m <= 2 then (init, 0) else (rev_alloc_ret ~init m, 1)
     in
-    let f i s t = pass_args (`Temp t) (i + off) :: s in
-    List.foldi ts ~init ~f
+    let f i s t = pass_args (`Temp t) (n - i + off) :: s in
+    List.foldi ~init ~f
 
   (** [get_ret i] is an instruction that moves return register [i] into
       the virtual return register [`Rv i], or pops it from the stack *)
@@ -294,7 +296,7 @@ module Stmt = struct
       order, followed by [init] *)
   let rev_get_rets ~init ~m =
     let ret_indices =
-      List.range ~stride:~-1 ~start:`inclusive ~stop:`inclusive m 1
+      List.range ~start:`inclusive ~stop:`inclusive 1 m
     in
     let get acc i = get_ret i :: acc in
     List.fold ret_indices ~f:get ~init
@@ -304,10 +306,12 @@ module Stmt = struct
       order, followed by [init]. *)
   let rev_munch_call ~init ~gensym m e es =
     let s1, name = Expr.rev_munch_label ~init ~gensym e in
-    let s, ts = Expr.rev_munch_list ~init:s1 ~gensym es in
-    let call = Call name :: align :: rev_pass_args ~init ~m ts in
-    let dealloc = rev_dealloc_args ~init:call es in
-    rev_get_rets ~init:dealloc ~m
+    let s2, ts = Expr.rev_munch_list ~init:s1 ~gensym es in
+    (* [n] is the number of args *)
+    let n = List.length es in
+    let call = Call name :: align :: rev_pass_args ~init:s2 ~m ~n ts in
+    let dealloc = rev_dealloc_args ~init:call ~n es in
+    rev_get_rets ~init:(dealloc ~m) ~m
 
   (** [rev_munch_move ~init ~gensym e1 e2] is the translation of
       [`Move (e1, e2)], in reverse order, followed by [init] *)
@@ -322,50 +326,57 @@ module Stmt = struct
         let s, t2 = Expr.rev_munch ~init ~gensym e2 in
         Mov (t1, `Temp t2) :: s
 
-  (** [push_rets t i] moves [t] into into return register [i] or pushes
-      it to the stack *)
-  let push_rets t = function
+  (** [return_ith ~ret t i] moves [t] into into return register [i] or
+      the appropriate memory address *)
+  let return_ith ~ret t = function
     | 1 -> Mov (`rax, t)
     | 2 -> Mov (`rdx, t)
-    | _ -> Push t
+    | i ->
+        let offset = Int64.of_int (8 * (i - 3)) in
+        Mov (`Mem (Mem.create ~offset ret), t)
 
-  (** [rev_munch_return ~init ~gensym es] is the translation of
+  (** [rev_munch_return ~init ~gensym ~ret es] is the translation of
       [`Return es], in reverse order, followed by [init] *)
-  let rev_munch_return ~init ~gensym es : translation =
+  let rev_munch_return ~init ~gensym ~ret es : translation =
     let s, ts = Expr.rev_munch_list ~init ~gensym es in
-    let f i s t = push_rets (`Temp t) (Int.succ i) :: s in
-    Ret :: Leave :: List.foldi ts ~init:s ~f
+    let f i s t = return_ith ~ret (`Temp t) (Int.succ i) :: s in
+    Ret :: Leave :: List.foldi (List.rev ts) ~init:s ~f
 
-  (** [rev_munch ~init ~gensym e] is the translation of [e], in reverse
-      order, followed by [init] *)
-  let rev_munch ~init ~gensym : Ir.Reorder.stmt -> translation =
+  (** [rev_munch ~init ~gensym ~ret e] is the translation of [e], in
+      reverse order, followed by [init] *)
+  let rev_munch ~init ~gensym ~ret : Ir.Reorder.stmt -> translation =
     function
     | `Jump e -> rev_munch_jump ~init ~gensym e
     | `CJump (e, l) -> rev_munch_cjump ~init ~gensym e l
     | `Label l -> rev_munch_label ~init l
     | `Call (i, e, es) -> rev_munch_call ~init ~gensym i e es
     | `Move (e1, e2) -> rev_munch_move ~init ~gensym e1 e2
-    | `Return es -> rev_munch_return ~init ~gensym es
+    | `Return es -> rev_munch_return ~init ~gensym ~ret es
 
-  let munch ~gensym s = rev_munch ~init:[] ~gensym s |> List.rev
+  (** [munch ~gensym s] is the sequence of abstract assembly
+      instructions having the same effect as [s] *)
+  let munch ~gensym ~ret s =
+    rev_munch ~init:[] ~gensym ~ret s |> List.rev
 
   (** [rev_munch_list stmts] is the translation of [stmts], in reverse
       order, followed by [init] *)
-  let rev_munch_list ~gensym ~init : Ir.Reorder.stmt list -> translation
-      =
-    let f init = rev_munch ~init ~gensym in
+  let rev_munch_list ~gensym ~init ~ret :
+      Ir.Reorder.stmt list -> translation =
+    let f init = rev_munch ~gensym ~init ~ret in
     List.fold ~f ~init
 end
 
+(** [Toplevel] contains functions for manipulating IR toplevel
+    statements and translating them into abstract assembly *)
 module Toplevel = struct
   type translation = t list
+  (** A [translation] is a list of abstract assembly instructions *)
 
-  (** [pop_args ~n_rets i] moves arg register [i] into virtual arg
-      register [`Arg i] depending on the value of [n_rets], or pops it
-      from the stack *)
-  let pop_args ~n_rets i =
+  (** [pop_args ~m i] moves arg register [i] into virtual arg register
+      [`Arg i] depending on the value of [m], or pops it from the stack *)
+  let pop_args ~m i =
     let arg = `Arg i in
-    match if n_rets <= 2 then i else succ i with
+    match if m <= 2 then i else succ i with
     | 1 -> Mov (arg, `rdi)
     | 2 -> Mov (arg, `rsi)
     | 3 -> Mov (arg, `rdx)
@@ -374,19 +385,23 @@ module Toplevel = struct
     | 6 -> Mov (arg, `r9)
     | _ -> Pop arg
 
-  (** [munch_fn l stmts n_args n_rets] is the abstract assembly
-      translation of the __body__ of [`Func (l, stmts, n_args, n_rets)] *)
-  let munch_fn ~gensym stmts ~n_args ~n_rets : translation =
-    let f i = pop_args ~n_rets (Int.succ i) in
+  (** [munch_fn ~gensym stmts ~n ~m] is the abstract assembly
+      translation of the __body__ of [`Func (l, stmts, n, m)] *)
+  let munch_fn ~gensym stmts ~n ~m : translation =
+    let ret = `Temp (gensym ()) in
+    let f i = pop_args ~m (succ i) in
     (* List.init starts at 0 *)
-    let args = n_args |> List.init ~f |> List.rev in
-    stmts |> Stmt.rev_munch_list ~gensym ~init:args |> List.rev
+    let args = n |> List.init ~f |> List.rev in
+    let f = if m <= 2 then Fn.id else List.cons (Mov (ret, `rdi)) in
+    stmts
+    |> Stmt.rev_munch_list ~gensym ~init:args ~ret
+    |> List.rev |> f
 end
 
 let munch ~gensym top =
   let f = function
-    | `Func (name, stmts, n_args, n_rets) ->
-        let body = Toplevel.munch_fn ~gensym stmts ~n_args ~n_rets in
+    | `Func (name, stmts, n, m) ->
+        let body = Toplevel.munch_fn ~gensym stmts ~n ~m in
         First (Asm.Fn.create ~name ~body)
     | `Data (label, value) -> Second (Asm.Data.create ~label ~value)
   in

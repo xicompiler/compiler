@@ -21,7 +21,7 @@ module Bit64 = struct
     | `r14
     | `r15
     ]
-  [@@deriving variants]
+  [@@deriving variants, equal]
 end
 
 module Bit8 = struct
@@ -34,14 +34,23 @@ module Bit8 = struct
     | `cl
     | `dh
     | `dl
+    | `r8b
     ]
-  [@@deriving variants]
+  [@@deriving variants, equal]
+
+  let to_64_bit = function
+    | `ah | `al -> `rax
+    | `bh | `bl -> `rbx
+    | `ch | `cl -> `rcx
+    | `dh | `dl -> `rdx
+    | `r8b -> `r8
 end
 
 type t =
   [ Bit64.t
   | Bit8.t
   ]
+[@@deriving equal]
 
 type concrete = t
 

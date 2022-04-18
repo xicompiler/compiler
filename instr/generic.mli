@@ -24,12 +24,16 @@ type 'a t =
   | Or of 'a * 'a
   | Lea of 'a * 'a
   | Mov of 'a * 'a
+  | Movzx of 'a * 'a
   | Leave
   | Ret
 [@@deriving variants]
 
 val jnz : Ir.label -> 'a t
 (** [jnz l] is [Jcc (Nz, l)] *)
+
+val zero : 'a -> 'a t
+(** [zero e] is [Xor (e, e)] *)
 
 type 'a instr = 'a t
 (** [instr] is alias for [t] *)

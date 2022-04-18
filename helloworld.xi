@@ -1,8 +1,7 @@
 use io
 use conv
 
-i : int = 5;
-
 main(args : int[][]) {
-    println(unparseInt(i))
+    x : int = "hello"[1]
+    println(unparseInt(x))
 }

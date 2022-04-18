@@ -27,6 +27,7 @@ type 'a t =
   | Or of 'a * 'a
   | Lea of 'a * 'a
   | Mov of 'a * 'a
+  | Movzx of 'a * 'a
   | Leave
   | Ret
 [@@deriving variants]
@@ -120,6 +121,7 @@ let to_string ~f : 'a t -> string = function
   | Or (d, o) -> format2 ~f ~name:"or" d o
   | Lea (r, m) -> format2 ~f ~name:"lea" r m
   | Mov (d, o) -> format2 ~f ~name:"mov" d o
+  | Movzx (d, o) -> format2 ~f ~name:"movzx" d o
   | Leave -> "leave"
   | Ret -> "ret"
 
@@ -133,6 +135,7 @@ let string_of_data l =
   >> Printf.sprintf data_fmt l
 
 let jnz l = Jcc (ConditionCode.Nz, l)
+let zero e = Xor (e, e)
 
 type 'a instr = 'a t
 

@@ -51,14 +51,22 @@ let abstract_asm_out ?cache ~args ~dir ~src ~deps () =
     let open Instr.Output.Abstract in
     ignore (file_to_file ?cache ~src ~out ~deps ~optimize ())
 
+(** [asm_run asm] interprets and executes the asm file at path [asm] *)
+let asm_run asm =
+  let command =
+    Printf.sprintf "./runtime/linkxi.sh %s\nwait\n./a.out" asm
+  in
+  ignore (Sys.command command)
+
 (** [asm_out ?cache ~args ~dir ~src ~deps ()] outputs ASM of file with
     path [src] writing the results to a file in directory [dir] *)
 let asm_out ?cache ~args ~dir ~src ~deps () =
   let out = Util.File.diagnostic ~dir ~src ".s" in
   let optimize = not args.disable_optimize in
-  if Util.File.is_xi src then
+  if Util.File.is_xi src then (
     let open Instr.Output in
-    ignore (file_to_file ?cache ~src ~out ~deps ~optimize ())
+    ignore (file_to_file ?cache ~src ~out ~deps ~optimize ());
+    if args.asmrun then asm_run out)
 
 (** [deps_of_args args] are the semantic dependecies corresponding to
     [args] *)
@@ -75,11 +83,12 @@ let target_of_args { target; _ } =
 (** [compile_file ?cache ~args src] compiles file at path [src] and is
     [Ok ()] on success or [Error e] on failure, where [e] is an error
     message. *)
-let compile_file ?cache ~args file =
-  let src_path = Filename.concat args.src_dir file in
+let compile_file ?cache ~args src =
+  let src_path = Filename.concat args.src_dir src in
   let deps = deps_of_args args in
-  (* let dir = args.asm_out_dir in *)
-  (* let target = target_of_args args in *)
+  let dir = args.asm_out_dir in
+  let _ = target_of_args args in
+  asm_out ?cache ~args ~dir ~src ~deps ();
   let%map r = Check.type_check_file ?cache ~deps src_path in
   r
   |> Result.map_error ~f:(Check.Error.to_string src_path)
@@ -97,7 +106,6 @@ let compile_file_options ?cache ~args src =
     ir_out ?cache ~args ~dir ~src ~deps ();
   if args.abstract_asm then
     abstract_asm_out ?cache ~args ~dir ~src ~deps ();
-  asm_out ?cache ~args ~dir:args.asm_out_dir ~src ~deps ();
   compile_file ?cache ~args src
 
 (** [stringify res] is an error message string if [res] is an error *)

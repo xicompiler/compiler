@@ -33,14 +33,19 @@ module Bit8 : sig
     | `cl
     | `dh
     | `dl
+    | `r8b
     ]
   (** [t] is the type of a 8-bit register in x68 *)
+
+  val to_64_bit : t -> [> Bit64.t ]
+  (** [to_64_bit r] are the 64 higher order bit register of [r] *)
 end
 
 type t =
   [ Bit64.t
   | Bit8.t
   ]
+[@@deriving equal]
 (** [t] is the type of a register in x86 *)
 
 type concrete = t

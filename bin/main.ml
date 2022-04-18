@@ -58,6 +58,8 @@ let command =
       and abstract_asm =
         flag "--abstract-asm" no_arg
           ~doc:" Generate abstract assembly code."
+      and asmrun =
+        flag "--asmrun" no_arg ~doc:" Run generated assembly code."
       and disable_optimize =
         flag "-O" no_arg ~doc:" Disable optimizations."
       and target =
@@ -80,6 +82,7 @@ let command =
           irgen;
           irrun;
           abstract_asm;
+          asmrun;
           disable_optimize;
           target;
         }
