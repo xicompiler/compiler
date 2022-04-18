@@ -222,7 +222,7 @@ module Stmt = struct
     match typ with
     | #Type.Tau.primitive as p -> Type.Tau.Primitive.sexp_of_t p
     | `Array t ->
-        let e, es = Util.List.hd_tl_exn lengths in
+        let e, es = Util.List.pop_exn lengths in
         let lst = Option.to_list (e >>| Expr.sexp_of_node) in
         Sexp.List (Sexp.Atom "[]" :: sexp_of_decl_type t es :: lst)
 

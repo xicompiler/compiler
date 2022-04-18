@@ -1,4 +1,5 @@
 open Core
+open Core_unix
 open Result.Let_syntax
 open Frontend
 open Util.File
@@ -29,17 +30,35 @@ let ir_run ir =
   let command = Printf.sprintf "./irrun %s" ir in
   ignore (Sys.command command)
 
-(** [ir_out ?cache ~args ~dir ~src ~deps ()] performs IR diagnostics on
-    file with path [src] writing the results to a file in directory
-    [dir] *)
+(** [ir_out ?cache ~args ~dir ~src ~deps ()] outputs IR of file with
+    path [src] writing the results to a file in directory [dir] *)
 let ir_out ?cache ~args ~dir ~src ~deps () =
   let out = Util.File.diagnostic ~dir ~src ".ir" in
   let optimize = not args.disable_optimize in
   if Util.File.is_xi src then begin
-    let open Ir.Diagnostic in
+    let open Ir.Output in
     ignore (file_to_file ?cache ~src ~out ~deps ~optimize ());
     if args.irrun then ir_run out
   end
+
+(** [abstract_asm_out ?cache ~args ~dir ~src ~deps ()] outputs ASM of
+    file with path [src] writing the results to a file in directory
+    [dir] *)
+let abstract_asm_out ?cache ~args ~dir ~src ~deps () =
+  let out = Util.File.diagnostic ~dir ~src ".asm" in
+  let optimize = not args.disable_optimize in
+  if Util.File.is_xi src then
+    let open Instr.Output.Abstract in
+    ignore (file_to_file ?cache ~src ~out ~deps ~optimize ())
+
+(** [asm_out ?cache ~args ~dir ~src ~deps ()] outputs ASM of file with
+    path [src] writing the results to a file in directory [dir] *)
+let asm_out ?cache ~args ~dir ~src ~deps () =
+  let out = Util.File.diagnostic ~dir ~src ".s" in
+  let optimize = not args.disable_optimize in
+  if Util.File.is_xi src then
+    let open Instr.Output in
+    ignore (file_to_file ?cache ~src ~out ~deps ~optimize ())
 
 (** [deps_of_args args] are the semantic dependecies corresponding to
     [args] *)
@@ -59,8 +78,8 @@ let target_of_args { target; _ } =
 let compile_file ?cache ~args file =
   let src_path = Filename.concat args.src_dir file in
   let deps = deps_of_args args in
-  (* let dir = args.asm_out_dir in
-   * let target = target_of_args args in *)
+  (* let dir = args.asm_out_dir in *)
+  (* let target = target_of_args args in *)
   let%map r = Check.type_check_file ?cache ~deps src_path in
   r
   |> Result.map_error ~f:(Check.Error.to_string src_path)
@@ -76,6 +95,9 @@ let compile_file_options ?cache ~args src =
   if args.typecheck then ignore (check_out ?cache ~dir ~src ~deps ());
   if args.irgen || args.irrun then
     ir_out ?cache ~args ~dir ~src ~deps ();
+  if args.abstract_asm then
+    abstract_asm_out ?cache ~args ~dir ~src ~deps ();
+  asm_out ?cache ~args ~dir:args.asm_out_dir ~src ~deps ();
   compile_file ?cache ~args src
 
 (** [stringify res] is an error message string if [res] is an error *)

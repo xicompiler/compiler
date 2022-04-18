@@ -1,7 +1,6 @@
 open Core
 open Option.Let_syntax
 open Frontend
-open IrGensym
 open Subtype
 
 (** [const_of_base b] is [`Const r] if [b] is [Some r] and [None]
@@ -14,13 +13,14 @@ let const_of_base b =
 let rec const_fold_expr : Lir.expr -> Lir.expr = function
   | (`Const _ | `Name _) as e -> e
   | `Bop (op, e1, e2) -> const_fold_bop op e1 e2
-  | #Subtype.dest as dest -> (const_fold_dest dest :> Lir.expr)
+  | `Mem e -> `Mem (const_fold_expr e)
+  | #Temp.Virtual.t as e -> e
 
 (** [const_fold_dest] is [dest] constant folded *)
 and const_fold_dest : Lir.expr Subtype.dest -> Lir.expr Subtype.dest =
   function
   | `Mem e -> `Mem (const_fold_expr e)
-  | #VirtualReg.t as t -> t
+  | `Temp _ as t -> t
 
 (** [const_fold_bop_opt bop e1 e2] is the IR node [e1 bop e2] where all
     constant expressions have been folded *)
@@ -57,7 +57,7 @@ let const_fold_stmt : Reorder.stmt -> Reorder.stmt = function
 let const_fold_toplevel : Reorder.toplevel -> Reorder.toplevel =
   function
   | `Data _ as d -> d
-  | `Func (l, b) -> `Func (l, List.map ~f:const_fold_stmt b)
+  | `Func (l, b, a, r) -> `Func (l, List.map ~f:const_fold_stmt b, a, r)
 
 let const_fold = List.map ~f:const_fold_toplevel
 
@@ -72,7 +72,8 @@ let rec sexp_of_expr = function
   | `Const i -> sexp_of_const i
   | `Bop (op, e1, e2) -> sexp_of_bop op e1 e2
   | `Name l -> sexp_of_name l
-  | #Subtype.dest as d -> sexp_of_dest d
+  | `Mem e -> sexp_of_mem e
+  | #Temp.Virtual.t as e -> sexp_of_temp (Temp.Virtual.to_string e)
 
 (** [sexp_of_bop] is the sexp representation of [`Bop op e1 e2] *)
 and sexp_of_bop op e1 e2 =
@@ -82,7 +83,7 @@ and sexp_of_bop op e1 e2 =
 (** [sexp_of_dest d] is the sexp representation of [dest] *)
 and sexp_of_dest = function
   | `Mem e -> sexp_of_mem e
-  | #VirtualReg.t as t -> sexp_of_temp (VirtualReg.to_string t)
+  | `Temp t -> sexp_of_temp t
 
 (** [sexp_of_mem e] is the sexp representation of [`Mem e] *)
 and sexp_of_mem e = Sexp.List [ Sexp.Atom "MEM"; sexp_of_expr e ]
@@ -131,8 +132,8 @@ let sexp_of_data l i =
   Sexp.List
     [ Sexp.Atom "DATA"; Sexp.Atom l; List.sexp_of_t Int64.sexp_of_t i ]
 
-(** [sexp_of_func l b] is the sexp representation of [`Func l b] *)
-let sexp_of_func l b =
+(** [sexp_of_function l b] is the sexp representation of [`Func l b] *)
+let sexp_of_function l b =
   Sexp.List
     [
       Sexp.Atom "FUNC";
@@ -143,22 +144,21 @@ let sexp_of_func l b =
 (** [sexp_of_toplevel tl] is the sexp representation of [tl] *)
 let sexp_of_toplevel = function
   | `Data (l, i) -> sexp_of_data l i
-  | `Func (l, b) -> sexp_of_func l b
+  | `Func (l, b, _, _) -> sexp_of_function l b
 
 let sexp_of_t ~compunit (top : Reorder.t) : Sexp.t =
   Sexp.List
     (Sexp.Atom "COMPUNIT" :: Sexp.Atom compunit
     :: List.map ~f:sexp_of_toplevel top)
 
-let translate ~optimize ast =
-  let gensym = IrGensym.create () in
+let translate ~optimize ?(gensym = IrGensym.create ()) ast =
   let stmts =
     ast |> Mir.translate ~gensym |> Lir.lower ~gensym
-    |> Reorder.reorder ~gensym:(Label.generator gensym)
+    |> Reorder.reorder ~gensym:(IrGensym.Label.generator gensym)
   in
   if optimize then const_fold stmts else stmts
 
-module Diagnostic = struct
+module Output = struct
   (** [print_source ~out ~compunit ~optimize source] prints [source] to
       [out] as an s-expression *)
   let print_source ~out ~compunit ~optimize source =
@@ -167,8 +167,9 @@ module Diagnostic = struct
 
   let file_to_file ?cache ~src ~out ~deps ~optimize () =
     let compunit = Util.File.base src in
-    let open Ast in
-    let f = iter_source ~f:(print_source ~out ~compunit ~optimize) in
+    let f =
+      Ast.iter_source ~f:(print_source ~out ~compunit ~optimize)
+    in
     Check.Diagnostic.iter_file ?cache ~src ~out ~deps ~f ()
 end
 
@@ -179,3 +180,4 @@ module Reorder = Reorder
 module Subtype = Subtype
 module Op = Op
 module Gensym = IrGensym
+module Temp = Temp

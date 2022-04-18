@@ -55,6 +55,9 @@ let command =
       and irrun =
         flag "--irrun" no_arg
           ~doc:" Generate and interpret immediate code."
+      and abstract_asm =
+        flag "--abstract-asm" no_arg
+          ~doc:" Generate abstract assembly code."
       and disable_optimize =
         flag "-O" no_arg ~doc:" Disable optimizations."
       and target =
@@ -76,6 +79,7 @@ let command =
           typecheck;
           irgen;
           irrun;
+          abstract_asm;
           disable_optimize;
           target;
         }

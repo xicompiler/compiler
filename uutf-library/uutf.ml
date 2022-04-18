@@ -4,7 +4,6 @@
   ---------------------------------------------------------------------------*)
 
 let io_buffer_size = 65536 (* IO_BUFFER_SIZE 4.0.0 *)
-
 let pp = Format.fprintf
 let invalid_encode () = invalid_arg "expected `Await encode"
 
@@ -27,7 +26,6 @@ let unsafe_set_byte s j byte =
 (* Unicode characters *)
 
 let u_bom = Uchar.unsafe_of_int 0xFEFF (* BOM. *)
-
 let u_rep = Uchar.unsafe_of_int 0xFFFD (* replacement character. *)
 
 (* Unicode encoding schemes *)
@@ -834,9 +832,7 @@ let nline d =
 (* inlined. *)
 
 let ncol d = d.col <- d.col + 1 (* inlined. *)
-
 let ncount d = d.count <- d.count + 1 (* inlined. *)
-
 let cr d b = d.last_cr <- b (* inlined. *)
 
 let pp_remove_bom utf16 pp d = function

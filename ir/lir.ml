@@ -1,14 +1,13 @@
 open Core
 open Subtype
 open Infix
-open IrGensym
 
 type expr = expr Subtype.expr
 type stmt = expr Subtype.cjump2
 type dest = expr Subtype.dest
 
 type toplevel =
-  [ `Func of label * stmt list
+  [ `Func of label * stmt list * int * int
   | `Data of label * int64 list
   ]
 
@@ -28,19 +27,15 @@ let rec rev_lower_expr ~gensym ~init : Mir.expr -> stmt list * expr =
   | `Call (i, e, es) -> rev_lower_call ~gensym ~init i e es
   | `ESeq (s, e) -> rev_lower_eseq ~gensym ~init s e
   | `Bop (op, e1, e2) -> rev_lower_bop ~gensym ~init op e1 e2
-  | #Mir.dest as e -> rev_lower_dest_coerce ~gensym ~init e
+  | `Mem e -> (rev_lower_mem ~gensym ~init e :> stmt list * expr)
+  | #Temp.Virtual.t as e -> (init, e)
 
 (** [rev_lower_dest ~init:\[sm; ...; s1\] s] is
     [sn; ...; sm-1; sm; ... s1] if [sm-1; ...; sn] are the sequence of
     lowered IR expressions equivalent to IR statement [s] *)
 and rev_lower_dest ~gensym ~init = function
-  | #VirtualReg.t as e -> (init, e)
+  | `Temp _ as e -> (init, e)
   | `Mem e -> rev_lower_mem ~gensym ~init e
-
-(** Same as [rev_lower_dest] but the lowered pure destination is coerced
-    to an exprssion *)
-and rev_lower_dest_coerce ~gensym ~init e =
-  e |> rev_lower_dest ~gensym ~init |> Tuple2.map_snd ~f:coerce
 
 (** [rev_lower_call ~init:\[sm; ...; s1\] e es] is
     ([sn; ...; sm-1; sm; ... s1], e') if [sm-1; ...; sn] are the
@@ -48,7 +43,7 @@ and rev_lower_dest_coerce ~gensym ~init e =
     IR statement [`Call (e, es)] and [e'] is the pure, lowered IR
     expression equivalent to the result computed by [`Call (e, es)] *)
 and rev_lower_call ~gensym ~init i e es =
-  let t = Temp.fresh gensym in
+  let t = IrGensym.Temp.fresh gensym in
   let move = `Move (t, `Rv 1) in
   (move :: rev_lower_call_stmt ~gensym ~init i e es, t)
 
@@ -67,7 +62,7 @@ and rev_lower_eseq ~gensym ~init s e =
     the same value of [e1], and [e2'] is the pure expression computing
     the same value as [e2], assuming [e1] and [e2] do not commute *)
 and expr2_general ~gensym ~init e1 e2 : stmt list * dest * expr =
-  let t = Temp.fresh gensym in
+  let t = IrGensym.Temp.fresh gensym in
   let s1, e1' = rev_lower_expr ~gensym ~init e1 in
   let init = `Move (t, e1') :: s1 in
   let s2, e2' = rev_lower_expr ~gensym ~init e2 in
@@ -143,7 +138,7 @@ and dest_expr_commute ~gensym ~init dst src =
 and rev_lower_dest_expr ~gensym ~init dst src =
   let commute () = dest_expr_commute ~gensym ~init dst src in
   match dst with
-  | `Temp _ | `Arg _ | `Rv _ -> commute ()
+  | `Temp _ -> commute ()
   | `Mem _ when Mir.commute (dst :> Mir.expr) src -> commute ()
   | `Mem e ->
       let f = Fn.compose ( ! ) coerce in
@@ -181,7 +176,7 @@ and rev_lower_jump ~gensym ~init e =
     the lowering function *)
 and rev_lower_moves ~gensym ~init es =
   let f (ts, init) e =
-    let t = Temp.fresh gensym in
+    let t = IrGensym.Temp.fresh gensym in
     (t :: ts, rev_lower_move_temp ~gensym ~init t e)
   in
   es |> List.fold ~f ~init:([], init) |> Tuple2.map_fst ~f:List.rev
@@ -223,10 +218,10 @@ and rev_lower_seq ~gensym ~init seq =
 let lower_seq ~gensym =
   Fn.compose List.rev (rev_lower_seq ~gensym ~init:[])
 
-let lower_func ~gensym l b = `Func (l, lower_seq ~gensym b)
+let lower_function ~gensym l b a r = `Func (l, lower_seq ~gensym b, a, r)
 
 let lower_toplevel ~gensym = function
   | `Data _ as d -> d
-  | `Func (l, b) -> lower_func ~gensym l b
+  | `Func (l, b, a, r) -> lower_function ~gensym l b a r
 
 let lower ~gensym = List.map ~f:(lower_toplevel ~gensym)

@@ -35,6 +35,7 @@ output
 
 # executable
 /xic
+*.out
 
 # deliverable
 *.zip

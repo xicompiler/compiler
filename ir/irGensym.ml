@@ -33,12 +33,6 @@ let fresh2 ~fresh gen = Tuple2.map ~f:fresh (gen, gen)
     [fresh] *)
 let fresh3 ~fresh gen = Tuple3.map ~f:fresh (gen, gen, gen)
 
-module Temp = struct
-  let fresh { gen_temp } = `Temp (gen_temp ())
-  let fresh2 = fresh2 ~fresh
-  let fresh3 = fresh3 ~fresh
-end
-
 (** [Params] is the module type of parameters used to created a
     generated *)
 module type Params = sig
@@ -64,6 +58,13 @@ module Make (Args : Params) = struct
   let fresh gen = generator gen ()
   let fresh2 = fresh2 ~fresh
   let fresh3 = fresh3 ~fresh
+end
+
+module Temp = struct
+  let fresh { gen_temp } = `Temp (gen_temp ())
+  let fresh2 = fresh2 ~fresh
+  let fresh3 = fresh3 ~fresh
+  let generator = gen_temp
 end
 
 module Label = Make (struct

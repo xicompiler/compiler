@@ -10,6 +10,7 @@ type t = {
   typecheck : bool;
   irgen : bool;
   irrun : bool;
+  abstract_asm : bool;
   disable_optimize : bool;
   target : string;
 }

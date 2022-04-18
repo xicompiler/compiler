@@ -7,12 +7,16 @@ val sexp_of_t : compunit:string -> Reorder.t -> Sexp.t
 val const_fold : Reorder.t -> Reorder.t
 (** [const_fold stmts] is [stmts] constant folded at the IR level *)
 
-val translate : optimize:bool -> Ast.Decorated.source -> Reorder.t
-(** [translate ~optimize ast] is decorated ast [ast] translated to
-    lowered (canonical) IR, with optimizations if [optimize] is true *)
+val translate :
+  optimize:bool ->
+  ?gensym:IrGensym.t ->
+  Ast.Decorated.source ->
+  Reorder.t
+(** [translate ~optimize ?gensym ast] is decorated ast [ast] translated
+    to lowered (canonical) IR, with optimizations if [optimize] is true *)
 
-(** [Diagnostic] represents the diagnostic functions needed for IR *)
-module Diagnostic : sig
+(** [Output] represents the file functions needed for IR translation *)
+module Output : sig
   val file_to_file :
     ?cache:Frontend.Check.cache ->
     src:string ->
@@ -52,4 +56,9 @@ end
 (** [Gensym] is the type of a symbol generator for IR terms *)
 module Gensym : module type of struct
   include IrGensym
+end
+
+(** [Temp] represents a temporary in IR *)
+module Temp : module type of struct
+  include Temp
 end

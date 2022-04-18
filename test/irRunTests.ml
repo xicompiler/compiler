@@ -15,10 +15,9 @@ let ir_file_test name ~src ~reference =
   let ir_out = output_file ~ext:"ir.output" src in
   let ir_out_optimized = output_file ~ext:"ir.o.output" src in
   ignore
-    (Ir.Diagnostic.file_to_file ~src ~out:ir_out ~deps ~optimize:false
-       ());
+    (Ir.Output.file_to_file ~src ~out:ir_out ~deps ~optimize:false ());
   ignore
-    (Ir.Diagnostic.file_to_file ~src ~out:ir_out_optimized ~deps
+    (Ir.Output.file_to_file ~src ~out:ir_out_optimized ~deps
        ~optimize:true ());
   let out = output_file src in
   let out_optimized = output_file ~ext:"o.output" src in

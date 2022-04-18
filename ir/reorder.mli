@@ -8,7 +8,7 @@ type stmt =
 (** [stmt] is the type of a reordered statement *)
 
 type toplevel =
-  [ `Func of label * stmt list
+  [ `Func of label * stmt list * int * int
   | `Data of label * int64 list
   ]
 

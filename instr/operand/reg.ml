@@ -11,6 +11,8 @@ module Bit64 = struct
     | `rdi
     | `rsp
     | `rbp
+    | `rip
+    | `r8
     | `r9
     | `r10
     | `r11
@@ -34,11 +36,6 @@ module Bit8 = struct
     | `dl
     ]
   [@@deriving variants]
-
-  type abstract =
-    [ t
-    | Ir.temp
-    ]
 end
 
 type t =
@@ -46,12 +43,19 @@ type t =
   | Bit8.t
   ]
 
-type abstract =
-  [ t
-  | Ir.temp
-  | Ir.rv
-  ]
+type concrete = t
 
 let to_string : [< t ] -> string = function
   | #Bit64.t as r -> Bit64.Variants.to_name r
   | #Bit8.t as r -> Bit8.Variants.to_name r
+
+module Abstract = struct
+  type t =
+    [ concrete
+    | Ir.Temp.Virtual.t
+    ]
+
+  let to_string : [< t ] -> string = function
+    | #concrete as reg -> to_string reg
+    | #Ir.Temp.Virtual.t as t -> Ir.Temp.Virtual.to_string t
+end

@@ -2,15 +2,12 @@ open Core
 open Subtype
 open Primitive
 open Type
-open IrGensym
 open Util.Fn
 open Ast.Expr
 open Ast.Stmt
 open Ast.Toplevel
 open Ast.Decorated
 open Option.Let_syntax
-module Map = String.Map
-module Set = String.Set
 
 type expr =
   [ expr Subtype.expr
@@ -24,7 +21,7 @@ and stmt =
   ]
 
 type toplevel =
-  [ `Func of label * stmt list
+  [ `Func of label * stmt list * int * int
   | `Data of label * int64 list
   ]
 
@@ -44,7 +41,7 @@ let rec exists_expr ~f : expr -> bool = function
   | `Call (_, e, es) -> exists_call ~f e es
   | `ESeq (s, e) -> exists_stmt ~f s || exists_expr ~f e
   | `Mem e -> exists_expr ~f e
-  | `Const _ | `Name _ | #VirtualReg.t -> false
+  | `Const _ | `Name _ | #Temp.Virtual.t -> false
 
 (** [exists_call ~f e es] is [true] iff [`Call (e, es)] contains a node
     [e] satisfying [f e] *)
@@ -69,12 +66,12 @@ and exists_stmt ~f = function
 
 (** [def_expr ~init e] is the union of [init] and the temps modified by
     [e] *)
-let rec def_expr ~init : expr -> String.Set.t = function
+let rec def_expr ~init : expr -> Temp.Virtual.Set.t = function
   | `Bop (_, e1, e2) -> def_expr2 ~init e1 e2
   | `Call (_, e, es) -> def_call ~init e es
   | `ESeq (s, e) -> def_expr ~init:(def_stmt ~init s) e
   | `Mem e -> def_expr ~init e
-  | #VirtualReg.t | `Const _ | `Name _ -> init
+  | `Const _ | `Name _ | #Temp.Virtual.t -> init
 
 (** [def_call ~init e es] the union of [init] and all temps modified in
     [`Call (e, es)] *)
@@ -92,7 +89,7 @@ and def_exprs ~init es =
 (** [def_stmt ~init s] is the union of [init] and every temp used by [s] *)
 and def_stmt ~init = function
   | `CJump (e, _, _) | `Jump e -> def_expr ~init e
-  | `Move (`Temp t, e) -> def_expr ~init:(String.Set.add init t) e
+  | `Move ((`Temp _ as t), e) -> def_expr ~init:(Set.add init t) e
   | `Move (e1, e2) -> def_expr2 ~init (e1 :> expr) e2
   | `Label _ -> init
   | `Call (_, e, es) -> def_call ~init e es
@@ -105,11 +102,11 @@ and def_stmts ~init stmts =
   List.fold stmts ~init ~f:(fun acc -> def_stmt ~init:acc)
 
 (** [use_expr ~init e] is the union of [init] and the temps used in [e] *)
-let rec use_expr ~init : expr -> String.Set.t = function
+let rec use_expr ~init : expr -> Temp.Virtual.Set.t = function
   | `Bop (_, e1, e2) -> use_expr2 ~init e1 e2
   | `Call (_, e, es) -> use_call ~init e es
   | `ESeq (s, e) -> use_expr ~init:(use_stmt ~init s) e
-  | #VirtualReg.t as t -> String.Set.add init (VirtualReg.to_string t)
+  | #Temp.Virtual.t as t -> Set.add init t
   | `Mem e -> use_expr ~init e
   | `Const _ | `Name _ -> init
 
@@ -146,9 +143,10 @@ let has_mem = exists_expr ~f:(function `Mem _ -> true | _ -> false)
 (** [disjoint ~use ~def] is [true] if the temps used by [use] and the
     temps defined by [def] are disjoint *)
 let disjoint ~use ~def =
-  let use = use_expr ~init:String.Set.empty use in
-  let def = def_expr ~init:String.Set.empty def in
-  String.Set.are_disjoint use def
+  let init = Temp.Virtual.Set.empty in
+  let use = use_expr ~init use in
+  let def = def_expr ~init def in
+  Set.are_disjoint use def
 
 let commute e1 e2 =
   (not (has_mem e1 && has_mem e2)) && disjoint ~use:e1 ~def:e2
@@ -181,6 +179,7 @@ let alloc_array_const len =
   alloc (`Const size)
 
 open Infix
+open IrGensym
 
 (** [index_addr p m] is [p + m * 8] as an IR expression *)
 let index_addr p m = p + (m * eight)
@@ -247,11 +246,12 @@ let mangle id ~ctx =
   let args = arg |> Term.to_tau_list |> encode_args in
   Printf.sprintf mangle_fmt name return args
 
-(** [num_returns id ctx] is the number of values that the function [id]
-    returns. *)
-let num_returns id ~ctx =
+(** [num_args_returns id ctx] is a pair of the numbers of values that
+    the function [id] takes in as arguments and returns. *)
+let num_args_returns id ~ctx =
   let arg, ret = Context.find_fn_exn ~id ctx in
-  ret |> Term.to_tau_list |> List.length
+  ( arg |> Term.to_tau_list |> List.length,
+    ret |> Term.to_tau_list |> List.length )
 
 let rec factor_expr ~gensym ~map enode =
   match Entry.key enode with
@@ -458,7 +458,7 @@ and translate_int_neg ~gensym ~map ~set e =
     call with function id [id], arguments [es], and context [ctx] *)
 and translate_call ~gensym ~map ~set ~ctx id es =
   let name = mangle id ~ctx in
-  let rets = num_returns id ~ctx in
+  let rets = num_args_returns id ~ctx |> snd in
   `Call (rets, `Name name, translate_exprs ~gensym ~map ~set es)
 
 (** [translate_bop bop e1 e2] is the mir representation of binary
@@ -778,7 +778,8 @@ let translate_fn_defn ~gensym ~map ~set ~ctx signature block =
       [ translate_return ~gensym ~map ~set [] ]
     else []
   in
-  `Func (name, `Seq moves :: block :: ret)
+  let num_args, num_rets = num_args_returns ~ctx id in
+  `Func (name, `Seq moves :: block :: ret, num_args, num_rets)
 
 (** [translate_global_init id typ p] is the mir representation of a
     global initialization of [id] with type [typ] and primitive [p] as
@@ -810,7 +811,7 @@ let get_data_from_map map =
 
 let translate ~gensym src =
   let defs = Source.defs src in
-  let map = factor_definitions ~gensym ~map:Map.empty defs in
-  let set = global_definitions ~gensym ~set:Set.empty defs in
+  let map = factor_definitions ~gensym ~map:String.Map.empty defs in
+  let set = global_definitions ~gensym ~set:String.Set.empty defs in
   let globals = get_data_from_map map in
   globals @ List.filter_map ~f:(translate_defn ~gensym ~map ~set) defs

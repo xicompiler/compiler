@@ -1,23 +1,28 @@
-open! Core
+open Core
 
-type imm = [ `Imm of Imm.t ]
-(** [imm] represents an immediate operand *)
-
-type t =
-  [ Dest.t
-  | imm
+type 'a generic =
+  [ Reg.t
+  | `Mem of 'a Mem.generic
+  | `Imm of Imm.t
+  | Ir.name
   ]
+(** ['a generic] is the type of an operand with register type ['a] *)
+
+type t = Reg.t generic
 (** [t] is the type of an operand in x86 *)
 
-type abstract =
-  [ Dest.abstract
-  | imm
-  ]
-(** [abstract] is the type of an abstract operand in x86 *)
+include Util.Stringable.S with type t := t
 
-module Encoding : module type of Encoding
-(** [Encoding] represents an instruction encoding, as specified in the
-    x86 manual *)
+(** [Abstract] represents an abstract operand in x86 *)
+module Abstract : sig
+  type t =
+    [ Reg.Abstract.t generic
+    | Ir.Temp.Virtual.t
+    ]
+  (** [t] is the type of an abstract operand in x86 *)
+
+  include Util.Stringable.S with type t := t
+end
 
 module Reg : module type of Reg
 (** [Reg] represents a module in x86 *)
@@ -27,6 +32,3 @@ module Mem : module type of Mem
 
 module Imm : module type of Imm
 (** [Imm] represents an immediate operand in x86 *)
-
-module Dest : module type of Dest
-(** [Dest] represents a destination operand in x86 *)

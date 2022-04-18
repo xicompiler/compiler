@@ -1,4 +1,5 @@
-open! Core
+open Core
+open Util.Fn
 
 (** [t] represents a condition code in [Xi] *)
 type t =
@@ -14,6 +15,7 @@ type t =
   | Be
   | A
   | Ae
+[@@deriving variants]
 
 let of_cmp : Ir.Op.cmp -> t = function
   | `Eq -> E
@@ -26,3 +28,5 @@ let of_cmp : Ir.Op.cmp -> t = function
   | `UGt -> A
   | `ULeq -> Be
   | `ULt -> B
+
+let to_string = Variants.to_name >> String.lowercase

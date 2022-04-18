@@ -30,7 +30,7 @@ type dependencies = {
   std_dir : string;
 }
 (** [dependecies] represents a type for representing the external
-    dependencies for a fil e*)
+    dependencies for a file *)
 
 val type_check :
   ?cache:cache -> deps:dependencies -> Ast.Undecorated.t -> result

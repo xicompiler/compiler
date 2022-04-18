@@ -1,3 +1,5 @@
+open Core
+
 module Bit64 : sig
   type t =
     [ `rax
@@ -8,6 +10,8 @@ module Bit64 : sig
     | `rdi
     | `rsp
     | `rbp
+    | `rip
+    | `r8
     | `r9
     | `r10
     | `r11
@@ -31,12 +35,6 @@ module Bit8 : sig
     | `dl
     ]
   (** [t] is the type of a 8-bit register in x68 *)
-
-  type abstract =
-    [ t
-    | Ir.temp
-    ]
-  (** [abstract] is the type of an abstract 8-bit register *)
 end
 
 type t =
@@ -45,11 +43,17 @@ type t =
   ]
 (** [t] is the type of a register in x86 *)
 
-type abstract =
-  [ t
-  | Ir.temp
-  | Ir.rv
-  ]
-(** [abstract] is the type of an abstract register *)
+type concrete = t
 
 include Util.Stringable.S with type t := t
+
+(** [Abstract] is an abstract register *)
+module Abstract : sig
+  type t =
+    [ concrete
+    | Ir.Temp.Virtual.t
+    ]
+  (** [t] is the type of an abstract register *)
+
+  include Util.Stringable.S with type t := t
+end

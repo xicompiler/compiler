@@ -18,7 +18,7 @@ type dest = expr Subtype.dest
 (** A [dest] is an expression that can be moved into *)
 
 type toplevel =
-  [ `Func of label * stmt list
+  [ `Func of label * stmt list * int * int
   | `Data of label * int64 list
   ]
 

@@ -15,239 +15,209 @@ let const_fold_tests tests =
   let f (name, prog, expect) = const_fold_test ~name ~expect prog in
   List.map tests ~f
 
+(** [func name stmts] is the simple IR representation of a function with
+    [name] and [stmts] *)
+let func name stmts = `Func (name, stmts, 0, 0)
+
 let arith_tests : (string * Reorder.t * Reorder.t) list =
   [
     ( "mult",
       [
-        `Func
-          ( "mult",
-            [ `Move (`Temp "x", `Bop (`Mul, `Const 2L, `Const 3L)) ] );
+        func "mult"
+          [ `Move (`Temp "x", `Bop (`Mul, `Const 2L, `Const 3L)) ];
       ],
-      [ `Func ("mult", [ `Move (`Temp "x", `Const 6L) ]) ] );
+      [ func "mult" [ `Move (`Temp "x", `Const 6L) ] ] );
     ( "highmult",
       [
-        `Func
-          ( "highmult",
-            [
-              `Move
-                ( `Temp "x",
-                  `Bop (`HMul, `Const max_value, `Const max_value) );
-            ] );
+        func "highmult"
+          [
+            `Move
+              ( `Temp "x",
+                `Bop (`HMul, `Const max_value, `Const max_value) );
+          ];
       ],
       [
-        `Func
-          ( "highmult",
-            [
-              `Move
-                ( `Temp "x",
-                  `Const (Binop.Arith.high_mult max_value max_value) );
-            ] );
+        func "highmult"
+          [
+            `Move
+              ( `Temp "x",
+                `Const (Binop.Arith.high_mult max_value max_value) );
+          ];
       ] );
     ( "highmult zeros",
       [
-        `Func
-          ( "highmult zeros",
-            [ `Move (`Temp "x", `Bop (`HMul, `Const 2L, `Const 3L)) ] );
+        func "highmult zeros"
+          [ `Move (`Temp "x", `Bop (`HMul, `Const 2L, `Const 3L)) ];
       ],
-      [ `Func ("highmult zeros", [ `Move (`Temp "x", `Const zero) ]) ]
-    );
+      [ func "highmult zeros" [ `Move (`Temp "x", `Const zero) ] ] );
     ( "plus",
       [
-        `Func
-          ( "plus",
-            [ `Move (`Temp "x", `Bop (`Add, `Const one, `Const one)) ]
-          );
+        func "plus"
+          [ `Move (`Temp "x", `Bop (`Add, `Const one, `Const one)) ];
       ],
-      [ `Func ("plus", [ `Move (`Temp "x", `Const 2L) ]) ] );
+      [ func "plus" [ `Move (`Temp "x", `Const 2L) ] ] );
     ( "minus",
       [
-        `Func
-          ( "minus",
-            [ `Move (`Temp "x", `Bop (`Sub, `Const 4L, `Const one)) ] );
+        func "minus"
+          [ `Move (`Temp "x", `Bop (`Sub, `Const 4L, `Const one)) ];
       ],
-      [ `Func ("minus", [ `Move (`Temp "x", `Const 3L) ]) ] );
+      [ func "minus" [ `Move (`Temp "x", `Const 3L) ] ] );
     ( "div",
       [
-        `Func
-          ( "div",
-            [ `Move (`Temp "x", `Bop (`Div, `Const 4L, `Const 2L)) ] );
+        func "div"
+          [ `Move (`Temp "x", `Bop (`Div, `Const 4L, `Const 2L)) ];
       ],
-      [ `Func ("div", [ `Move (`Temp "x", `Const 2L) ]) ] );
+      [ func "div" [ `Move (`Temp "x", `Const 2L) ] ] );
     ( "mod",
       [
-        `Func
-          ( "mod",
-            [ `Move (`Temp "x", `Bop (`Mod, `Const 5L, `Const 3L)) ] );
+        func "mod"
+          [ `Move (`Temp "x", `Bop (`Mod, `Const 5L, `Const 3L)) ];
       ],
-      [ `Func ("mod", [ `Move (`Temp "x", `Const 2L) ]) ] );
+      [ func "mod" [ `Move (`Temp "x", `Const 2L) ] ] );
     ( "error",
       [
-        `Func
-          ( "error",
-            [ `Move (`Temp "x", `Bop (`Div, `Const 2L, `Const zero)) ]
-          );
+        func "error"
+          [ `Move (`Temp "x", `Bop (`Div, `Const 2L, `Const zero)) ];
       ],
       [
-        `Func
-          ( "error",
-            [ `Move (`Temp "x", `Bop (`Div, `Const 2L, `Const zero)) ]
-          );
+        func "error"
+          [ `Move (`Temp "x", `Bop (`Div, `Const 2L, `Const zero)) ];
       ] );
     ( "nested",
       [
-        `Func
-          ( "nested",
-            [
-              `Move
-                ( `Temp "x",
-                  `Bop
-                    ( `Add,
-                      `Bop (`Mul, `Const 2L, `Const 3L),
-                      `Bop (`Sub, `Const 4L, `Const one) ) );
-            ] );
+        func "nested"
+          [
+            `Move
+              ( `Temp "x",
+                `Bop
+                  ( `Add,
+                    `Bop (`Mul, `Const 2L, `Const 3L),
+                    `Bop (`Sub, `Const 4L, `Const one) ) );
+          ];
       ],
-      [ `Func ("nested", [ `Move (`Temp "x", `Const 9L) ]) ] );
+      [ func "nested" [ `Move (`Temp "x", `Const 9L) ] ] );
   ]
 
 let cmp_tests : (string * Reorder.t * Reorder.t) list =
   [
     ( "lt",
       [
-        `Func
-          ("lt", [ `Move (`Temp "x", `Bop (`Lt, `Const 2L, `Const 3L)) ]);
+        func "lt"
+          [ `Move (`Temp "x", `Bop (`Lt, `Const 2L, `Const 3L)) ];
       ],
-      [ `Func ("lt", [ `Move (`Temp "x", `Const one) ]) ] );
+      [ func "lt" [ `Move (`Temp "x", `Const one) ] ] );
     ( "geq",
       [
-        `Func
-          ( "geq",
-            [ `Move (`Temp "x", `Bop (`Geq, `Const 2L, `Const 3L)) ] );
+        func "geq"
+          [ `Move (`Temp "x", `Bop (`Geq, `Const 2L, `Const 3L)) ];
       ],
-      [ `Func ("geq", [ `Move (`Temp "x", `Const zero) ]) ] );
+      [ func "geq" [ `Move (`Temp "x", `Const zero) ] ] );
     ( "eq",
       [
-        `Func
-          ( "eq",
-            [ `Move (`Temp "x", `Bop (`Div, `Const 2L, `Const 2L)) ] );
+        func "eq"
+          [ `Move (`Temp "x", `Bop (`Div, `Const 2L, `Const 2L)) ];
       ],
-      [ `Func ("eq", [ `Move (`Temp "x", `Const one) ]) ] );
+      [ func "eq" [ `Move (`Temp "x", `Const one) ] ] );
     ( "neq",
       [
-        `Func
-          ( "neq",
-            [ `Move (`Temp "x", `Bop (`Mod, `Const 2L, `Const 2L)) ] );
+        func "neq"
+          [ `Move (`Temp "x", `Bop (`Mod, `Const 2L, `Const 2L)) ];
       ],
-      [ `Func ("neq", [ `Move (`Temp "x", `Const zero) ]) ] );
+      [ func "neq" [ `Move (`Temp "x", `Const zero) ] ] );
     ( "nested",
       [
-        `Func
-          ( "nested",
-            [
-              `Move
-                ( `Temp "x",
-                  `Bop
-                    ( `Neq,
-                      `Bop (`Leq, `Const 2L, `Const 2L),
-                      `Bop (`Gt, `Const 2L, `Const 2L) ) );
-            ] );
+        func "nested"
+          [
+            `Move
+              ( `Temp "x",
+                `Bop
+                  ( `Neq,
+                    `Bop (`Leq, `Const 2L, `Const 2L),
+                    `Bop (`Gt, `Const 2L, `Const 2L) ) );
+          ];
       ],
-      [ `Func ("nested", [ `Move (`Temp "x", `Const one) ]) ] );
+      [ func "nested" [ `Move (`Temp "x", `Const one) ] ] );
   ]
 
 let log_tests : (string * Reorder.t * Reorder.t) list =
   [
     ( "and",
       [
-        `Func
-          ( "and",
-            [ `Move (`Temp "x", `Bop (`And, `Const zero, `Const one)) ]
-          );
+        func "and"
+          [ `Move (`Temp "x", `Bop (`And, `Const zero, `Const one)) ];
       ],
-      [ `Func ("and", [ `Move (`Temp "x", `Const zero) ]) ] );
+      [ func "and" [ `Move (`Temp "x", `Const zero) ] ] );
     ( "or",
       [
-        `Func
-          ( "or",
-            [ `Move (`Temp "x", `Bop (`Or, `Const zero, `Const one)) ]
-          );
+        func "or"
+          [ `Move (`Temp "x", `Bop (`Or, `Const zero, `Const one)) ];
       ],
-      [ `Func ("or", [ `Move (`Temp "x", `Const one) ]) ] );
+      [ func "or" [ `Move (`Temp "x", `Const one) ] ] );
     ( "nested",
       [
-        `Func
-          ( "nested",
-            [
-              `Move
-                ( `Temp "x",
-                  `Bop
-                    ( `Or,
-                      `Bop (`And, `Const one, `Const one),
-                      `Bop (`Or, `Const zero, `Const zero) ) );
-            ] );
+        func "nested"
+          [
+            `Move
+              ( `Temp "x",
+                `Bop
+                  ( `Or,
+                    `Bop (`And, `Const one, `Const one),
+                    `Bop (`Or, `Const zero, `Const zero) ) );
+          ];
       ],
-      [ `Func ("nested", [ `Move (`Temp "x", `Const one) ]) ] );
+      [ func "nested" [ `Move (`Temp "x", `Const one) ] ] );
   ]
 
 let bitwise_tests : (string * Reorder.t * Reorder.t) list =
   [
     ( "xor 00",
       [
-        `Func
-          ( "xor",
-            [ `Move (`Temp "x", `Bop (`Xor, `Const zero, `Const zero)) ]
-          );
+        func "xor"
+          [ `Move (`Temp "x", `Bop (`Xor, `Const zero, `Const zero)) ];
       ],
-      [ `Func ("xor", [ `Move (`Temp "x", `Const zero) ]) ] );
+      [ func "xor" [ `Move (`Temp "x", `Const zero) ] ] );
     ( "xor 01",
       [
-        `Func
-          ( "xor",
-            [ `Move (`Temp "x", `Bop (`Xor, `Const zero, `Const one)) ]
-          );
+        func "xor"
+          [ `Move (`Temp "x", `Bop (`Xor, `Const zero, `Const one)) ];
       ],
-      [ `Func ("xor", [ `Move (`Temp "x", `Const one) ]) ] );
+      [ func "xor" [ `Move (`Temp "x", `Const one) ] ] );
     ( "xor 00 11",
       [
-        `Func
-          ( "xor",
-            [ `Move (`Temp "x", `Bop (`Xor, `Const zero, `Const 3L)) ]
-          );
+        func "xor"
+          [ `Move (`Temp "x", `Bop (`Xor, `Const zero, `Const 3L)) ];
       ],
-      [ `Func ("xor", [ `Move (`Temp "x", `Const 3L) ]) ] );
+      [ func "xor" [ `Move (`Temp "x", `Const 3L) ] ] );
     ( "nested double negation",
       [
-        `Func
-          ( "xor",
-            [
-              `Move
-                ( `Temp "x",
-                  `Bop
-                    ( `Xor,
-                      `Bop (`Xor, `Temp "y", `Const one),
-                      `Const one ) );
-            ] );
+        func "xor"
+          [
+            `Move
+              ( `Temp "x",
+                `Bop
+                  (`Xor, `Bop (`Xor, `Temp "y", `Const one), `Const one)
+              );
+          ];
       ],
-      [ `Func ("xor", [ `Move (`Temp "x", `Temp "y") ]) ] );
+      [ func "xor" [ `Move (`Temp "x", `Temp "y") ] ] );
     ( "nested triple negation",
       [
-        `Func
-          ( "xor",
-            [
-              `Move
-                ( `Temp "x",
-                  `Bop
-                    ( `Xor,
-                      `Bop
-                        ( `Xor,
-                          `Bop (`Xor, `Temp "y", `Const one),
-                          `Const one ),
-                      `Const one ) );
-            ] );
+        func "xor"
+          [
+            `Move
+              ( `Temp "x",
+                `Bop
+                  ( `Xor,
+                    `Bop
+                      ( `Xor,
+                        `Bop (`Xor, `Temp "y", `Const one),
+                        `Const one ),
+                    `Const one ) );
+          ];
       ],
       [
-        `Func
-          ( "xor",
-            [ `Move (`Temp "x", `Bop (`Xor, `Temp "y", `Const one)) ] );
+        func "xor"
+          [ `Move (`Temp "x", `Bop (`Xor, `Temp "y", `Const one)) ];
       ] );
   ]
 
@@ -255,35 +225,28 @@ let unsigned_tests : (string * Reorder.t * Reorder.t) list =
   [
     ( "ult -1 0",
       [
-        `Func
-          ( "ult",
-            [ `Move (`Temp "x", `Bop (`ULt, `Const ~-1L, `Const zero)) ]
-          );
+        func "ult"
+          [ `Move (`Temp "x", `Bop (`ULt, `Const ~-1L, `Const zero)) ];
       ],
-      [ `Func ("ult", [ `Move (`Temp "x", `Const zero) ]) ] );
+      [ func "ult" [ `Move (`Temp "x", `Const zero) ] ] );
     ( "ult 1 -2",
       [
-        `Func
-          ( "ult",
-            [ `Move (`Temp "x", `Bop (`ULt, `Const 1L, `Const ~-2L)) ]
-          );
+        func "ult"
+          [ `Move (`Temp "x", `Bop (`ULt, `Const 1L, `Const ~-2L)) ];
       ],
-      [ `Func ("ult", [ `Move (`Temp "x", `Const one) ]) ] );
+      [ func "ult" [ `Move (`Temp "x", `Const one) ] ] );
     ( "ult 1 2",
       [
-        `Func
-          ( "ult",
-            [ `Move (`Temp "x", `Bop (`ULt, `Const 1L, `Const 2L)) ] );
+        func "ult"
+          [ `Move (`Temp "x", `Bop (`ULt, `Const 1L, `Const 2L)) ];
       ],
-      [ `Func ("ult", [ `Move (`Temp "x", `Const one) ]) ] );
+      [ func "ult" [ `Move (`Temp "x", `Const one) ] ] );
     ( "ult -1 -2",
       [
-        `Func
-          ( "ult",
-            [ `Move (`Temp "x", `Bop (`ULt, `Const ~-1L, `Const ~-2L)) ]
-          );
+        func "ult"
+          [ `Move (`Temp "x", `Bop (`ULt, `Const ~-1L, `Const ~-2L)) ];
       ],
-      [ `Func ("ult", [ `Move (`Temp "x", `Const zero) ]) ] );
+      [ func "ult" [ `Move (`Temp "x", `Const zero) ] ] );
   ]
 
 let arith_test_cases = const_fold_tests arith_tests

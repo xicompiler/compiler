@@ -15,9 +15,9 @@ val fold2_result :
     return of [Error _]. If the lengths of [l1] and [l2] are not equal,
     [Error unequal_lengths] is returned. *)
 
-val hd_tl_exn : 'a t -> 'a * 'a t
-(** [hd_tl_exn lst] is [h :: t] if [lst] is [h :: t]. Raises: [Failure]
-    if [lst] is nil. *)
+val pop_exn : 'a t -> 'a * 'a t
+(** [pop_exn lst] is [h :: t] if [lst] is [h :: t]. Raises: [Failure] if
+    [lst] is nil. *)
 
 val rev_concat : 'a t t -> 'a t
 (** Same as [Core.List.concat], but in reverse order *)

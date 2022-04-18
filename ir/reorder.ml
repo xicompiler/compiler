@@ -11,7 +11,7 @@ type stmt =
   ]
 
 type toplevel =
-  [ `Func of label * stmt list
+  [ `Func of label * stmt list * int * int
   | `Data of label * int64 list
   ]
 
@@ -337,6 +337,6 @@ let reorder_stmts ~gensym stmts =
 
 let reorder_toplevel ~gensym : Lir.toplevel -> toplevel = function
   | `Data _ as d -> d
-  | `Func (l, b) -> `Func (l, reorder_stmts ~gensym b)
+  | `Func (l, b, a, r) -> `Func (l, reorder_stmts ~gensym b, a, r)
 
 let reorder ~gensym = List.map ~f:(reorder_toplevel ~gensym)

@@ -2,6 +2,6 @@
  (name ast)
  (libraries core op unicode type context primitive util)
  (preprocess
-  (pps ppx_jane -allow-unannotated-ignores))
+  (pps ppx_jane))
  (instrumentation
   (backend bisect_ppx)))

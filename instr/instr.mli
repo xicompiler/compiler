@@ -1,29 +1,4 @@
 open Core
-open Operand
-
-type jmp =
-  [ Dest.t
-  | Ir.name
-  ]
-(** [jmp] is the type of an operand to a concrete [jmp] instruction *)
-
-type mul =
-  [ Dest.t
-  | (Reg.t, Dest.t) Encoding.rm
-  | (Reg.t, Dest.t) Encoding.rmi
-  ]
-(** [mul] is the type of an operand to a concrete [mul] or [imul]
-    instruction *)
-
-type t =
-  < reg : Reg.t
-  ; reg8 : Reg.Bit8.t
-  ; dest : Dest.t
-  ; operand : Operand.t
-  ; jmp : jmp
-  ; mul : mul >
-  Generic.t
-(** [t] is the type of a concrete assembly instruction *)
 
 (** [Operand] represents an operand to an instruction *)
 module Operand : module type of struct
@@ -44,4 +19,40 @@ end
 (** [ConditionCode] is a condition code in x86 *)
 module ConditionCode : module type of struct
   include ConditionCode
+end
+
+val ir_to_file :
+  gensym:(unit -> string) ->
+  out:string ->
+  Ir.Reorder.toplevel list ->
+  unit
+
+val string_to_file : out:string -> string -> unit
+
+(** [Output] represents the file functions needed for instruction
+    selection and assembly code generation *)
+module Output : sig
+  val file_to_file :
+    ?cache:Frontend.Check.cache ->
+    src:string ->
+    out:string ->
+    deps:Frontend.Check.dependencies ->
+    optimize:bool ->
+    unit ->
+    unit File.Xi.result
+  (** [file_to_file ~start lexbuf out] parses and typechecks the
+      contents of file [src] and generates concrete asm to file [out] *)
+
+  module Abstract : sig
+    val file_to_file :
+      ?cache:Frontend.Check.cache ->
+      src:string ->
+      out:string ->
+      deps:Frontend.Check.dependencies ->
+      optimize:bool ->
+      unit ->
+      unit File.Xi.result
+    (** [file_to_file ~start lexbuf out] parses and typechecks the
+        contents of file [src] and generates abstract asm to file [out] *)
+  end
 end

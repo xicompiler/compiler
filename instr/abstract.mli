@@ -1,27 +1,4 @@
-open Operand
-
-type jmp =
-  [ Dest.abstract
-  | Ir.name
-  ]
-(** [jmp] is the type of an operand to an abstract [jmp] instruction *)
-
-type mul =
-  [ Dest.abstract
-  | (Reg.abstract, Dest.abstract) Encoding.rm
-  | (Reg.abstract, Dest.abstract) Encoding.rmi
-  ]
-(** [mul] is the type of an operand to an abstract [mul] or [imul]
-    instruction *)
-
-type t =
-  < reg : Reg.abstract
-  ; reg8 : Reg.Bit8.abstract
-  ; dest : Dest.abstract
-  ; operand : abstract
-  ; jmp : jmp
-  ; mul : mul >
-  Generic.t
+type t = Operand.Abstract.t Generic.t
 (** [t] is the type of an abstract assembly instruction *)
 
 (** [Expr] contains functions for manipulating IR expressions and
@@ -38,7 +15,7 @@ module Expr : sig
       the translation of [e] into temporary [t] *)
 end
 
-(** [Expr] contains functions for manipulating IR expressions and
+(** [Stmt] contains functions for manipulating IR statements and
     translating them into abstract assembly *)
 module Stmt : sig
   type translation = t list
@@ -48,3 +25,14 @@ module Stmt : sig
   (** [munch ~gensym s] is the sequence of abstract assembly
       instructions having the same effect as [s] *)
 end
+
+module Asm : sig
+  type t = Operand.Abstract.t Generic.Asm.t
+  (** [asm] is the type of abstract assembly *)
+
+  include Util.Stringable.S with type t := t
+end
+
+val munch : gensym:(unit -> string) -> Ir.Reorder.toplevel list -> Asm.t
+(** [munch ~gensym top] is the global data and abstract assembly
+    instructions having the same effect as [top] *)
