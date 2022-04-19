@@ -16,6 +16,8 @@ clean: bisect-clean
 	find . -name '*.typed' -delete
 	find . -name '*.output' -delete
 	find . -name '*.conflicts' -delete
+	find . -name '*.s' -delete
+	find . -name '*.sout' -delete
 	rm -f xic *.zip *.log
 
 clean-all: clean

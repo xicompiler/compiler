@@ -41,18 +41,18 @@ mkMatrix(n: int) : int[][]
 makeRotor(sig: int[]): int[][], int[][], int {
     forward:  int[][] = mkMatrix(26)
     backward: int[][] = mkMatrix(26)
-
+    
     base: int[26]
-
+    
     c: int = 0
     while c < 26 {
         cd: int = toLower(sig[c]) - 'a'
         base[c] = cd
         c = c + 1
     }
-
+    
     inv: int[26]
-
+    
     rot: int = 0
     while rot < 26 {
         //Fill in forward direction for this..
@@ -61,17 +61,16 @@ makeRotor(sig: int[]): int[][], int[][], int {
             forward[rot][c] = base[c]
             c = c + 1
         }
-
+        
         //Make inverse..
         makeInverse(base, inv)
-
+        
         //Fill in backward
         c = 0
         while c < 26 {
             backward[rot][c] = inv[c]
             c = c + 1
         }
-
         //Simulate rotation..
         first:int = (base[0] - 1 + 26)%26
         pos:int = 1
@@ -79,12 +78,12 @@ makeRotor(sig: int[]): int[][], int[][], int {
             base[pos-1] = (base[pos] - 1 + 26)%26
             pos = pos + 1
         }
-
+        
         base[25] = first
-
+        
         rot = rot + 1
     }
-
+    
     return forward, backward, 0
 }
 
@@ -103,7 +102,6 @@ rotorEncryptBack(forward: int[][], backward: int[][], pos: int, letter: int): in
 
 makeReflector(encoding: int[]): int[] {
     perm:int[26]
-
     //Extract the base permutation.
     c: int = 0
     while c < 26 {
@@ -120,25 +118,23 @@ reflectorEncrypt(perm: int[], l:int): int {
 
 main(a: int[][]) {
     loops: int[][] = {
-     {12, 27, 6, 57, 25, 51, 52, -1},
-     {12, 27, 6, 55, 25, 51, 52, -1},
-     {12, 46, 47, -1},
-     {12, 27, 6, 16, 11, 52, -1}
+        {12, 27, 6, 57, 25, 51, 52, -1},
+        {12, 27, 6, 55, 25, 51, 52, -1},
+        {12, 46, 47, -1},
+        {12, 27, 6, 16, 11, 52, -1}
     }
-
+    
     //Setup components
     r1f: int[][], r1b: int[][], r1p: int = makeRotor("EKMFLGDQVZNTOWYHXUSPAIBRCJ")
     r2f: int[][], r2b: int[][], r2p: int = makeRotor("AJDKSIRUXBLHWTMCQGZNPYFVOE")
     r3f: int[][], r3b: int[][], r3p: int = makeRotor("BDFHJLCPRTXVZNYEIWGAKMUSQO")
     mb: int[] = makeReflector("YRUHQSLDPXNGOKMIEBFZCWVJAT")
-
     pos: int = 0
     while (pos < 26*26*26) {
         //Guess where the first letter in the loop goes to..
         guess: int = 0
         while guess < 26 {
             allMatch: bool = true
-
             loop: int = 0
             while loop < length(loops) {
                 l: int = guess
@@ -146,7 +142,6 @@ main(a: int[][]) {
                 loopPos: int = 0
                 while (loops[loop][loopPos] != -1) {
                     epos: int = pos + loops[loop][loopPos]
-
                     r1p = epos % 26
                     r2p = (epos/26)%26
                     r3p = epos/(26*26)%26
@@ -159,13 +154,13 @@ main(a: int[][]) {
                     l = rotorEncryptBack(r1f, r1b, r1p, l)
                     loopPos = loopPos + 1
                 }
-
+                
                 if (l != guess)
-                    allMatch = false
-
+                allMatch = false
+                
                 loop = loop + 1
             } // while loop
-
+            
             if allMatch {
                 posStr: int[3]
                 posStr[0] = (pos%26)+'A'
@@ -178,10 +173,10 @@ main(a: int[][]) {
                 guessStr[0] = guess+'A'
                 println(guessStr)
             }
-
+            
             guess = guess + 1
         } // while guess
-
+        
         pos = pos + 1
     } // while pos
 }
