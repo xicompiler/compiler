@@ -9,6 +9,7 @@ module Virtual : sig
     | `Rv of int
     | `Arg of int
     ]
+  [@@deriving equal, sexp, compare, hash]
   (** [VirtualReg.t] is the type of a virtual register in abstract
       assembly *)
 
@@ -25,7 +26,4 @@ module Virtual : sig
 
   module Set : Set.S with type Elt.t = t
   (** [Set] is a set of virtual temporaries *)
-
-  module Table : Hashtbl.S with type key = t
-  (** [Table] is a hashtable with key type [t] *)
 end

@@ -1,6 +1,6 @@
 open Core
 
-type temp = [ `Temp of string ] [@@deriving sexp, compare, hash]
+type temp = [ `Temp of string ] [@@deriving equal, sexp, compare, hash]
 
 module Virtual = struct
   module Args = struct
@@ -9,7 +9,7 @@ module Virtual = struct
       | `Rv of int
       | `Arg of int
       ]
-    [@@deriving sexp, compare, hash]
+    [@@deriving equal, sexp, compare, hash]
   end
 
   include Args

@@ -41,14 +41,17 @@ module Bit8 : sig
   (** [to_64_bit r] are the 64 higher order bit register of [r] *)
 end
 
-type t =
+type concrete =
   [ Bit64.t
   | Bit8.t
   ]
-[@@deriving equal]
+(** [concrete] is the type of a register in x86 *)
+
+type t = concrete [@@deriving equal]
 (** [t] is the type of a register in x86 *)
 
-type concrete = t
+val to_64_bit : t -> [> t ]
+(** [to_64_bit r] are the 64 higher order bit register of [r] *)
 
 include Util.Stringable.S with type t := t
 
@@ -61,4 +64,13 @@ module Abstract : sig
   (** [t] is the type of an abstract register *)
 
   include Util.Stringable.S with type t := t
+
+  module Set : Set.S with type Elt.t = t
+  (** [Set] is a set of virtual temporaries *)
+
+  module Map : Map.S with type Key.t = t
+  (** [Map] is a map with key type [t] *)
+
+  module Table : Hashtbl.S with type key = t
+  (** [Table] is a hashtable with key type [t] *)
 end

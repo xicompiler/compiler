@@ -29,6 +29,17 @@ type 'a t =
   | Ret
 [@@deriving variants]
 
+val skip_load : 'a t -> bool
+(** [skip_load instr] is [true] if [instr] is an instruction that
+    doesn't need its [def] operand to be loaded *)
+
+val is_setcc : 'a t -> bool
+(** [is_setcc instr] is [true] if [instr] is a [setcc] instruction *)
+
+val def : 'a t -> 'a option
+(** [def instr] is [Some def] if the instruction [instr] updates an
+    operand, or [None] *)
+
 val jnz : Ir.label -> 'a t
 (** [jnz l] is [Jcc (Nz, l)] *)
 

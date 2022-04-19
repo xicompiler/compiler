@@ -32,6 +32,12 @@ type 'a t =
   | Ret
 [@@deriving variants]
 
+let skip_load = function
+  | Setcc _ | Pop _ | Lea _ | Mov _ | Movzx _ -> true
+  | _ -> false
+
+let is_setcc = function Setcc _ -> true | _ -> false
+
 (** [fmt1] represents the format of a 1-operand instruction in x86 *)
 let fmt1 = format_of_string "%s %s"
 
@@ -133,6 +139,35 @@ let string_of_data l =
   List.map ~f:Int64.to_string
   >> String.concat ~sep:", "
   >> Printf.sprintf data_fmt l
+
+(* [def_of_mul m] is [Some op] for the destination operand in an [imul
+   m] instruction *)
+let def_of_mul = function
+  | `M op | `RM (op, _) | `RMI (op, _, _) -> Some op
+
+let def = function
+  | Label _ | Enter _ | Jmp _ | Jcc _ | Cmp _ | Test _ | Call _ | Leave
+  | Ret ->
+      None
+  | Setcc (_, op)
+  | IDiv op
+  | Shl (op, _)
+  | Shr (op, _)
+  | Sar (op, _)
+  | Add (op, _)
+  | Sub (op, _)
+  | Xor (op, _)
+  | And (op, _)
+  | Or (op, _)
+  | Lea (op, _)
+  | Mov (op, _)
+  | Movzx (op, _)
+  | Push op
+  | Pop op
+  | Inc op
+  | Dec op ->
+      Some op
+  | IMul m -> def_of_mul m
 
 let jnz l = Jcc (ConditionCode.Nz, l)
 let zero e = Xor (e, e)

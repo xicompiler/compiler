@@ -53,9 +53,7 @@ let abstract_asm_out ?cache ~args ~dir ~src ~deps () =
 
 (** [asm_run asm] interprets and executes the asm file at path [asm] *)
 let asm_run asm =
-  let command =
-    Printf.sprintf "./runtime/linkxi.sh %s\nwait\n./a.out" asm
-  in
+  let command = Printf.sprintf "./asmrun %s" asm in
   ignore (Sys.command command)
 
 (** [asm_out ?cache ~args ~dir ~src ~deps ()] outputs ASM of file with
