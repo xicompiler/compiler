@@ -1,659 +1,567 @@
 .intel_syntax noprefix
 .data
-g3: .quad 26, 89, 82, 85, 72, 81, 83, 76, 68, 80, 88, 78, 71, 79, 75, 77, 73, 69, 66, 70, 90, 67, 87, 86, 74, 65, 84
-g4: .quad 19, 77, 65, 84, 67, 72, 32, 65, 116, 32, 114, 111, 116, 111, 114, 32, 112, 111, 115, 58
-g0: .quad 26, 69, 75, 77, 70, 76, 71, 68, 81, 86, 90, 78, 84, 79, 87, 89, 72, 88, 85, 83, 80, 65, 73, 66, 82, 67, 74
-g2: .quad 26, 66, 68, 70, 72, 74, 76, 67, 80, 82, 84, 88, 86, 90, 78, 89, 69, 73, 87, 71, 65, 75, 77, 85, 83, 81, 79
-g1: .quad 26, 65, 74, 68, 75, 83, 73, 82, 85, 88, 66, 76, 72, 87, 84, 77, 67, 81, 71, 90, 78, 80, 89, 70, 86, 79, 69
-g5: .quad 21, 32, 102, 105, 114, 115, 116, 32, 99, 111, 109, 101, 115, 32, 105, 110, 32, 102, 114, 111, 109, 58
 .globl _ItoLower_ii, _ImakeInverse_paiai, _ImkMatrix_aaii, _ImakeRotor_t3aaiaaiiai, _IrotorEncryptForward_iaaiaaiii, _IrotorEncryptBack_iaaiaaiii, _ImakeReflector_aiai, _IreflectorEncrypt_iaii, _Imain_paai
 .text
 _ItoLower_ii:
 	mov _ARG1, rdi
-	mov t198, _ARG1
-	mov c, t198
-	mov t199, 65
-	cmp c, t199
-	jl l0
-	l2:
-	mov t200, 90
-	cmp c, t200
-	jg l0
-	l1:
-	mov t201, 65
-	mov t202, c
-	sub t202, t201
-	mov t203, 97
-	lea t204, qword ptr [t202 + t203]
-	mov t105, t204
-	mov rax, t105
+	mov _t205, _ARG1
+	mov c, _t205
+	mov _t206, 65
+	cmp c, _t206
+	jl _l0
+	_l2:
+	mov _t207, 90
+	cmp c, _t207
+	jg _l0
+	_l1:
+	mov _t208, 65
+	mov _t209, c
+	sub _t209, _t208
+	lea _t210, qword ptr [_t209 + 97]
+	mov _t99, _t210
+	mov rax, _t99
 	leave
 	ret
-	l0:
-	mov t106, c
-	mov rax, t106
+	_l0:
+	mov _t100, c
+	mov rax, _t100
 	leave
 	ret
 _ImakeInverse_paiai:
 	mov _ARG1, rdi
 	mov _ARG2, rsi
-	mov t205, _ARG1
-	mov base, t205
-	mov t206, _ARG2
-	mov inv, t206
-	mov t207, 0
-	mov c, t207
-	l5:
-	mov t208, 26
-	cmp c, t208
-	jge l3
-	l4:
-	mov t1, inv
-	mov t3, base
-	mov t2, c
-	mov t209, 8
-	mov t210, t3
-	sub t210, t209
-	mov t210, qword ptr [t210]
-	cmp t2, t210
-	setb t211
-	mov t212, 1
-	mov t213, t211
-	xor t213, t212
-	test t213, t213
-	jnz l8
-	l9:
-	mov t214, 8
-	mov t215, t2
-	imul t215, t214
-	lea t216, qword ptr [t3 + t215]
-	mov t216, qword ptr [t216]
-	mov t0, t216
-	mov t217, 8
-	mov t218, t1
-	sub t218, t217
-	mov t218, qword ptr [t218]
-	cmp t0, t218
-	setb t219
-	mov t220, 1
-	mov t221, t219
-	xor t221, t220
-	test t221, t221
-	jnz l6
-	l7:
-	mov t222, 8
-	mov t223, t0
-	imul t223, t222
-	lea t224, qword ptr [t1 + t223]
-	mov qword ptr [t224], c
-	mov t225, 1
-	lea t226, qword ptr [c + t225]
-	mov c, t226
-	jmp l5
-	l6:
+	mov _t212, _ARG1
+	mov base, _t212
+	mov _t213, _ARG2
+	mov inv, _t213
+	mov _t214, 0
+	mov c, _t214
+	_l5:
+	mov _t215, 26
+	cmp c, _t215
+	jge _l3
+	_l4:
+	mov _t1, inv
+	mov _t3, base
+	mov _t2, c
+	mov _t216, 8
+	mov _t217, _t3
+	sub _t217, _t216
+	mov _t218, qword ptr [_t217]
+	cmp _t2, _t218
+	setb _t219
+	mov _t220, 1
+	mov _t221, _t219
+	xor _t221, _t220
+	test _t221, _t221
+	jnz _l8
+	_l9:
+	mov _t222, qword ptr [_t3 + _t2 * 8]
+	mov _t0, _t222
+	mov _t223, 8
+	mov _t224, _t1
+	sub _t224, _t223
+	mov _t225, qword ptr [_t224]
+	cmp _t0, _t225
+	setb _t226
+	mov _t227, 1
+	mov _t228, _t226
+	xor _t228, _t227
+	test _t228, _t228
+	jnz _l6
+	_l7:
+	lea _t229, qword ptr [_t1 + _t0 * 8]
+	mov qword ptr [_t229], c
+	lea _t230, qword ptr [c + 1]
+	mov c, _t230
+	jmp _l5
+	_l6:
 	and rsp, -16
 	call _xi_out_of_bounds
-	jmp l7
-	l8:
+	jmp _l7
+	_l8:
 	and rsp, -16
 	call _xi_out_of_bounds
-	jmp l9
-	l3:
+	jmp _l9
+	_l3:
 	leave
 	ret
 _ImkMatrix_aaii:
 	mov _ARG1, rdi
-	mov t227, _ARG1
-	mov n, t227
-	mov t4, n
-	mov t5, n
-	mov t228, 8
-	mov t229, 8
-	mov t230, t4
-	imul t230, t229
-	lea t231, qword ptr [t228 + t230]
-	mov t108, t231
-	mov rdi, t108
+	mov _t232, _ARG1
+	mov n, _t232
+	mov _t4, n
+	mov _t5, n
+	mov _t233, 8
+	lea _t234, qword ptr [_t233 + _t4 * 8]
+	mov _t102, _t234
+	mov rdi, _t102
 	and rsp, -16
 	call _xi_alloc
 	mov _RV1, rax
-	mov t232, _RV1
-	mov t107, t232
-	mov t7, t107
-	mov qword ptr [t7], t4
-	mov t233, 8
-	lea t234, qword ptr [t7 + t233]
-	mov t6, t234
-	mov a, t6
-	mov t235, 0
-	mov t9, t235
-	l15:
-	cmp t9, t4
-	jge l13
-	l14:
-	mov t236, 8
-	mov t237, 8
-	mov t238, t5
-	imul t238, t237
-	lea t239, qword ptr [t236 + t238]
-	mov t110, t239
-	mov rdi, t110
+	mov _t235, _RV1
+	mov _t101, _t235
+	mov _t7, _t101
+	mov qword ptr [_t7], _t4
+	lea _t236, qword ptr [_t7 + 8]
+	mov _t6, _t236
+	mov a, _t6
+	mov _t237, 0
+	mov _t9, _t237
+	_l15:
+	cmp _t9, _t4
+	jge _l13
+	_l14:
+	mov _t238, 8
+	lea _t239, qword ptr [_t238 + _t5 * 8]
+	mov _t104, _t239
+	mov rdi, _t104
 	and rsp, -16
 	call _xi_alloc
 	mov _RV1, rax
-	mov t240, _RV1
-	mov t109, t240
-	mov t11, t109
-	mov qword ptr [t11], t5
-	mov t241, 8
-	lea t242, qword ptr [t11 + t241]
-	mov t10, t242
-	mov t8, t10
-	mov t243, 0
-	mov t13, t243
-	l12:
-	cmp t13, t5
-	jge l10
-	l11:
-	mov t244, 8
-	mov t245, t13
-	imul t245, t244
-	lea t246, qword ptr [t10 + t245]
-	mov qword ptr [t246], t12
-	mov t247, 1
-	lea t248, qword ptr [t13 + t247]
-	mov t13, t248
-	jmp l12
-	l10:
-	mov t249, 8
-	mov t250, t9
-	imul t250, t249
-	lea t251, qword ptr [t6 + t250]
-	mov qword ptr [t251], t8
-	mov t252, 1
-	lea t253, qword ptr [t9 + t252]
-	mov t9, t253
-	jmp l15
-	l13:
-	mov t111, a
-	mov rax, t111
+	mov _t240, _RV1
+	mov _t103, _t240
+	mov _t11, _t103
+	mov qword ptr [_t11], _t5
+	lea _t241, qword ptr [_t11 + 8]
+	mov _t10, _t241
+	mov _t8, _t10
+	mov _t242, 0
+	mov _t13, _t242
+	_l12:
+	cmp _t13, _t5
+	jge _l10
+	_l11:
+	lea _t243, qword ptr [_t10 + _t13 * 8]
+	mov qword ptr [_t243], _t12
+	lea _t244, qword ptr [_t13 + 1]
+	mov _t13, _t244
+	jmp _l12
+	_l10:
+	lea _t245, qword ptr [_t6 + _t9 * 8]
+	mov qword ptr [_t245], _t8
+	lea _t246, qword ptr [_t9 + 1]
+	mov _t9, _t246
+	jmp _l15
+	_l13:
+	mov _t105, a
+	mov rax, _t105
 	leave
 	ret
 _ImakeRotor_t3aaiaaiiai:
+	mov _t247, rdi
 	mov _ARG1, rsi
-	mov t254, _ARG1
-	mov sig, t254
-	mov t255, 26
-	mov t113, t255
-	mov rdi, t113
+	mov _t248, _ARG1
+	mov sig, _t248
+	mov _t249, 26
+	mov _t107, _t249
+	mov rdi, _t107
 	and rsp, -16
 	call _ImkMatrix_aaii
 	mov _RV1, rax
-	mov t256, _RV1
-	mov t112, t256
-	mov forward, t112
-	mov t257, 26
-	mov t115, t257
-	mov rdi, t115
+	mov _t250, _RV1
+	mov _t106, _t250
+	mov forward, _t106
+	mov _t251, 26
+	mov _t109, _t251
+	mov rdi, _t109
 	and rsp, -16
 	call _ImkMatrix_aaii
 	mov _RV1, rax
-	mov t258, _RV1
-	mov t114, t258
-	mov backward, t114
-	mov t259, 216
-	mov t117, t259
-	mov rdi, t117
+	mov _t252, _RV1
+	mov _t108, _t252
+	mov backward, _t108
+	mov _t253, 216
+	mov _t111, _t253
+	mov rdi, _t111
 	and rsp, -16
 	call _xi_alloc
 	mov _RV1, rax
-	mov t260, _RV1
-	mov t116, t260
-	mov t15, t116
-	mov t261, 26
-	mov qword ptr [t15], t261
-	mov t262, 8
-	lea t263, qword ptr [t15 + t262]
-	mov t14, t263
-	mov base, t14
-	mov t264, 0
-	mov t17, t264
-	l18:
-	mov t265, 26
-	cmp t17, t265
-	jge l16
-	l17:
-	mov t266, 8
-	mov t267, t17
-	imul t267, t266
-	lea t268, qword ptr [t14 + t267]
-	mov qword ptr [t268], t16
-	mov t269, 1
-	lea t270, qword ptr [t17 + t269]
-	mov t17, t270
-	jmp l18
-	l16:
-	mov t271, 0
-	mov c, t271
-	l21:
-	mov t272, 26
-	cmp c, t272
-	jge l19
-	l20:
-	mov t19, sig
-	mov t18, c
-	mov t273, 8
-	mov t274, t19
-	sub t274, t273
-	mov t274, qword ptr [t274]
-	cmp t18, t274
-	setb t275
-	mov t276, 1
-	mov t277, t275
-	xor t277, t276
-	test t277, t277
-	jnz l22
-	l23:
-	mov t278, 8
-	mov t279, t18
-	imul t279, t278
-	lea t280, qword ptr [t19 + t279]
-	mov t280, qword ptr [t280]
-	mov t119, t280
-	mov rdi, t119
+	mov _t254, _RV1
+	mov _t110, _t254
+	mov _t15, _t110
+	mov _t255, 26
+	mov qword ptr [_t15], _t255
+	lea _t256, qword ptr [_t15 + 8]
+	mov _t14, _t256
+	mov base, _t14
+	mov _t257, 0
+	mov _t17, _t257
+	_l18:
+	mov _t258, 26
+	cmp _t17, _t258
+	jge _l16
+	_l17:
+	lea _t259, qword ptr [_t14 + _t17 * 8]
+	mov qword ptr [_t259], _t16
+	lea _t260, qword ptr [_t17 + 1]
+	mov _t17, _t260
+	jmp _l18
+	_l16:
+	mov _t261, 0
+	mov c, _t261
+	_l21:
+	mov _t262, 26
+	cmp c, _t262
+	jge _l19
+	_l20:
+	mov _t19, sig
+	mov _t18, c
+	mov _t263, 8
+	mov _t264, _t19
+	sub _t264, _t263
+	mov _t265, qword ptr [_t264]
+	cmp _t18, _t265
+	setb _t266
+	mov _t267, 1
+	mov _t268, _t266
+	xor _t268, _t267
+	test _t268, _t268
+	jnz _l22
+	_l23:
+	mov _t269, qword ptr [_t19 + _t18 * 8]
+	mov _t113, _t269
+	mov rdi, _t113
 	and rsp, -16
 	call _ItoLower_ii
 	mov _RV1, rax
-	mov t281, _RV1
-	mov t118, t281
-	mov t282, 97
-	mov t283, t118
-	sub t283, t282
-	mov cd, t283
-	mov t21, base
-	mov t20, c
-	mov t284, 8
-	mov t285, t21
-	sub t285, t284
-	mov t285, qword ptr [t285]
-	cmp t20, t285
-	setb t286
-	mov t287, 1
-	mov t288, t286
-	xor t288, t287
-	test t288, t288
-	jnz l24
-	l25:
-	mov t289, 8
-	mov t290, t20
-	imul t290, t289
-	lea t291, qword ptr [t21 + t290]
-	mov qword ptr [t291], cd
-	mov t292, 1
-	lea t293, qword ptr [c + t292]
-	mov c, t293
-	jmp l21
-	l24:
+	mov _t270, _RV1
+	mov _t112, _t270
+	mov _t271, 97
+	mov _t272, _t112
+	sub _t272, _t271
+	mov cd, _t272
+	mov _t21, base
+	mov _t20, c
+	mov _t273, 8
+	mov _t274, _t21
+	sub _t274, _t273
+	mov _t275, qword ptr [_t274]
+	cmp _t20, _t275
+	setb _t276
+	mov _t277, 1
+	mov _t278, _t276
+	xor _t278, _t277
+	test _t278, _t278
+	jnz _l24
+	_l25:
+	lea _t279, qword ptr [_t21 + _t20 * 8]
+	mov qword ptr [_t279], cd
+	lea _t280, qword ptr [c + 1]
+	mov c, _t280
+	jmp _l21
+	_l24:
 	and rsp, -16
 	call _xi_out_of_bounds
-	jmp l25
-	l22:
+	jmp _l25
+	_l22:
 	and rsp, -16
 	call _xi_out_of_bounds
-	jmp l23
-	l19:
-	mov t294, 216
-	mov t121, t294
-	mov rdi, t121
+	jmp _l23
+	_l19:
+	mov _t281, 216
+	mov _t115, _t281
+	mov rdi, _t115
 	and rsp, -16
 	call _xi_alloc
 	mov _RV1, rax
-	mov t295, _RV1
-	mov t120, t295
-	mov t23, t120
-	mov t296, 26
-	mov qword ptr [t23], t296
-	mov t297, 8
-	lea t298, qword ptr [t23 + t297]
-	mov t22, t298
-	mov inv, t22
-	mov t299, 0
-	mov t25, t299
-	l28:
-	mov t300, 26
-	cmp t25, t300
-	jge l26
-	l27:
-	mov t301, 8
-	mov t302, t25
-	imul t302, t301
-	lea t303, qword ptr [t22 + t302]
-	mov qword ptr [t303], t24
-	mov t304, 1
-	lea t305, qword ptr [t25 + t304]
-	mov t25, t305
-	jmp l28
-	l26:
-	mov t306, 0
-	mov rot, t306
-	l31:
-	mov t307, 26
-	cmp rot, t307
-	jge l29
-	l30:
-	mov t308, 0
-	mov c, t308
-	l34:
-	mov t309, 26
-	cmp c, t309
-	jge l32
-	l33:
-	mov t31, forward
-	mov t30, rot
-	mov t310, 8
-	mov t311, t31
-	sub t311, t310
-	mov t311, qword ptr [t311]
-	cmp t30, t311
-	setb t312
-	mov t313, 1
-	mov t314, t312
-	xor t314, t313
-	test t314, t314
-	jnz l39
-	l40:
-	mov t315, 8
-	mov t316, t30
-	imul t316, t315
-	lea t317, qword ptr [t31 + t316]
-	mov t317, qword ptr [t317]
-	mov t27, t317
-	mov t26, c
-	mov t318, 8
-	mov t319, t27
-	sub t319, t318
-	mov t319, qword ptr [t319]
-	cmp t26, t319
-	setb t320
-	mov t321, 1
-	mov t322, t320
-	xor t322, t321
-	test t322, t322
-	jnz l37
-	l38:
-	mov t323, 8
-	mov t324, t26
-	imul t324, t323
-	lea t325, qword ptr [t27 + t324]
-	mov t122, t325
-	mov t29, base
-	mov t28, c
-	mov t326, 8
-	mov t327, t29
-	sub t327, t326
-	mov t327, qword ptr [t327]
-	cmp t28, t327
-	setb t328
-	mov t329, 1
-	mov t330, t328
-	xor t330, t329
-	test t330, t330
-	jnz l35
-	l36:
-	mov t331, 8
-	mov t332, t28
-	imul t332, t331
-	lea t333, qword ptr [t29 + t332]
-	mov t333, qword ptr [t333]
-	mov qword ptr [t122], t333
-	mov t334, 1
-	lea t335, qword ptr [c + t334]
-	mov c, t335
-	jmp l34
-	l35:
+	mov _t282, _RV1
+	mov _t114, _t282
+	mov _t23, _t114
+	mov _t283, 26
+	mov qword ptr [_t23], _t283
+	lea _t284, qword ptr [_t23 + 8]
+	mov _t22, _t284
+	mov inv, _t22
+	mov _t285, 0
+	mov _t25, _t285
+	_l28:
+	mov _t286, 26
+	cmp _t25, _t286
+	jge _l26
+	_l27:
+	lea _t287, qword ptr [_t22 + _t25 * 8]
+	mov qword ptr [_t287], _t24
+	lea _t288, qword ptr [_t25 + 1]
+	mov _t25, _t288
+	jmp _l28
+	_l26:
+	mov _t289, 0
+	mov rot, _t289
+	_l31:
+	mov _t290, 26
+	cmp rot, _t290
+	jge _l29
+	_l30:
+	mov _t291, 0
+	mov c, _t291
+	_l34:
+	mov _t292, 26
+	cmp c, _t292
+	jge _l32
+	_l33:
+	mov _t31, forward
+	mov _t30, rot
+	mov _t293, 8
+	mov _t294, _t31
+	sub _t294, _t293
+	mov _t295, qword ptr [_t294]
+	cmp _t30, _t295
+	setb _t296
+	mov _t297, 1
+	mov _t298, _t296
+	xor _t298, _t297
+	test _t298, _t298
+	jnz _l39
+	_l40:
+	mov _t299, qword ptr [_t31 + _t30 * 8]
+	mov _t27, _t299
+	mov _t26, c
+	mov _t300, 8
+	mov _t301, _t27
+	sub _t301, _t300
+	mov _t302, qword ptr [_t301]
+	cmp _t26, _t302
+	setb _t303
+	mov _t304, 1
+	mov _t305, _t303
+	xor _t305, _t304
+	test _t305, _t305
+	jnz _l37
+	_l38:
+	lea _t306, qword ptr [_t27 + _t26 * 8]
+	mov _t116, _t306
+	mov _t29, base
+	mov _t28, c
+	mov _t307, 8
+	mov _t308, _t29
+	sub _t308, _t307
+	mov _t309, qword ptr [_t308]
+	cmp _t28, _t309
+	setb _t310
+	mov _t311, 1
+	mov _t312, _t310
+	xor _t312, _t311
+	test _t312, _t312
+	jnz _l35
+	_l36:
+	mov _t313, qword ptr [_t29 + _t28 * 8]
+	mov qword ptr [_t116], _t313
+	lea _t314, qword ptr [c + 1]
+	mov c, _t314
+	jmp _l34
+	_l35:
 	and rsp, -16
 	call _xi_out_of_bounds
-	jmp l36
-	l37:
+	jmp _l36
+	_l37:
 	and rsp, -16
 	call _xi_out_of_bounds
-	jmp l38
-	l39:
+	jmp _l38
+	_l39:
 	and rsp, -16
 	call _xi_out_of_bounds
-	jmp l40
-	l32:
-	mov t123, base
-	mov t124, inv
-	mov rdi, t124
-	mov rsi, t123
+	jmp _l40
+	_l32:
+	mov _t117, base
+	mov _t118, inv
+	mov rsi, _t118
+	mov rdi, _t117
 	and rsp, -16
 	call _ImakeInverse_paiai
-	mov t336, 0
-	mov c, t336
-	l43:
-	mov t337, 26
-	cmp c, t337
-	jge l41
-	l42:
-	mov t37, backward
-	mov t36, rot
-	mov t338, 8
-	mov t339, t37
-	sub t339, t338
-	mov t339, qword ptr [t339]
-	cmp t36, t339
-	setb t340
-	mov t341, 1
-	mov t342, t340
-	xor t342, t341
-	test t342, t342
-	jnz l48
-	l49:
-	mov t343, 8
-	mov t344, t36
-	imul t344, t343
-	lea t345, qword ptr [t37 + t344]
-	mov t345, qword ptr [t345]
-	mov t33, t345
-	mov t32, c
-	mov t346, 8
-	mov t347, t33
-	sub t347, t346
-	mov t347, qword ptr [t347]
-	cmp t32, t347
-	setb t348
-	mov t349, 1
-	mov t350, t348
-	xor t350, t349
-	test t350, t350
-	jnz l46
-	l47:
-	mov t351, 8
-	mov t352, t32
-	imul t352, t351
-	lea t353, qword ptr [t33 + t352]
-	mov t125, t353
-	mov t35, inv
-	mov t34, c
-	mov t354, 8
-	mov t355, t35
-	sub t355, t354
-	mov t355, qword ptr [t355]
-	cmp t34, t355
-	setb t356
-	mov t357, 1
-	mov t358, t356
-	xor t358, t357
-	test t358, t358
-	jnz l44
-	l45:
-	mov t359, 8
-	mov t360, t34
-	imul t360, t359
-	lea t361, qword ptr [t35 + t360]
-	mov t361, qword ptr [t361]
-	mov qword ptr [t125], t361
-	mov t362, 1
-	lea t363, qword ptr [c + t362]
-	mov c, t363
-	jmp l43
-	l44:
+	mov _t315, 0
+	mov c, _t315
+	_l43:
+	mov _t316, 26
+	cmp c, _t316
+	jge _l41
+	_l42:
+	mov _t37, backward
+	mov _t36, rot
+	mov _t317, 8
+	mov _t318, _t37
+	sub _t318, _t317
+	mov _t319, qword ptr [_t318]
+	cmp _t36, _t319
+	setb _t320
+	mov _t321, 1
+	mov _t322, _t320
+	xor _t322, _t321
+	test _t322, _t322
+	jnz _l48
+	_l49:
+	mov _t323, qword ptr [_t37 + _t36 * 8]
+	mov _t33, _t323
+	mov _t32, c
+	mov _t324, 8
+	mov _t325, _t33
+	sub _t325, _t324
+	mov _t326, qword ptr [_t325]
+	cmp _t32, _t326
+	setb _t327
+	mov _t328, 1
+	mov _t329, _t327
+	xor _t329, _t328
+	test _t329, _t329
+	jnz _l46
+	_l47:
+	lea _t330, qword ptr [_t33 + _t32 * 8]
+	mov _t119, _t330
+	mov _t35, inv
+	mov _t34, c
+	mov _t331, 8
+	mov _t332, _t35
+	sub _t332, _t331
+	mov _t333, qword ptr [_t332]
+	cmp _t34, _t333
+	setb _t334
+	mov _t335, 1
+	mov _t336, _t334
+	xor _t336, _t335
+	test _t336, _t336
+	jnz _l44
+	_l45:
+	mov _t337, qword ptr [_t35 + _t34 * 8]
+	mov qword ptr [_t119], _t337
+	lea _t338, qword ptr [c + 1]
+	mov c, _t338
+	jmp _l43
+	_l44:
 	and rsp, -16
 	call _xi_out_of_bounds
-	jmp l45
-	l46:
+	jmp _l45
+	_l46:
 	and rsp, -16
 	call _xi_out_of_bounds
-	jmp l47
-	l48:
+	jmp _l47
+	_l48:
 	and rsp, -16
 	call _xi_out_of_bounds
-	jmp l49
-	l41:
-	mov t39, base
-	mov t364, 0
-	mov t38, t364
-	mov t365, 8
-	mov t366, t39
-	sub t366, t365
-	mov t366, qword ptr [t366]
-	cmp t38, t366
-	setb t367
-	mov t368, 1
-	mov t369, t367
-	xor t369, t368
-	test t369, t369
-	jnz l50
-	l51:
-	mov t370, 8
-	mov t371, t38
-	imul t371, t370
-	lea t372, qword ptr [t39 + t371]
-	mov t372, qword ptr [t372]
-	mov t373, 1
-	mov t374, t372
-	sub t374, t373
-	mov t375, 26
-	lea t376, qword ptr [t374 + t375]
-	mov t377, 26
-	mov rax, t376
+	jmp _l49
+	_l41:
+	mov _t39, base
+	mov _t339, 0
+	mov _t38, _t339
+	mov _t340, 8
+	mov _t341, _t39
+	sub _t341, _t340
+	mov _t342, qword ptr [_t341]
+	cmp _t38, _t342
+	setb _t343
+	mov _t344, 1
+	mov _t345, _t343
+	xor _t345, _t344
+	test _t345, _t345
+	jnz _l50
+	_l51:
+	mov _t346, 1
+	mov _t347, qword ptr [_t39 + _t38 * 8]
+	sub _t347, _t346
+	lea _t348, qword ptr [_t347 + 26]
+	mov _t349, 26
+	mov rax, _t348
 	xor rdx, rdx
-	idiv t377
-	mov t376, rdx
-	mov first, t376
-	mov t378, 1
-	mov pos, t378
-	l54:
-	mov t379, 26
-	cmp pos, t379
-	jge l52
-	l53:
-	mov t41, base
-	mov t380, 1
-	mov t381, pos
-	sub t381, t380
-	mov t40, t381
-	mov t382, 8
-	mov t383, t41
-	sub t383, t382
-	mov t383, qword ptr [t383]
-	cmp t40, t383
-	setb t384
-	mov t385, 1
-	mov t386, t384
-	xor t386, t385
-	test t386, t386
-	jnz l57
-	l58:
-	mov t387, 8
-	mov t388, t40
-	imul t388, t387
-	lea t389, qword ptr [t41 + t388]
-	mov t126, t389
-	mov t43, base
-	mov t42, pos
-	mov t390, 8
-	mov t391, t43
-	sub t391, t390
-	mov t391, qword ptr [t391]
-	cmp t42, t391
-	setb t392
-	mov t393, 1
-	mov t394, t392
-	xor t394, t393
-	test t394, t394
-	jnz l55
-	l56:
-	mov t395, 8
-	mov t396, t42
-	imul t396, t395
-	lea t397, qword ptr [t43 + t396]
-	mov t397, qword ptr [t397]
-	mov t398, 1
-	mov t399, t397
-	sub t399, t398
-	mov t400, 26
-	lea t401, qword ptr [t399 + t400]
-	mov t402, 26
-	mov rax, t401
+	idiv _t349
+	mov _t348, rdx
+	mov first, _t348
+	mov _t350, 1
+	mov pos, _t350
+	_l54:
+	mov _t351, 26
+	cmp pos, _t351
+	jge _l52
+	_l53:
+	mov _t41, base
+	mov _t352, 1
+	mov _t353, pos
+	sub _t353, _t352
+	mov _t40, _t353
+	mov _t354, 8
+	mov _t355, _t41
+	sub _t355, _t354
+	mov _t356, qword ptr [_t355]
+	cmp _t40, _t356
+	setb _t357
+	mov _t358, 1
+	mov _t359, _t357
+	xor _t359, _t358
+	test _t359, _t359
+	jnz _l57
+	_l58:
+	lea _t360, qword ptr [_t41 + _t40 * 8]
+	mov _t120, _t360
+	mov _t43, base
+	mov _t42, pos
+	mov _t361, 8
+	mov _t362, _t43
+	sub _t362, _t361
+	mov _t363, qword ptr [_t362]
+	cmp _t42, _t363
+	setb _t364
+	mov _t365, 1
+	mov _t366, _t364
+	xor _t366, _t365
+	test _t366, _t366
+	jnz _l55
+	_l56:
+	mov _t367, 1
+	mov _t368, qword ptr [_t43 + _t42 * 8]
+	sub _t368, _t367
+	lea _t369, qword ptr [_t368 + 26]
+	mov _t370, 26
+	mov rax, _t369
 	xor rdx, rdx
-	idiv t402
-	mov t401, rdx
-	mov qword ptr [t126], t401
-	mov t403, 1
-	lea t404, qword ptr [pos + t403]
-	mov pos, t404
-	jmp l54
-	l55:
+	idiv _t370
+	mov _t369, rdx
+	mov qword ptr [_t120], _t369
+	lea _t371, qword ptr [pos + 1]
+	mov pos, _t371
+	jmp _l54
+	_l55:
 	and rsp, -16
 	call _xi_out_of_bounds
-	jmp l56
-	l57:
+	jmp _l56
+	_l57:
 	and rsp, -16
 	call _xi_out_of_bounds
-	jmp l58
-	l52:
-	mov t45, base
-	mov t405, 25
-	mov t44, t405
-	mov t406, 8
-	mov t407, t45
-	sub t407, t406
-	mov t407, qword ptr [t407]
-	cmp t44, t407
-	setb t408
-	mov t409, 1
-	mov t410, t408
-	xor t410, t409
-	test t410, t410
-	jnz l59
-	l60:
-	mov t411, 8
-	mov t412, t44
-	imul t412, t411
-	lea t413, qword ptr [t45 + t412]
-	mov qword ptr [t413], first
-	mov t414, 1
-	lea t415, qword ptr [rot + t414]
-	mov rot, t415
-	jmp l31
-	l59:
+	jmp _l58
+	_l52:
+	mov _t45, base
+	mov _t372, 25
+	mov _t44, _t372
+	mov _t373, 8
+	mov _t374, _t45
+	sub _t374, _t373
+	mov _t375, qword ptr [_t374]
+	cmp _t44, _t375
+	setb _t376
+	mov _t377, 1
+	mov _t378, _t376
+	xor _t378, _t377
+	test _t378, _t378
+	jnz _l59
+	_l60:
+	lea _t379, qword ptr [_t45 + _t44 * 8]
+	mov qword ptr [_t379], first
+	lea _t380, qword ptr [rot + 1]
+	mov rot, _t380
+	jmp _l31
+	_l59:
 	and rsp, -16
 	call _xi_out_of_bounds
-	jmp l60
-	l50:
+	jmp _l60
+	_l50:
 	and rsp, -16
 	call _xi_out_of_bounds
-	jmp l51
-	l29:
-	mov t127, forward
-	mov t128, backward
-	mov t416, 0
-	mov t129, t416
-	mov rax, t129
-	mov rdx, t128
-	push t127
+	jmp _l51
+	_l29:
+	mov _t121, forward
+	mov _t122, backward
+	mov _t381, 0
+	mov _t123, _t381
+	mov rax, _t121
+	mov rdx, _t122
+	mov qword ptr [_t247 + 0], _t123
 	leave
 	ret
 _IrotorEncryptForward_iaaiaaiii:
@@ -661,1038 +569,1397 @@ _IrotorEncryptForward_iaaiaaiii:
 	mov _ARG2, rsi
 	mov _ARG3, rdx
 	mov _ARG4, rcx
-	mov t417, _ARG1
-	mov forward, t417
-	mov t418, _ARG2
-	mov backward, t418
-	mov t419, _ARG3
-	mov pos, t419
-	mov t420, _ARG4
-	mov letter, t420
-	mov t49, forward
-	mov t48, pos
-	mov t421, 8
-	mov t422, t49
-	sub t422, t421
-	mov t422, qword ptr [t422]
-	cmp t48, t422
-	setb t423
-	mov t424, 1
-	mov t425, t423
-	xor t425, t424
-	test t425, t425
-	jnz l61
-	l62:
-	mov t426, 8
-	mov t427, t48
-	imul t427, t426
-	lea t428, qword ptr [t49 + t427]
-	mov t428, qword ptr [t428]
-	mov t47, t428
-	mov t46, letter
-	mov t429, 8
-	mov t430, t47
-	sub t430, t429
-	mov t430, qword ptr [t430]
-	cmp t46, t430
-	setb t431
-	mov t432, 1
-	mov t433, t431
-	xor t433, t432
-	test t433, t433
-	jnz l63
-	l64:
-	mov t434, 8
-	mov t435, t46
-	imul t435, t434
-	lea t436, qword ptr [t47 + t435]
-	mov t436, qword ptr [t436]
-	mov t130, t436
-	mov rax, t130
+	mov _t383, _ARG1
+	mov forward, _t383
+	mov _t384, _ARG2
+	mov backward, _t384
+	mov _t385, _ARG3
+	mov pos, _t385
+	mov _t386, _ARG4
+	mov letter, _t386
+	mov _t49, forward
+	mov _t48, pos
+	mov _t387, 8
+	mov _t388, _t49
+	sub _t388, _t387
+	mov _t389, qword ptr [_t388]
+	cmp _t48, _t389
+	setb _t390
+	mov _t391, 1
+	mov _t392, _t390
+	xor _t392, _t391
+	test _t392, _t392
+	jnz _l61
+	_l62:
+	mov _t393, qword ptr [_t49 + _t48 * 8]
+	mov _t47, _t393
+	mov _t46, letter
+	mov _t394, 8
+	mov _t395, _t47
+	sub _t395, _t394
+	mov _t396, qword ptr [_t395]
+	cmp _t46, _t396
+	setb _t397
+	mov _t398, 1
+	mov _t399, _t397
+	xor _t399, _t398
+	test _t399, _t399
+	jnz _l63
+	_l64:
+	mov _t400, qword ptr [_t47 + _t46 * 8]
+	mov _t124, _t400
+	mov rax, _t124
 	leave
 	ret
-	l63:
+	_l63:
 	and rsp, -16
 	call _xi_out_of_bounds
-	jmp l64
-	l61:
+	jmp _l64
+	_l61:
 	and rsp, -16
 	call _xi_out_of_bounds
-	jmp l62
+	jmp _l62
 _IrotorEncryptBack_iaaiaaiii:
 	mov _ARG1, rdi
 	mov _ARG2, rsi
 	mov _ARG3, rdx
 	mov _ARG4, rcx
-	mov t437, _ARG1
-	mov forward, t437
-	mov t438, _ARG2
-	mov backward, t438
-	mov t439, _ARG3
-	mov pos, t439
-	mov t440, _ARG4
-	mov letter, t440
-	mov t53, backward
-	mov t52, pos
-	mov t441, 8
-	mov t442, t53
-	sub t442, t441
-	mov t442, qword ptr [t442]
-	cmp t52, t442
-	setb t443
-	mov t444, 1
-	mov t445, t443
-	xor t445, t444
-	test t445, t445
-	jnz l65
-	l66:
-	mov t446, 8
-	mov t447, t52
-	imul t447, t446
-	lea t448, qword ptr [t53 + t447]
-	mov t448, qword ptr [t448]
-	mov t51, t448
-	mov t50, letter
-	mov t449, 8
-	mov t450, t51
-	sub t450, t449
-	mov t450, qword ptr [t450]
-	cmp t50, t450
-	setb t451
-	mov t452, 1
-	mov t453, t451
-	xor t453, t452
-	test t453, t453
-	jnz l67
-	l68:
-	mov t454, 8
-	mov t455, t50
-	imul t455, t454
-	lea t456, qword ptr [t51 + t455]
-	mov t456, qword ptr [t456]
-	mov t131, t456
-	mov rax, t131
+	mov _t402, _ARG1
+	mov forward, _t402
+	mov _t403, _ARG2
+	mov backward, _t403
+	mov _t404, _ARG3
+	mov pos, _t404
+	mov _t405, _ARG4
+	mov letter, _t405
+	mov _t53, backward
+	mov _t52, pos
+	mov _t406, 8
+	mov _t407, _t53
+	sub _t407, _t406
+	mov _t408, qword ptr [_t407]
+	cmp _t52, _t408
+	setb _t409
+	mov _t410, 1
+	mov _t411, _t409
+	xor _t411, _t410
+	test _t411, _t411
+	jnz _l65
+	_l66:
+	mov _t412, qword ptr [_t53 + _t52 * 8]
+	mov _t51, _t412
+	mov _t50, letter
+	mov _t413, 8
+	mov _t414, _t51
+	sub _t414, _t413
+	mov _t415, qword ptr [_t414]
+	cmp _t50, _t415
+	setb _t416
+	mov _t417, 1
+	mov _t418, _t416
+	xor _t418, _t417
+	test _t418, _t418
+	jnz _l67
+	_l68:
+	mov _t419, qword ptr [_t51 + _t50 * 8]
+	mov _t125, _t419
+	mov rax, _t125
 	leave
 	ret
-	l67:
+	_l67:
 	and rsp, -16
 	call _xi_out_of_bounds
-	jmp l68
-	l65:
+	jmp _l68
+	_l65:
 	and rsp, -16
 	call _xi_out_of_bounds
-	jmp l66
+	jmp _l66
 _ImakeReflector_aiai:
 	mov _ARG1, rdi
-	mov t457, _ARG1
-	mov encoding, t457
-	mov t458, 216
-	mov t133, t458
-	mov rdi, t133
+	mov _t421, _ARG1
+	mov encoding, _t421
+	mov _t422, 216
+	mov _t127, _t422
+	mov rdi, _t127
 	and rsp, -16
 	call _xi_alloc
 	mov _RV1, rax
-	mov t459, _RV1
-	mov t132, t459
-	mov t55, t132
-	mov t460, 26
-	mov qword ptr [t55], t460
-	mov t461, 8
-	lea t462, qword ptr [t55 + t461]
-	mov t54, t462
-	mov perm, t54
-	mov t463, 0
-	mov t57, t463
-	l71:
-	mov t464, 26
-	cmp t57, t464
-	jge l69
-	l70:
-	mov t465, 8
-	mov t466, t57
-	imul t466, t465
-	lea t467, qword ptr [t54 + t466]
-	mov qword ptr [t467], t56
-	mov t468, 1
-	lea t469, qword ptr [t57 + t468]
-	mov t57, t469
-	jmp l71
-	l69:
-	mov t470, 0
-	mov c, t470
-	l74:
-	mov t471, 26
-	cmp c, t471
-	jge l72
-	l73:
-	mov t59, encoding
-	mov t58, c
-	mov t472, 8
-	mov t473, t59
-	sub t473, t472
-	mov t473, qword ptr [t473]
-	cmp t58, t473
-	setb t474
-	mov t475, 1
-	mov t476, t474
-	xor t476, t475
-	test t476, t476
-	jnz l75
-	l76:
-	mov t477, 8
-	mov t478, t58
-	imul t478, t477
-	lea t479, qword ptr [t59 + t478]
-	mov t479, qword ptr [t479]
-	mov t135, t479
-	mov rdi, t135
+	mov _t423, _RV1
+	mov _t126, _t423
+	mov _t55, _t126
+	mov _t424, 26
+	mov qword ptr [_t55], _t424
+	lea _t425, qword ptr [_t55 + 8]
+	mov _t54, _t425
+	mov perm, _t54
+	mov _t426, 0
+	mov _t57, _t426
+	_l71:
+	mov _t427, 26
+	cmp _t57, _t427
+	jge _l69
+	_l70:
+	lea _t428, qword ptr [_t54 + _t57 * 8]
+	mov qword ptr [_t428], _t56
+	lea _t429, qword ptr [_t57 + 1]
+	mov _t57, _t429
+	jmp _l71
+	_l69:
+	mov _t430, 0
+	mov c, _t430
+	_l74:
+	mov _t431, 26
+	cmp c, _t431
+	jge _l72
+	_l73:
+	mov _t59, encoding
+	mov _t58, c
+	mov _t432, 8
+	mov _t433, _t59
+	sub _t433, _t432
+	mov _t434, qword ptr [_t433]
+	cmp _t58, _t434
+	setb _t435
+	mov _t436, 1
+	mov _t437, _t435
+	xor _t437, _t436
+	test _t437, _t437
+	jnz _l75
+	_l76:
+	mov _t438, qword ptr [_t59 + _t58 * 8]
+	mov _t129, _t438
+	mov rdi, _t129
 	and rsp, -16
 	call _ItoLower_ii
 	mov _RV1, rax
-	mov t480, _RV1
-	mov t134, t480
-	mov t481, 97
-	mov t482, t134
-	sub t482, t481
-	mov cd, t482
-	mov t61, perm
-	mov t60, c
-	mov t483, 8
-	mov t484, t61
-	sub t484, t483
-	mov t484, qword ptr [t484]
-	cmp t60, t484
-	setb t485
-	mov t486, 1
-	mov t487, t485
-	xor t487, t486
-	test t487, t487
-	jnz l77
-	l78:
-	mov t488, 8
-	mov t489, t60
-	imul t489, t488
-	lea t490, qword ptr [t61 + t489]
-	mov qword ptr [t490], cd
-	mov t491, 1
-	lea t492, qword ptr [c + t491]
-	mov c, t492
-	jmp l74
-	l77:
+	mov _t439, _RV1
+	mov _t128, _t439
+	mov _t440, 97
+	mov _t441, _t128
+	sub _t441, _t440
+	mov cd, _t441
+	mov _t61, perm
+	mov _t60, c
+	mov _t442, 8
+	mov _t443, _t61
+	sub _t443, _t442
+	mov _t444, qword ptr [_t443]
+	cmp _t60, _t444
+	setb _t445
+	mov _t446, 1
+	mov _t447, _t445
+	xor _t447, _t446
+	test _t447, _t447
+	jnz _l77
+	_l78:
+	lea _t448, qword ptr [_t61 + _t60 * 8]
+	mov qword ptr [_t448], cd
+	lea _t449, qword ptr [c + 1]
+	mov c, _t449
+	jmp _l74
+	_l77:
 	and rsp, -16
 	call _xi_out_of_bounds
-	jmp l78
-	l75:
+	jmp _l78
+	_l75:
 	and rsp, -16
 	call _xi_out_of_bounds
-	jmp l76
-	l72:
-	mov t136, perm
-	mov rax, t136
+	jmp _l76
+	_l72:
+	mov _t130, perm
+	mov rax, _t130
 	leave
 	ret
 _IreflectorEncrypt_iaii:
 	mov _ARG1, rdi
 	mov _ARG2, rsi
-	mov t493, _ARG1
-	mov perm, t493
-	mov t494, _ARG2
-	mov l, t494
-	mov t63, perm
-	mov t62, l
-	mov t495, 8
-	mov t496, t63
-	sub t496, t495
-	mov t496, qword ptr [t496]
-	cmp t62, t496
-	setb t497
-	mov t498, 1
-	mov t499, t497
-	xor t499, t498
-	test t499, t499
-	jnz l79
-	l80:
-	mov t500, 8
-	mov t501, t62
-	imul t501, t500
-	lea t502, qword ptr [t63 + t501]
-	mov t502, qword ptr [t502]
-	mov t137, t502
-	mov rax, t137
+	mov _t451, _ARG1
+	mov perm, _t451
+	mov _t452, _ARG2
+	mov l, _t452
+	mov _t63, perm
+	mov _t62, l
+	mov _t453, 8
+	mov _t454, _t63
+	sub _t454, _t453
+	mov _t455, qword ptr [_t454]
+	cmp _t62, _t455
+	setb _t456
+	mov _t457, 1
+	mov _t458, _t456
+	xor _t458, _t457
+	test _t458, _t458
+	jnz _l79
+	_l80:
+	mov _t459, qword ptr [_t63 + _t62 * 8]
+	mov _t131, _t459
+	mov rax, _t131
 	leave
 	ret
-	l79:
+	_l79:
 	and rsp, -16
 	call _xi_out_of_bounds
-	jmp l80
+	jmp _l80
 _Imain_paai:
 	mov _ARG1, rdi
-	mov t503, _ARG1
-	mov a, t503
-	mov t504, 40
-	mov t139, t504
-	mov rdi, t139
+	mov _t461, _ARG1
+	mov a, _t461
+	mov _t462, 40
+	mov _t133, _t462
+	mov rdi, _t133
 	and rsp, -16
 	call _xi_alloc
 	mov _RV1, rax
-	mov t505, _RV1
-	mov t138, t505
-	mov t68, t138
-	mov t506, 4
-	mov qword ptr [t68], t506
-	mov t507, 8
-	lea t508, qword ptr [t68 + t507]
-	mov t140, t508
-	mov t509, 72
-	mov t142, t509
-	mov rdi, t142
+	mov _t463, _RV1
+	mov _t132, _t463
+	mov _t68, _t132
+	mov _t464, 4
+	mov qword ptr [_t68], _t464
+	lea _t465, qword ptr [_t68 + 8]
+	mov _t134, _t465
+	mov _t466, 72
+	mov _t136, _t466
+	mov rdi, _t136
 	and rsp, -16
 	call _xi_alloc
 	mov _RV1, rax
-	mov t510, _RV1
-	mov t141, t510
-	mov t64, t141
-	mov t511, 8
-	mov qword ptr [t64], t511
-	mov t512, 8
-	lea t513, qword ptr [t64 + t512]
-	mov t514, 12
-	mov qword ptr [t513], t514
-	mov t515, 16
-	lea t516, qword ptr [t64 + t515]
-	mov t517, 27
-	mov qword ptr [t516], t517
-	mov t518, 24
-	lea t519, qword ptr [t64 + t518]
-	mov t520, 6
-	mov qword ptr [t519], t520
-	mov t521, 32
-	lea t522, qword ptr [t64 + t521]
-	mov t523, 57
-	mov qword ptr [t522], t523
-	mov t524, 40
-	lea t525, qword ptr [t64 + t524]
-	mov t526, 25
-	mov qword ptr [t525], t526
-	mov t527, 48
-	lea t528, qword ptr [t64 + t527]
-	mov t529, 51
-	mov qword ptr [t528], t529
-	mov t530, 56
-	lea t531, qword ptr [t64 + t530]
-	mov t532, 52
-	mov qword ptr [t531], t532
-	mov t533, 64
-	lea t534, qword ptr [t64 + t533]
-	mov t535, -1
-	mov qword ptr [t534], t535
-	mov t536, 8
-	lea t537, qword ptr [t64 + t536]
-	mov qword ptr [t140], t537
-	mov t538, 16
-	lea t539, qword ptr [t68 + t538]
-	mov t143, t539
-	mov t540, 72
-	mov t145, t540
-	mov rdi, t145
+	mov _t467, _RV1
+	mov _t135, _t467
+	mov _t64, _t135
+	mov _t468, 8
+	mov qword ptr [_t64], _t468
+	lea _t469, qword ptr [_t64 + 8]
+	mov _t470, 12
+	mov qword ptr [_t469], _t470
+	lea _t471, qword ptr [_t64 + 16]
+	mov _t472, 27
+	mov qword ptr [_t471], _t472
+	lea _t473, qword ptr [_t64 + 24]
+	mov _t474, 6
+	mov qword ptr [_t473], _t474
+	lea _t475, qword ptr [_t64 + 32]
+	mov _t476, 57
+	mov qword ptr [_t475], _t476
+	lea _t477, qword ptr [_t64 + 40]
+	mov _t478, 25
+	mov qword ptr [_t477], _t478
+	lea _t479, qword ptr [_t64 + 48]
+	mov _t480, 51
+	mov qword ptr [_t479], _t480
+	lea _t481, qword ptr [_t64 + 56]
+	mov _t482, 52
+	mov qword ptr [_t481], _t482
+	lea _t483, qword ptr [_t64 + 64]
+	mov _t484, -1
+	mov qword ptr [_t483], _t484
+	lea _t485, qword ptr [_t64 + 8]
+	mov qword ptr [_t134], _t485
+	lea _t486, qword ptr [_t68 + 16]
+	mov _t137, _t486
+	mov _t487, 72
+	mov _t139, _t487
+	mov rdi, _t139
 	and rsp, -16
 	call _xi_alloc
 	mov _RV1, rax
-	mov t541, _RV1
-	mov t144, t541
-	mov t65, t144
-	mov t542, 8
-	mov qword ptr [t65], t542
-	mov t543, 8
-	lea t544, qword ptr [t65 + t543]
-	mov t545, 12
-	mov qword ptr [t544], t545
-	mov t546, 16
-	lea t547, qword ptr [t65 + t546]
-	mov t548, 27
-	mov qword ptr [t547], t548
-	mov t549, 24
-	lea t550, qword ptr [t65 + t549]
-	mov t551, 6
-	mov qword ptr [t550], t551
-	mov t552, 32
-	lea t553, qword ptr [t65 + t552]
-	mov t554, 55
-	mov qword ptr [t553], t554
-	mov t555, 40
-	lea t556, qword ptr [t65 + t555]
-	mov t557, 25
-	mov qword ptr [t556], t557
-	mov t558, 48
-	lea t559, qword ptr [t65 + t558]
-	mov t560, 51
-	mov qword ptr [t559], t560
-	mov t561, 56
-	lea t562, qword ptr [t65 + t561]
-	mov t563, 52
-	mov qword ptr [t562], t563
-	mov t564, 64
-	lea t565, qword ptr [t65 + t564]
-	mov t566, -1
-	mov qword ptr [t565], t566
-	mov t567, 8
-	lea t568, qword ptr [t65 + t567]
-	mov qword ptr [t143], t568
-	mov t569, 24
-	lea t570, qword ptr [t68 + t569]
-	mov t146, t570
-	mov t571, 40
-	mov t148, t571
-	mov rdi, t148
+	mov _t488, _RV1
+	mov _t138, _t488
+	mov _t65, _t138
+	mov _t489, 8
+	mov qword ptr [_t65], _t489
+	lea _t490, qword ptr [_t65 + 8]
+	mov _t491, 12
+	mov qword ptr [_t490], _t491
+	lea _t492, qword ptr [_t65 + 16]
+	mov _t493, 27
+	mov qword ptr [_t492], _t493
+	lea _t494, qword ptr [_t65 + 24]
+	mov _t495, 6
+	mov qword ptr [_t494], _t495
+	lea _t496, qword ptr [_t65 + 32]
+	mov _t497, 55
+	mov qword ptr [_t496], _t497
+	lea _t498, qword ptr [_t65 + 40]
+	mov _t499, 25
+	mov qword ptr [_t498], _t499
+	lea _t500, qword ptr [_t65 + 48]
+	mov _t501, 51
+	mov qword ptr [_t500], _t501
+	lea _t502, qword ptr [_t65 + 56]
+	mov _t503, 52
+	mov qword ptr [_t502], _t503
+	lea _t504, qword ptr [_t65 + 64]
+	mov _t505, -1
+	mov qword ptr [_t504], _t505
+	lea _t506, qword ptr [_t65 + 8]
+	mov qword ptr [_t137], _t506
+	lea _t507, qword ptr [_t68 + 24]
+	mov _t140, _t507
+	mov _t508, 40
+	mov _t142, _t508
+	mov rdi, _t142
 	and rsp, -16
 	call _xi_alloc
 	mov _RV1, rax
-	mov t572, _RV1
-	mov t147, t572
-	mov t66, t147
-	mov t573, 4
-	mov qword ptr [t66], t573
-	mov t574, 8
-	lea t575, qword ptr [t66 + t574]
-	mov t576, 12
-	mov qword ptr [t575], t576
-	mov t577, 16
-	lea t578, qword ptr [t66 + t577]
-	mov t579, 46
-	mov qword ptr [t578], t579
-	mov t580, 24
-	lea t581, qword ptr [t66 + t580]
-	mov t582, 47
-	mov qword ptr [t581], t582
-	mov t583, 32
-	lea t584, qword ptr [t66 + t583]
-	mov t585, -1
-	mov qword ptr [t584], t585
-	mov t586, 8
-	lea t587, qword ptr [t66 + t586]
-	mov qword ptr [t146], t587
-	mov t588, 32
-	lea t589, qword ptr [t68 + t588]
-	mov t149, t589
-	mov t590, 64
-	mov t151, t590
-	mov rdi, t151
+	mov _t509, _RV1
+	mov _t141, _t509
+	mov _t66, _t141
+	mov _t510, 4
+	mov qword ptr [_t66], _t510
+	lea _t511, qword ptr [_t66 + 8]
+	mov _t512, 12
+	mov qword ptr [_t511], _t512
+	lea _t513, qword ptr [_t66 + 16]
+	mov _t514, 46
+	mov qword ptr [_t513], _t514
+	lea _t515, qword ptr [_t66 + 24]
+	mov _t516, 47
+	mov qword ptr [_t515], _t516
+	lea _t517, qword ptr [_t66 + 32]
+	mov _t518, -1
+	mov qword ptr [_t517], _t518
+	lea _t519, qword ptr [_t66 + 8]
+	mov qword ptr [_t140], _t519
+	lea _t520, qword ptr [_t68 + 32]
+	mov _t143, _t520
+	mov _t521, 64
+	mov _t145, _t521
+	mov rdi, _t145
 	and rsp, -16
 	call _xi_alloc
 	mov _RV1, rax
-	mov t591, _RV1
-	mov t150, t591
-	mov t67, t150
-	mov t592, 7
-	mov qword ptr [t67], t592
-	mov t593, 8
-	lea t594, qword ptr [t67 + t593]
-	mov t595, 12
-	mov qword ptr [t594], t595
-	mov t596, 16
-	lea t597, qword ptr [t67 + t596]
-	mov t598, 27
-	mov qword ptr [t597], t598
-	mov t599, 24
-	lea t600, qword ptr [t67 + t599]
-	mov t601, 6
-	mov qword ptr [t600], t601
-	mov t602, 32
-	lea t603, qword ptr [t67 + t602]
-	mov t604, 16
-	mov qword ptr [t603], t604
-	mov t605, 40
-	lea t606, qword ptr [t67 + t605]
-	mov t607, 11
-	mov qword ptr [t606], t607
-	mov t608, 48
-	lea t609, qword ptr [t67 + t608]
-	mov t610, 52
-	mov qword ptr [t609], t610
-	mov t611, 56
-	lea t612, qword ptr [t67 + t611]
-	mov t613, -1
-	mov qword ptr [t612], t613
-	mov t614, 8
-	lea t615, qword ptr [t67 + t614]
-	mov qword ptr [t149], t615
-	mov t616, 8
-	lea t617, qword ptr [t68 + t616]
-	mov loops, t617
-	lea t618, qword ptr g0[rip]
-	mov t69, t618
-	mov t619, 8
-	lea t620, qword ptr [t69 + t619]
-	mov t70, t620
-	mov t152, t70
+	mov _t522, _RV1
+	mov _t144, _t522
+	mov _t67, _t144
+	mov _t523, 7
+	mov qword ptr [_t67], _t523
+	lea _t524, qword ptr [_t67 + 8]
+	mov _t525, 12
+	mov qword ptr [_t524], _t525
+	lea _t526, qword ptr [_t67 + 16]
+	mov _t527, 27
+	mov qword ptr [_t526], _t527
+	lea _t528, qword ptr [_t67 + 24]
+	mov _t529, 6
+	mov qword ptr [_t528], _t529
+	lea _t530, qword ptr [_t67 + 32]
+	mov _t531, 16
+	mov qword ptr [_t530], _t531
+	lea _t532, qword ptr [_t67 + 40]
+	mov _t533, 11
+	mov qword ptr [_t532], _t533
+	lea _t534, qword ptr [_t67 + 48]
+	mov _t535, 52
+	mov qword ptr [_t534], _t535
+	lea _t536, qword ptr [_t67 + 56]
+	mov _t537, -1
+	mov qword ptr [_t536], _t537
+	lea _t538, qword ptr [_t67 + 8]
+	mov qword ptr [_t143], _t538
+	lea _t539, qword ptr [_t68 + 8]
+	mov loops, _t539
+	mov _t540, 216
+	mov _t148, _t540
+	mov rdi, _t148
+	and rsp, -16
+	call _xi_alloc
+	mov _RV1, rax
+	mov _t541, _RV1
+	mov _t147, _t541
+	mov _t69, _t147
+	mov _t542, 26
+	mov qword ptr [_t69], _t542
+	lea _t543, qword ptr [_t69 + 8]
+	mov _t544, 69
+	mov qword ptr [_t543], _t544
+	lea _t545, qword ptr [_t69 + 16]
+	mov _t546, 75
+	mov qword ptr [_t545], _t546
+	lea _t547, qword ptr [_t69 + 24]
+	mov _t548, 77
+	mov qword ptr [_t547], _t548
+	lea _t549, qword ptr [_t69 + 32]
+	mov _t550, 70
+	mov qword ptr [_t549], _t550
+	lea _t551, qword ptr [_t69 + 40]
+	mov _t552, 76
+	mov qword ptr [_t551], _t552
+	lea _t553, qword ptr [_t69 + 48]
+	mov _t554, 71
+	mov qword ptr [_t553], _t554
+	lea _t555, qword ptr [_t69 + 56]
+	mov _t556, 68
+	mov qword ptr [_t555], _t556
+	lea _t557, qword ptr [_t69 + 64]
+	mov _t558, 81
+	mov qword ptr [_t557], _t558
+	lea _t559, qword ptr [_t69 + 72]
+	mov _t560, 86
+	mov qword ptr [_t559], _t560
+	lea _t561, qword ptr [_t69 + 80]
+	mov _t562, 90
+	mov qword ptr [_t561], _t562
+	lea _t563, qword ptr [_t69 + 88]
+	mov _t564, 78
+	mov qword ptr [_t563], _t564
+	lea _t565, qword ptr [_t69 + 96]
+	mov _t566, 84
+	mov qword ptr [_t565], _t566
+	lea _t567, qword ptr [_t69 + 104]
+	mov _t568, 79
+	mov qword ptr [_t567], _t568
+	lea _t569, qword ptr [_t69 + 112]
+	mov _t570, 87
+	mov qword ptr [_t569], _t570
+	lea _t571, qword ptr [_t69 + 120]
+	mov _t572, 89
+	mov qword ptr [_t571], _t572
+	lea _t573, qword ptr [_t69 + 128]
+	mov _t574, 72
+	mov qword ptr [_t573], _t574
+	lea _t575, qword ptr [_t69 + 136]
+	mov _t576, 88
+	mov qword ptr [_t575], _t576
+	lea _t577, qword ptr [_t69 + 144]
+	mov _t578, 85
+	mov qword ptr [_t577], _t578
+	lea _t579, qword ptr [_t69 + 152]
+	mov _t580, 83
+	mov qword ptr [_t579], _t580
+	lea _t581, qword ptr [_t69 + 160]
+	mov _t582, 80
+	mov qword ptr [_t581], _t582
+	lea _t583, qword ptr [_t69 + 168]
+	mov _t584, 65
+	mov qword ptr [_t583], _t584
+	lea _t585, qword ptr [_t69 + 176]
+	mov _t586, 73
+	mov qword ptr [_t585], _t586
+	lea _t587, qword ptr [_t69 + 184]
+	mov _t588, 66
+	mov qword ptr [_t587], _t588
+	lea _t589, qword ptr [_t69 + 192]
+	mov _t590, 82
+	mov qword ptr [_t589], _t590
+	lea _t591, qword ptr [_t69 + 200]
+	mov _t592, 67
+	mov qword ptr [_t591], _t592
+	lea _t593, qword ptr [_t69 + 208]
+	mov _t594, 74
+	mov qword ptr [_t593], _t594
+	lea _t595, qword ptr [_t69 + 8]
+	mov _t146, _t595
 	sub rsp, 8
 	mov rdi, rsp
-	mov rsi, t152
+	mov rsi, _t146
 	and rsp, -16
 	call _ImakeRotor_t3aaiaaiiai
-	pop _RV3
-	mov _RV2, rdx
 	mov _RV1, rax
-	mov t621, _RV1
-	mov r1f, t621
-	mov t622, _RV2
-	mov r1b, t622
-	mov t623, _RV3
-	mov r1p, t623
-	lea t624, qword ptr g1[rip]
-	mov t71, t624
-	mov t625, 8
-	lea t626, qword ptr [t71 + t625]
-	mov t72, t626
-	mov t153, t72
+	mov _RV2, rdx
+	pop _RV3
+	mov _t596, _RV1
+	mov r1f, _t596
+	mov _t597, _RV2
+	mov r1b, _t597
+	mov _t598, _RV3
+	mov r1p, _t598
+	mov _t599, 216
+	mov _t151, _t599
+	mov rdi, _t151
+	and rsp, -16
+	call _xi_alloc
+	mov _RV1, rax
+	mov _t600, _RV1
+	mov _t150, _t600
+	mov _t70, _t150
+	mov _t601, 26
+	mov qword ptr [_t70], _t601
+	lea _t602, qword ptr [_t70 + 8]
+	mov _t603, 65
+	mov qword ptr [_t602], _t603
+	lea _t604, qword ptr [_t70 + 16]
+	mov _t605, 74
+	mov qword ptr [_t604], _t605
+	lea _t606, qword ptr [_t70 + 24]
+	mov _t607, 68
+	mov qword ptr [_t606], _t607
+	lea _t608, qword ptr [_t70 + 32]
+	mov _t609, 75
+	mov qword ptr [_t608], _t609
+	lea _t610, qword ptr [_t70 + 40]
+	mov _t611, 83
+	mov qword ptr [_t610], _t611
+	lea _t612, qword ptr [_t70 + 48]
+	mov _t613, 73
+	mov qword ptr [_t612], _t613
+	lea _t614, qword ptr [_t70 + 56]
+	mov _t615, 82
+	mov qword ptr [_t614], _t615
+	lea _t616, qword ptr [_t70 + 64]
+	mov _t617, 85
+	mov qword ptr [_t616], _t617
+	lea _t618, qword ptr [_t70 + 72]
+	mov _t619, 88
+	mov qword ptr [_t618], _t619
+	lea _t620, qword ptr [_t70 + 80]
+	mov _t621, 66
+	mov qword ptr [_t620], _t621
+	lea _t622, qword ptr [_t70 + 88]
+	mov _t623, 76
+	mov qword ptr [_t622], _t623
+	lea _t624, qword ptr [_t70 + 96]
+	mov _t625, 72
+	mov qword ptr [_t624], _t625
+	lea _t626, qword ptr [_t70 + 104]
+	mov _t627, 87
+	mov qword ptr [_t626], _t627
+	lea _t628, qword ptr [_t70 + 112]
+	mov _t629, 84
+	mov qword ptr [_t628], _t629
+	lea _t630, qword ptr [_t70 + 120]
+	mov _t631, 77
+	mov qword ptr [_t630], _t631
+	lea _t632, qword ptr [_t70 + 128]
+	mov _t633, 67
+	mov qword ptr [_t632], _t633
+	lea _t634, qword ptr [_t70 + 136]
+	mov _t635, 81
+	mov qword ptr [_t634], _t635
+	lea _t636, qword ptr [_t70 + 144]
+	mov _t637, 71
+	mov qword ptr [_t636], _t637
+	lea _t638, qword ptr [_t70 + 152]
+	mov _t639, 90
+	mov qword ptr [_t638], _t639
+	lea _t640, qword ptr [_t70 + 160]
+	mov _t641, 78
+	mov qword ptr [_t640], _t641
+	lea _t642, qword ptr [_t70 + 168]
+	mov _t643, 80
+	mov qword ptr [_t642], _t643
+	lea _t644, qword ptr [_t70 + 176]
+	mov _t645, 89
+	mov qword ptr [_t644], _t645
+	lea _t646, qword ptr [_t70 + 184]
+	mov _t647, 70
+	mov qword ptr [_t646], _t647
+	lea _t648, qword ptr [_t70 + 192]
+	mov _t649, 86
+	mov qword ptr [_t648], _t649
+	lea _t650, qword ptr [_t70 + 200]
+	mov _t651, 79
+	mov qword ptr [_t650], _t651
+	lea _t652, qword ptr [_t70 + 208]
+	mov _t653, 69
+	mov qword ptr [_t652], _t653
+	lea _t654, qword ptr [_t70 + 8]
+	mov _t149, _t654
 	sub rsp, 8
 	mov rdi, rsp
-	mov rsi, t153
+	mov rsi, _t149
 	and rsp, -16
 	call _ImakeRotor_t3aaiaaiiai
-	pop _RV3
-	mov _RV2, rdx
 	mov _RV1, rax
-	mov t627, _RV1
-	mov r2f, t627
-	mov t628, _RV2
-	mov r2b, t628
-	mov t629, _RV3
-	mov r2p, t629
-	lea t630, qword ptr g2[rip]
-	mov t73, t630
-	mov t631, 8
-	lea t632, qword ptr [t73 + t631]
-	mov t74, t632
-	mov t154, t74
+	mov _RV2, rdx
+	pop _RV3
+	mov _t655, _RV1
+	mov r2f, _t655
+	mov _t656, _RV2
+	mov r2b, _t656
+	mov _t657, _RV3
+	mov r2p, _t657
+	mov _t658, 216
+	mov _t154, _t658
+	mov rdi, _t154
+	and rsp, -16
+	call _xi_alloc
+	mov _RV1, rax
+	mov _t659, _RV1
+	mov _t153, _t659
+	mov _t71, _t153
+	mov _t660, 26
+	mov qword ptr [_t71], _t660
+	lea _t661, qword ptr [_t71 + 8]
+	mov _t662, 66
+	mov qword ptr [_t661], _t662
+	lea _t663, qword ptr [_t71 + 16]
+	mov _t664, 68
+	mov qword ptr [_t663], _t664
+	lea _t665, qword ptr [_t71 + 24]
+	mov _t666, 70
+	mov qword ptr [_t665], _t666
+	lea _t667, qword ptr [_t71 + 32]
+	mov _t668, 72
+	mov qword ptr [_t667], _t668
+	lea _t669, qword ptr [_t71 + 40]
+	mov _t670, 74
+	mov qword ptr [_t669], _t670
+	lea _t671, qword ptr [_t71 + 48]
+	mov _t672, 76
+	mov qword ptr [_t671], _t672
+	lea _t673, qword ptr [_t71 + 56]
+	mov _t674, 67
+	mov qword ptr [_t673], _t674
+	lea _t675, qword ptr [_t71 + 64]
+	mov _t676, 80
+	mov qword ptr [_t675], _t676
+	lea _t677, qword ptr [_t71 + 72]
+	mov _t678, 82
+	mov qword ptr [_t677], _t678
+	lea _t679, qword ptr [_t71 + 80]
+	mov _t680, 84
+	mov qword ptr [_t679], _t680
+	lea _t681, qword ptr [_t71 + 88]
+	mov _t682, 88
+	mov qword ptr [_t681], _t682
+	lea _t683, qword ptr [_t71 + 96]
+	mov _t684, 86
+	mov qword ptr [_t683], _t684
+	lea _t685, qword ptr [_t71 + 104]
+	mov _t686, 90
+	mov qword ptr [_t685], _t686
+	lea _t687, qword ptr [_t71 + 112]
+	mov _t688, 78
+	mov qword ptr [_t687], _t688
+	lea _t689, qword ptr [_t71 + 120]
+	mov _t690, 89
+	mov qword ptr [_t689], _t690
+	lea _t691, qword ptr [_t71 + 128]
+	mov _t692, 69
+	mov qword ptr [_t691], _t692
+	lea _t693, qword ptr [_t71 + 136]
+	mov _t694, 73
+	mov qword ptr [_t693], _t694
+	lea _t695, qword ptr [_t71 + 144]
+	mov _t696, 87
+	mov qword ptr [_t695], _t696
+	lea _t697, qword ptr [_t71 + 152]
+	mov _t698, 71
+	mov qword ptr [_t697], _t698
+	lea _t699, qword ptr [_t71 + 160]
+	mov _t700, 65
+	mov qword ptr [_t699], _t700
+	lea _t701, qword ptr [_t71 + 168]
+	mov _t702, 75
+	mov qword ptr [_t701], _t702
+	lea _t703, qword ptr [_t71 + 176]
+	mov _t704, 77
+	mov qword ptr [_t703], _t704
+	lea _t705, qword ptr [_t71 + 184]
+	mov _t706, 85
+	mov qword ptr [_t705], _t706
+	lea _t707, qword ptr [_t71 + 192]
+	mov _t708, 83
+	mov qword ptr [_t707], _t708
+	lea _t709, qword ptr [_t71 + 200]
+	mov _t710, 81
+	mov qword ptr [_t709], _t710
+	lea _t711, qword ptr [_t71 + 208]
+	mov _t712, 79
+	mov qword ptr [_t711], _t712
+	lea _t713, qword ptr [_t71 + 8]
+	mov _t152, _t713
 	sub rsp, 8
 	mov rdi, rsp
-	mov rsi, t154
+	mov rsi, _t152
 	and rsp, -16
 	call _ImakeRotor_t3aaiaaiiai
-	pop _RV3
-	mov _RV2, rdx
 	mov _RV1, rax
-	mov t633, _RV1
-	mov r3f, t633
-	mov t634, _RV2
-	mov r3b, t634
-	mov t635, _RV3
-	mov r3p, t635
-	lea t636, qword ptr g3[rip]
-	mov t75, t636
-	mov t637, 8
-	lea t638, qword ptr [t75 + t637]
-	mov t76, t638
-	mov t156, t76
-	mov rdi, t156
+	mov _RV2, rdx
+	pop _RV3
+	mov _t714, _RV1
+	mov r3f, _t714
+	mov _t715, _RV2
+	mov r3b, _t715
+	mov _t716, _RV3
+	mov r3p, _t716
+	mov _t717, 216
+	mov _t158, _t717
+	mov rdi, _t158
+	and rsp, -16
+	call _xi_alloc
+	mov _RV1, rax
+	mov _t718, _RV1
+	mov _t157, _t718
+	mov _t72, _t157
+	mov _t719, 26
+	mov qword ptr [_t72], _t719
+	lea _t720, qword ptr [_t72 + 8]
+	mov _t721, 89
+	mov qword ptr [_t720], _t721
+	lea _t722, qword ptr [_t72 + 16]
+	mov _t723, 82
+	mov qword ptr [_t722], _t723
+	lea _t724, qword ptr [_t72 + 24]
+	mov _t725, 85
+	mov qword ptr [_t724], _t725
+	lea _t726, qword ptr [_t72 + 32]
+	mov _t727, 72
+	mov qword ptr [_t726], _t727
+	lea _t728, qword ptr [_t72 + 40]
+	mov _t729, 81
+	mov qword ptr [_t728], _t729
+	lea _t730, qword ptr [_t72 + 48]
+	mov _t731, 83
+	mov qword ptr [_t730], _t731
+	lea _t732, qword ptr [_t72 + 56]
+	mov _t733, 76
+	mov qword ptr [_t732], _t733
+	lea _t734, qword ptr [_t72 + 64]
+	mov _t735, 68
+	mov qword ptr [_t734], _t735
+	lea _t736, qword ptr [_t72 + 72]
+	mov _t737, 80
+	mov qword ptr [_t736], _t737
+	lea _t738, qword ptr [_t72 + 80]
+	mov _t739, 88
+	mov qword ptr [_t738], _t739
+	lea _t740, qword ptr [_t72 + 88]
+	mov _t741, 78
+	mov qword ptr [_t740], _t741
+	lea _t742, qword ptr [_t72 + 96]
+	mov _t743, 71
+	mov qword ptr [_t742], _t743
+	lea _t744, qword ptr [_t72 + 104]
+	mov _t745, 79
+	mov qword ptr [_t744], _t745
+	lea _t746, qword ptr [_t72 + 112]
+	mov _t747, 75
+	mov qword ptr [_t746], _t747
+	lea _t748, qword ptr [_t72 + 120]
+	mov _t749, 77
+	mov qword ptr [_t748], _t749
+	lea _t750, qword ptr [_t72 + 128]
+	mov _t751, 73
+	mov qword ptr [_t750], _t751
+	lea _t752, qword ptr [_t72 + 136]
+	mov _t753, 69
+	mov qword ptr [_t752], _t753
+	lea _t754, qword ptr [_t72 + 144]
+	mov _t755, 66
+	mov qword ptr [_t754], _t755
+	lea _t756, qword ptr [_t72 + 152]
+	mov _t757, 70
+	mov qword ptr [_t756], _t757
+	lea _t758, qword ptr [_t72 + 160]
+	mov _t759, 90
+	mov qword ptr [_t758], _t759
+	lea _t760, qword ptr [_t72 + 168]
+	mov _t761, 67
+	mov qword ptr [_t760], _t761
+	lea _t762, qword ptr [_t72 + 176]
+	mov _t763, 87
+	mov qword ptr [_t762], _t763
+	lea _t764, qword ptr [_t72 + 184]
+	mov _t765, 86
+	mov qword ptr [_t764], _t765
+	lea _t766, qword ptr [_t72 + 192]
+	mov _t767, 74
+	mov qword ptr [_t766], _t767
+	lea _t768, qword ptr [_t72 + 200]
+	mov _t769, 65
+	mov qword ptr [_t768], _t769
+	lea _t770, qword ptr [_t72 + 208]
+	mov _t771, 84
+	mov qword ptr [_t770], _t771
+	lea _t772, qword ptr [_t72 + 8]
+	mov _t156, _t772
+	mov rdi, _t156
 	and rsp, -16
 	call _ImakeReflector_aiai
 	mov _RV1, rax
-	mov t639, _RV1
-	mov t155, t639
-	mov mb, t155
-	mov t640, 0
-	mov pos, t640
-	l83:
-	mov t641, 17576
-	cmp pos, t641
-	jge l81
-	l82:
-	mov t642, 0
-	mov guess, t642
-	l86:
-	mov t643, 26
-	cmp guess, t643
-	jge l84
-	l85:
-	mov t644, 1
-	mov allMatch, t644
-	mov t645, 0
-	mov loop, t645
-	l89:
-	mov t646, 8
-	mov t647, loops
-	sub t647, t646
-	mov t647, qword ptr [t647]
-	cmp loop, t647
-	jge l87
-	l88:
+	mov _t773, _RV1
+	mov _t155, _t773
+	mov mb, _t155
+	mov _t774, 0
+	mov pos, _t774
+	_l83:
+	mov _t775, 17576
+	cmp pos, _t775
+	jge _l81
+	_l82:
+	mov _t776, 0
+	mov guess, _t776
+	_l86:
+	mov _t777, 26
+	cmp guess, _t777
+	jge _l84
+	_l85:
+	mov _t778, 1
+	mov allMatch, _t778
+	mov _t779, 0
+	mov loop, _t779
+	_l89:
+	mov _t780, 8
+	mov _t781, loops
+	sub _t781, _t780
+	mov _t782, qword ptr [_t781]
+	cmp loop, _t782
+	jge _l87
+	_l88:
 	mov l, guess
-	mov t648, 0
-	mov loopPos, t648
-	l92:
-	mov t80, loops
-	mov t79, loop
-	mov t649, 8
-	mov t650, t80
-	sub t650, t649
-	mov t650, qword ptr [t650]
-	cmp t79, t650
-	setb t651
-	mov t652, 1
-	mov t653, t651
-	xor t653, t652
-	test t653, t653
-	jnz l93
-	l94:
-	mov t654, 8
-	mov t655, t79
-	imul t655, t654
-	lea t656, qword ptr [t80 + t655]
-	mov t656, qword ptr [t656]
-	mov t78, t656
-	mov t77, loopPos
-	mov t657, 8
-	mov t658, t78
-	sub t658, t657
-	mov t658, qword ptr [t658]
-	cmp t77, t658
-	setb t659
-	mov t660, 1
-	mov t661, t659
-	xor t661, t660
-	test t661, t661
-	jnz l95
-	l96:
-	mov t662, 8
-	mov t663, t77
-	imul t663, t662
-	lea t664, qword ptr [t78 + t663]
-	mov t664, qword ptr [t664]
-	mov t665, -1
-	cmp t664, t665
-	je l90
-	l91:
-	mov t84, loops
-	mov t83, loop
-	mov t666, 8
-	mov t667, t84
-	sub t667, t666
-	mov t667, qword ptr [t667]
-	cmp t83, t667
-	setb t668
-	mov t669, 1
-	mov t670, t668
-	xor t670, t669
-	test t670, t670
-	jnz l97
-	l98:
-	mov t671, 8
-	mov t672, t83
-	imul t672, t671
-	lea t673, qword ptr [t84 + t672]
-	mov t673, qword ptr [t673]
-	mov t82, t673
-	mov t81, loopPos
-	mov t674, 8
-	mov t675, t82
-	sub t675, t674
-	mov t675, qword ptr [t675]
-	cmp t81, t675
-	setb t676
-	mov t677, 1
-	mov t678, t676
-	xor t678, t677
-	test t678, t678
-	jnz l99
-	l100:
-	mov t679, 8
-	mov t680, t81
-	imul t680, t679
-	lea t681, qword ptr [t82 + t680]
-	mov t681, qword ptr [t681]
-	lea t682, qword ptr [pos + t681]
-	mov epos, t682
-	mov t683, 26
+	mov _t783, 0
+	mov loopPos, _t783
+	_l92:
+	mov _t76, loops
+	mov _t75, loop
+	mov _t784, 8
+	mov _t785, _t76
+	sub _t785, _t784
+	mov _t786, qword ptr [_t785]
+	cmp _t75, _t786
+	setb _t787
+	mov _t788, 1
+	mov _t789, _t787
+	xor _t789, _t788
+	test _t789, _t789
+	jnz _l93
+	_l94:
+	mov _t790, qword ptr [_t76 + _t75 * 8]
+	mov _t74, _t790
+	mov _t73, loopPos
+	mov _t791, 8
+	mov _t792, _t74
+	sub _t792, _t791
+	mov _t793, qword ptr [_t792]
+	cmp _t73, _t793
+	setb _t794
+	mov _t795, 1
+	mov _t796, _t794
+	xor _t796, _t795
+	test _t796, _t796
+	jnz _l95
+	_l96:
+	mov _t797, qword ptr [_t74 + _t73 * 8]
+	mov _t798, -1
+	cmp _t797, _t798
+	je _l90
+	_l91:
+	mov _t80, loops
+	mov _t79, loop
+	mov _t799, 8
+	mov _t800, _t80
+	sub _t800, _t799
+	mov _t801, qword ptr [_t800]
+	cmp _t79, _t801
+	setb _t802
+	mov _t803, 1
+	mov _t804, _t802
+	xor _t804, _t803
+	test _t804, _t804
+	jnz _l97
+	_l98:
+	mov _t805, qword ptr [_t80 + _t79 * 8]
+	mov _t78, _t805
+	mov _t77, loopPos
+	mov _t806, 8
+	mov _t807, _t78
+	sub _t807, _t806
+	mov _t808, qword ptr [_t807]
+	cmp _t77, _t808
+	setb _t809
+	mov _t810, 1
+	mov _t811, _t809
+	xor _t811, _t810
+	test _t811, _t811
+	jnz _l99
+	_l100:
+	mov _t812, qword ptr [_t78 + _t77 * 8]
+	lea _t813, qword ptr [pos + _t812]
+	mov epos, _t813
+	mov _t814, 26
 	mov rax, epos
 	xor rdx, rdx
-	idiv t683
+	idiv _t814
 	mov epos, rdx
 	mov r1p, epos
-	mov t684, 26
+	mov _t815, 26
 	mov rax, epos
 	xor rdx, rdx
-	idiv t684
+	idiv _t815
 	mov epos, rax
-	mov t685, 26
+	mov _t816, 26
 	mov rax, epos
 	xor rdx, rdx
-	idiv t685
+	idiv _t816
 	mov epos, rdx
 	mov r2p, epos
-	mov t686, 676
+	mov _t817, 676
 	mov rax, epos
 	xor rdx, rdx
-	idiv t686
+	idiv _t817
 	mov epos, rax
-	mov t687, 26
+	mov _t818, 26
 	mov rax, epos
 	xor rdx, rdx
-	idiv t687
+	idiv _t818
 	mov epos, rdx
 	mov r3p, epos
-	mov t158, r1f
-	mov t159, r1b
-	mov t160, r1p
-	mov t161, l
-	mov rdi, t161
-	mov rsi, t160
-	mov rdx, t159
-	mov rcx, t158
+	mov _t160, r1f
+	mov _t161, r1b
+	mov _t162, r1p
+	mov _t163, l
+	mov rcx, _t163
+	mov rdx, _t162
+	mov rsi, _t161
+	mov rdi, _t160
 	and rsp, -16
 	call _IrotorEncryptForward_iaaiaaiii
 	mov _RV1, rax
-	mov t688, _RV1
-	mov t157, t688
-	mov l, t157
-	mov t163, r2f
-	mov t164, r2b
-	mov t165, r2p
-	mov t166, l
-	mov rdi, t166
-	mov rsi, t165
-	mov rdx, t164
-	mov rcx, t163
+	mov _t819, _RV1
+	mov _t159, _t819
+	mov l, _t159
+	mov _t165, r2f
+	mov _t166, r2b
+	mov _t167, r2p
+	mov _t168, l
+	mov rcx, _t168
+	mov rdx, _t167
+	mov rsi, _t166
+	mov rdi, _t165
 	and rsp, -16
 	call _IrotorEncryptForward_iaaiaaiii
 	mov _RV1, rax
-	mov t689, _RV1
-	mov t162, t689
-	mov l, t162
-	mov t168, r3f
-	mov t169, r3b
-	mov t170, r3p
-	mov t171, l
-	mov rdi, t171
-	mov rsi, t170
-	mov rdx, t169
-	mov rcx, t168
+	mov _t820, _RV1
+	mov _t164, _t820
+	mov l, _t164
+	mov _t170, r3f
+	mov _t171, r3b
+	mov _t172, r3p
+	mov _t173, l
+	mov rcx, _t173
+	mov rdx, _t172
+	mov rsi, _t171
+	mov rdi, _t170
 	and rsp, -16
 	call _IrotorEncryptForward_iaaiaaiii
 	mov _RV1, rax
-	mov t690, _RV1
-	mov t167, t690
-	mov l, t167
-	mov t173, mb
-	mov t174, l
-	mov rdi, t174
-	mov rsi, t173
+	mov _t821, _RV1
+	mov _t169, _t821
+	mov l, _t169
+	mov _t175, mb
+	mov _t176, l
+	mov rsi, _t176
+	mov rdi, _t175
 	and rsp, -16
 	call _IreflectorEncrypt_iaii
 	mov _RV1, rax
-	mov t691, _RV1
-	mov t172, t691
-	mov l, t172
-	mov t176, r3f
-	mov t177, r3b
-	mov t178, r3p
-	mov t179, l
-	mov rdi, t179
-	mov rsi, t178
-	mov rdx, t177
-	mov rcx, t176
+	mov _t822, _RV1
+	mov _t174, _t822
+	mov l, _t174
+	mov _t178, r3f
+	mov _t179, r3b
+	mov _t180, r3p
+	mov _t181, l
+	mov rcx, _t181
+	mov rdx, _t180
+	mov rsi, _t179
+	mov rdi, _t178
 	and rsp, -16
 	call _IrotorEncryptBack_iaaiaaiii
 	mov _RV1, rax
-	mov t692, _RV1
-	mov t175, t692
-	mov l, t175
-	mov t181, r2f
-	mov t182, r2b
-	mov t183, r2p
-	mov t184, l
-	mov rdi, t184
-	mov rsi, t183
-	mov rdx, t182
-	mov rcx, t181
+	mov _t823, _RV1
+	mov _t177, _t823
+	mov l, _t177
+	mov _t183, r2f
+	mov _t184, r2b
+	mov _t185, r2p
+	mov _t186, l
+	mov rcx, _t186
+	mov rdx, _t185
+	mov rsi, _t184
+	mov rdi, _t183
 	and rsp, -16
 	call _IrotorEncryptBack_iaaiaaiii
 	mov _RV1, rax
-	mov t693, _RV1
-	mov t180, t693
-	mov l, t180
-	mov t186, r1f
-	mov t187, r1b
-	mov t188, r1p
-	mov t189, l
-	mov rdi, t189
-	mov rsi, t188
-	mov rdx, t187
-	mov rcx, t186
+	mov _t824, _RV1
+	mov _t182, _t824
+	mov l, _t182
+	mov _t188, r1f
+	mov _t189, r1b
+	mov _t190, r1p
+	mov _t191, l
+	mov rcx, _t191
+	mov rdx, _t190
+	mov rsi, _t189
+	mov rdi, _t188
 	and rsp, -16
 	call _IrotorEncryptBack_iaaiaaiii
 	mov _RV1, rax
-	mov t694, _RV1
-	mov t185, t694
-	mov l, t185
-	mov t695, 1
-	lea t696, qword ptr [loopPos + t695]
-	mov loopPos, t696
-	jmp l92
-	l99:
+	mov _t825, _RV1
+	mov _t187, _t825
+	mov l, _t187
+	lea _t826, qword ptr [loopPos + 1]
+	mov loopPos, _t826
+	jmp _l92
+	_l99:
 	and rsp, -16
 	call _xi_out_of_bounds
-	jmp l100
-	l97:
+	jmp _l100
+	_l97:
 	and rsp, -16
 	call _xi_out_of_bounds
-	jmp l98
-	l90:
+	jmp _l98
+	_l90:
 	cmp l, guess
-	je l101
-	l102:
-	mov t697, 0
-	mov allMatch, t697
-	l101:
-	mov t698, 1
-	lea t699, qword ptr [loop + t698]
-	mov loop, t699
-	jmp l89
-	l95:
+	je _l101
+	_l102:
+	mov _t827, 0
+	mov allMatch, _t827
+	_l101:
+	lea _t828, qword ptr [loop + 1]
+	mov loop, _t828
+	jmp _l89
+	_l95:
 	and rsp, -16
 	call _xi_out_of_bounds
-	jmp l96
-	l93:
+	jmp _l96
+	_l93:
 	and rsp, -16
 	call _xi_out_of_bounds
-	jmp l94
-	l87:
-	mov t700, 1
-	mov t701, allMatch
-	xor t701, t700
-	test t701, t701
-	jnz l103
-	l104:
-	mov t702, 32
-	mov t191, t702
-	mov rdi, t191
+	jmp _l94
+	_l87:
+	mov _t829, 1
+	mov _t830, allMatch
+	xor _t830, _t829
+	test _t830, _t830
+	jnz _l103
+	_l104:
+	mov _t831, 32
+	mov _t193, _t831
+	mov rdi, _t193
 	and rsp, -16
 	call _xi_alloc
 	mov _RV1, rax
-	mov t703, _RV1
-	mov t190, t703
-	mov t86, t190
-	mov t704, 3
-	mov qword ptr [t86], t704
-	mov t705, 8
-	lea t706, qword ptr [t86 + t705]
-	mov t85, t706
-	mov posStr, t85
-	mov t707, 0
-	mov t88, t707
-	l107:
-	mov t708, 3
-	cmp t88, t708
-	jge l105
-	l106:
-	mov t709, 8
-	mov t710, t88
-	imul t710, t709
-	lea t711, qword ptr [t85 + t710]
-	mov qword ptr [t711], t87
-	mov t712, 1
-	lea t713, qword ptr [t88 + t712]
-	mov t88, t713
-	jmp l107
-	l105:
-	mov t90, posStr
-	mov t714, 0
-	mov t89, t714
-	mov t715, 8
-	mov t716, t90
-	sub t716, t715
-	mov t716, qword ptr [t716]
-	cmp t89, t716
-	setb t717
-	mov t718, 1
-	mov t719, t717
-	xor t719, t718
-	test t719, t719
-	jnz l108
-	l109:
-	mov t720, 8
-	mov t721, t89
-	imul t721, t720
-	lea t722, qword ptr [t90 + t721]
-	mov t723, 26
+	mov _t832, _RV1
+	mov _t192, _t832
+	mov _t82, _t192
+	mov _t833, 3
+	mov qword ptr [_t82], _t833
+	lea _t834, qword ptr [_t82 + 8]
+	mov _t81, _t834
+	mov posStr, _t81
+	mov _t835, 0
+	mov _t84, _t835
+	_l107:
+	mov _t836, 3
+	cmp _t84, _t836
+	jge _l105
+	_l106:
+	lea _t837, qword ptr [_t81 + _t84 * 8]
+	mov qword ptr [_t837], _t83
+	lea _t838, qword ptr [_t84 + 1]
+	mov _t84, _t838
+	jmp _l107
+	_l105:
+	mov _t86, posStr
+	mov _t839, 0
+	mov _t85, _t839
+	mov _t840, 8
+	mov _t841, _t86
+	sub _t841, _t840
+	mov _t842, qword ptr [_t841]
+	cmp _t85, _t842
+	setb _t843
+	mov _t844, 1
+	mov _t845, _t843
+	xor _t845, _t844
+	test _t845, _t845
+	jnz _l108
+	_l109:
+	lea _t846, qword ptr [_t86 + _t85 * 8]
+	mov _t847, 26
 	mov rax, pos
 	xor rdx, rdx
-	idiv t723
+	idiv _t847
 	mov pos, rdx
-	mov t724, 65
-	lea t725, qword ptr [pos + t724]
-	mov qword ptr [t722], t725
-	mov t92, posStr
-	mov t726, 1
-	mov t91, t726
-	mov t727, 8
-	mov t728, t92
-	sub t728, t727
-	mov t728, qword ptr [t728]
-	cmp t91, t728
-	setb t729
-	mov t730, 1
-	mov t731, t729
-	xor t731, t730
-	test t731, t731
-	jnz l110
-	l111:
-	mov t732, 8
-	mov t733, t91
-	imul t733, t732
-	lea t734, qword ptr [t92 + t733]
-	mov t735, 26
+	lea _t848, qword ptr [pos + 65]
+	mov qword ptr [_t846], _t848
+	mov _t88, posStr
+	mov _t849, 1
+	mov _t87, _t849
+	mov _t850, 8
+	mov _t851, _t88
+	sub _t851, _t850
+	mov _t852, qword ptr [_t851]
+	cmp _t87, _t852
+	setb _t853
+	mov _t854, 1
+	mov _t855, _t853
+	xor _t855, _t854
+	test _t855, _t855
+	jnz _l110
+	_l111:
+	lea _t856, qword ptr [_t88 + _t87 * 8]
+	mov _t857, 26
 	mov rax, pos
 	xor rdx, rdx
-	idiv t735
+	idiv _t857
 	mov pos, rax
-	mov t736, 26
+	mov _t858, 26
 	mov rax, pos
 	xor rdx, rdx
-	idiv t736
+	idiv _t858
 	mov pos, rdx
-	mov t737, 65
-	lea t738, qword ptr [pos + t737]
-	mov qword ptr [t734], t738
-	mov t94, posStr
-	mov t739, 2
-	mov t93, t739
-	mov t740, 8
-	mov t741, t94
-	sub t741, t740
-	mov t741, qword ptr [t741]
-	cmp t93, t741
-	setb t742
-	mov t743, 1
-	mov t744, t742
-	xor t744, t743
-	test t744, t744
-	jnz l112
-	l113:
-	mov t745, 8
-	mov t746, t93
-	imul t746, t745
-	lea t747, qword ptr [t94 + t746]
-	mov t748, 676
+	lea _t859, qword ptr [pos + 65]
+	mov qword ptr [_t856], _t859
+	mov _t90, posStr
+	mov _t860, 2
+	mov _t89, _t860
+	mov _t861, 8
+	mov _t862, _t90
+	sub _t862, _t861
+	mov _t863, qword ptr [_t862]
+	cmp _t89, _t863
+	setb _t864
+	mov _t865, 1
+	mov _t866, _t864
+	xor _t866, _t865
+	test _t866, _t866
+	jnz _l112
+	_l113:
+	lea _t867, qword ptr [_t90 + _t89 * 8]
+	mov _t868, 676
 	mov rax, pos
 	xor rdx, rdx
-	idiv t748
+	idiv _t868
 	mov pos, rax
-	mov t749, 26
+	mov _t869, 26
 	mov rax, pos
 	xor rdx, rdx
-	idiv t749
+	idiv _t869
 	mov pos, rdx
-	mov t750, 65
-	lea t751, qword ptr [pos + t750]
-	mov qword ptr [t747], t751
-	lea t752, qword ptr g4[rip]
-	mov t95, t752
-	mov t753, 8
-	lea t754, qword ptr [t95 + t753]
-	mov t96, t754
-	mov t192, t96
-	mov rdi, t192
-	and rsp, -16
-	call _Iprint_pai
-	mov t193, posStr
-	mov rdi, t193
-	and rsp, -16
-	call _Iprint_pai
-	lea t755, qword ptr g5[rip]
-	mov t97, t755
-	mov t756, 8
-	lea t757, qword ptr [t97 + t756]
-	mov t98, t757
-	mov t194, t98
-	mov rdi, t194
-	and rsp, -16
-	call _Iprint_pai
-	mov t758, 16
-	mov t196, t758
-	mov rdi, t196
+	lea _t870, qword ptr [pos + 65]
+	mov qword ptr [_t867], _t870
+	mov _t871, 160
+	mov _t196, _t871
+	mov rdi, _t196
 	and rsp, -16
 	call _xi_alloc
 	mov _RV1, rax
-	mov t759, _RV1
-	mov t195, t759
-	mov t100, t195
-	mov t760, 1
-	mov qword ptr [t100], t760
-	mov t761, 8
-	lea t762, qword ptr [t100 + t761]
-	mov t99, t762
-	mov guessStr, t99
-	mov t763, 0
-	mov t102, t763
-	l116:
-	mov t764, 1
-	cmp t102, t764
-	jge l114
-	l115:
-	mov t765, 8
-	mov t766, t102
-	imul t766, t765
-	lea t767, qword ptr [t99 + t766]
-	mov qword ptr [t767], t101
-	mov t768, 1
-	lea t769, qword ptr [t102 + t768]
-	mov t102, t769
-	jmp l116
-	l114:
-	mov t104, guessStr
-	mov t770, 0
-	mov t103, t770
-	mov t771, 8
-	mov t772, t104
-	sub t772, t771
-	mov t772, qword ptr [t772]
-	cmp t103, t772
-	setb t773
-	mov t774, 1
-	mov t775, t773
-	xor t775, t774
-	test t775, t775
-	jnz l117
-	l118:
-	mov t776, 8
-	mov t777, t103
-	imul t777, t776
-	lea t778, qword ptr [t104 + t777]
-	mov t779, 65
-	lea t780, qword ptr [guess + t779]
-	mov qword ptr [t778], t780
-	mov t197, guessStr
-	mov rdi, t197
+	mov _t872, _RV1
+	mov _t195, _t872
+	mov _t91, _t195
+	mov _t873, 19
+	mov qword ptr [_t91], _t873
+	lea _t874, qword ptr [_t91 + 8]
+	mov _t875, 77
+	mov qword ptr [_t874], _t875
+	lea _t876, qword ptr [_t91 + 16]
+	mov _t877, 65
+	mov qword ptr [_t876], _t877
+	lea _t878, qword ptr [_t91 + 24]
+	mov _t879, 84
+	mov qword ptr [_t878], _t879
+	lea _t880, qword ptr [_t91 + 32]
+	mov _t881, 67
+	mov qword ptr [_t880], _t881
+	lea _t882, qword ptr [_t91 + 40]
+	mov _t883, 72
+	mov qword ptr [_t882], _t883
+	lea _t884, qword ptr [_t91 + 48]
+	mov _t885, 32
+	mov qword ptr [_t884], _t885
+	lea _t886, qword ptr [_t91 + 56]
+	mov _t887, 65
+	mov qword ptr [_t886], _t887
+	lea _t888, qword ptr [_t91 + 64]
+	mov _t889, 116
+	mov qword ptr [_t888], _t889
+	lea _t890, qword ptr [_t91 + 72]
+	mov _t891, 32
+	mov qword ptr [_t890], _t891
+	lea _t892, qword ptr [_t91 + 80]
+	mov _t893, 114
+	mov qword ptr [_t892], _t893
+	lea _t894, qword ptr [_t91 + 88]
+	mov _t895, 111
+	mov qword ptr [_t894], _t895
+	lea _t896, qword ptr [_t91 + 96]
+	mov _t897, 116
+	mov qword ptr [_t896], _t897
+	lea _t898, qword ptr [_t91 + 104]
+	mov _t899, 111
+	mov qword ptr [_t898], _t899
+	lea _t900, qword ptr [_t91 + 112]
+	mov _t901, 114
+	mov qword ptr [_t900], _t901
+	lea _t902, qword ptr [_t91 + 120]
+	mov _t903, 32
+	mov qword ptr [_t902], _t903
+	lea _t904, qword ptr [_t91 + 128]
+	mov _t905, 112
+	mov qword ptr [_t904], _t905
+	lea _t906, qword ptr [_t91 + 136]
+	mov _t907, 111
+	mov qword ptr [_t906], _t907
+	lea _t908, qword ptr [_t91 + 144]
+	mov _t909, 115
+	mov qword ptr [_t908], _t909
+	lea _t910, qword ptr [_t91 + 152]
+	mov _t911, 58
+	mov qword ptr [_t910], _t911
+	lea _t912, qword ptr [_t91 + 8]
+	mov _t194, _t912
+	mov rdi, _t194
+	and rsp, -16
+	call _Iprint_pai
+	mov _t197, posStr
+	mov rdi, _t197
+	and rsp, -16
+	call _Iprint_pai
+	mov _t913, 176
+	mov _t200, _t913
+	mov rdi, _t200
+	and rsp, -16
+	call _xi_alloc
+	mov _RV1, rax
+	mov _t914, _RV1
+	mov _t199, _t914
+	mov _t92, _t199
+	mov _t915, 21
+	mov qword ptr [_t92], _t915
+	lea _t916, qword ptr [_t92 + 8]
+	mov _t917, 32
+	mov qword ptr [_t916], _t917
+	lea _t918, qword ptr [_t92 + 16]
+	mov _t919, 102
+	mov qword ptr [_t918], _t919
+	lea _t920, qword ptr [_t92 + 24]
+	mov _t921, 105
+	mov qword ptr [_t920], _t921
+	lea _t922, qword ptr [_t92 + 32]
+	mov _t923, 114
+	mov qword ptr [_t922], _t923
+	lea _t924, qword ptr [_t92 + 40]
+	mov _t925, 115
+	mov qword ptr [_t924], _t925
+	lea _t926, qword ptr [_t92 + 48]
+	mov _t927, 116
+	mov qword ptr [_t926], _t927
+	lea _t928, qword ptr [_t92 + 56]
+	mov _t929, 32
+	mov qword ptr [_t928], _t929
+	lea _t930, qword ptr [_t92 + 64]
+	mov _t931, 99
+	mov qword ptr [_t930], _t931
+	lea _t932, qword ptr [_t92 + 72]
+	mov _t933, 111
+	mov qword ptr [_t932], _t933
+	lea _t934, qword ptr [_t92 + 80]
+	mov _t935, 109
+	mov qword ptr [_t934], _t935
+	lea _t936, qword ptr [_t92 + 88]
+	mov _t937, 101
+	mov qword ptr [_t936], _t937
+	lea _t938, qword ptr [_t92 + 96]
+	mov _t939, 115
+	mov qword ptr [_t938], _t939
+	lea _t940, qword ptr [_t92 + 104]
+	mov _t941, 32
+	mov qword ptr [_t940], _t941
+	lea _t942, qword ptr [_t92 + 112]
+	mov _t943, 105
+	mov qword ptr [_t942], _t943
+	lea _t944, qword ptr [_t92 + 120]
+	mov _t945, 110
+	mov qword ptr [_t944], _t945
+	lea _t946, qword ptr [_t92 + 128]
+	mov _t947, 32
+	mov qword ptr [_t946], _t947
+	lea _t948, qword ptr [_t92 + 136]
+	mov _t949, 102
+	mov qword ptr [_t948], _t949
+	lea _t950, qword ptr [_t92 + 144]
+	mov _t951, 114
+	mov qword ptr [_t950], _t951
+	lea _t952, qword ptr [_t92 + 152]
+	mov _t953, 111
+	mov qword ptr [_t952], _t953
+	lea _t954, qword ptr [_t92 + 160]
+	mov _t955, 109
+	mov qword ptr [_t954], _t955
+	lea _t956, qword ptr [_t92 + 168]
+	mov _t957, 58
+	mov qword ptr [_t956], _t957
+	lea _t958, qword ptr [_t92 + 8]
+	mov _t198, _t958
+	mov rdi, _t198
+	and rsp, -16
+	call _Iprint_pai
+	mov _t959, 16
+	mov _t202, _t959
+	mov rdi, _t202
+	and rsp, -16
+	call _xi_alloc
+	mov _RV1, rax
+	mov _t960, _RV1
+	mov _t201, _t960
+	mov _t94, _t201
+	mov _t961, 1
+	mov qword ptr [_t94], _t961
+	lea _t962, qword ptr [_t94 + 8]
+	mov _t93, _t962
+	mov guessStr, _t93
+	mov _t963, 0
+	mov _t96, _t963
+	_l116:
+	mov _t964, 1
+	cmp _t96, _t964
+	jge _l114
+	_l115:
+	lea _t965, qword ptr [_t93 + _t96 * 8]
+	mov qword ptr [_t965], _t95
+	lea _t966, qword ptr [_t96 + 1]
+	mov _t96, _t966
+	jmp _l116
+	_l114:
+	mov _t98, guessStr
+	mov _t967, 0
+	mov _t97, _t967
+	mov _t968, 8
+	mov _t969, _t98
+	sub _t969, _t968
+	mov _t970, qword ptr [_t969]
+	cmp _t97, _t970
+	setb _t971
+	mov _t972, 1
+	mov _t973, _t971
+	xor _t973, _t972
+	test _t973, _t973
+	jnz _l117
+	_l118:
+	lea _t974, qword ptr [_t98 + _t97 * 8]
+	lea _t975, qword ptr [guess + 65]
+	mov qword ptr [_t974], _t975
+	mov _t203, guessStr
+	mov rdi, _t203
 	and rsp, -16
 	call _Iprintln_pai
-	l103:
-	mov t781, 1
-	lea t782, qword ptr [guess + t781]
-	mov guess, t782
-	jmp l86
-	l117:
+	_l103:
+	lea _t976, qword ptr [guess + 1]
+	mov guess, _t976
+	jmp _l86
+	_l117:
 	and rsp, -16
 	call _xi_out_of_bounds
-	jmp l118
-	l112:
+	jmp _l118
+	_l112:
 	and rsp, -16
 	call _xi_out_of_bounds
-	jmp l113
-	l110:
+	jmp _l113
+	_l110:
 	and rsp, -16
 	call _xi_out_of_bounds
-	jmp l111
-	l108:
+	jmp _l111
+	_l108:
 	and rsp, -16
 	call _xi_out_of_bounds
-	jmp l109
-	l84:
-	mov t783, 1
-	lea t784, qword ptr [pos + t783]
-	mov pos, t784
-	jmp l83
-	l81:
+	jmp _l109
+	_l84:
+	lea _t977, qword ptr [pos + 1]
+	mov pos, _t977
+	jmp _l83
+	_l81:
 	leave
 	ret

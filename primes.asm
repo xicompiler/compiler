@@ -5,131 +5,129 @@
 _Igcd_iii:
 	mov _ARG1, rdi
 	mov _ARG2, rsi
-	mov t14, _ARG1
-	mov a, t14
-	mov t15, _ARG2
-	mov b, t15
-	l2:
-	mov t16, 0
-	cmp a, t16
-	je l0
-	l1:
+	mov _t15, _ARG1
+	mov a, _t15
+	mov _t16, _ARG2
+	mov b, _t16
+	_l2:
+	mov _t17, 0
+	cmp a, _t17
+	je _l0
+	_l1:
 	cmp a, b
-	jge l4
-	l5:
-	mov t17, b
-	sub t17, a
-	mov b, t17
-	l3:
-	jmp l2
-	l4:
-	mov t18, a
-	sub t18, b
-	mov a, t18
-	jmp l3
-	l0:
-	mov t0, b
-	mov rax, t0
+	jge _l4
+	_l5:
+	mov _t18, b
+	sub _t18, a
+	mov b, _t18
+	_l3:
+	jmp _l2
+	_l4:
+	mov _t19, a
+	sub _t19, b
+	mov a, _t19
+	jmp _l3
+	_l0:
+	mov _t0, b
+	mov rax, _t0
 	leave
 	ret
 _Iisprime_bi:
 	mov _ARG1, rdi
-	mov t19, _ARG1
-	mov n, t19
-	mov t20, 2
-	mov i, t20
-	l8:
-	mov t21, i
-	imul t21, i
-	cmp t21, n
-	jg l6
-	l7:
-	mov t2, i
-	mov t3, n
-	mov rdi, t3
-	mov rsi, t2
+	mov _t21, _ARG1
+	mov n, _t21
+	mov _t22, 2
+	mov i, _t22
+	_l8:
+	mov _t23, i
+	imul _t23, i
+	cmp _t23, n
+	jg _l6
+	_l7:
+	mov _t2, i
+	mov _t3, n
+	mov rsi, _t3
+	mov rdi, _t2
 	and rsp, -16
 	call _Igcd_iii
 	mov _RV1, rax
-	mov t22, _RV1
-	mov t1, t22
-	mov t23, 1
-	cmp t1, t23
-	je l9
-	l10:
-	mov t24, 0
-	mov t4, t24
-	mov rax, t4
+	mov _t24, _RV1
+	mov _t1, _t24
+	mov _t25, 1
+	cmp _t1, _t25
+	je _l9
+	_l10:
+	mov _t26, 0
+	mov _t4, _t26
+	mov rax, _t4
 	leave
 	ret
-	l9:
-	mov t25, 1
-	lea t26, qword ptr [i + t25]
-	mov i, t26
-	jmp l8
-	l6:
-	mov t27, 1
-	mov t5, t27
-	mov rax, t5
+	_l9:
+	lea _t27, qword ptr [i + 1]
+	mov i, _t27
+	jmp _l8
+	_l6:
+	mov _t28, 1
+	mov _t5, _t28
+	mov rax, _t5
 	leave
 	ret
 _Ilargestprime_ii:
 	mov _ARG1, rdi
-	mov t28, _ARG1
-	mov max, t28
-	mov t29, 1
-	mov a, t29
-	mov t30, 1
-	mov largest, t30
-	l13:
+	mov _t30, _ARG1
+	mov max, _t30
+	mov _t31, 1
+	mov a, _t31
+	mov _t32, 1
+	mov largest, _t32
+	_l13:
 	cmp a, max
-	jge l11
-	l12:
-	mov t7, a
-	mov rdi, t7
+	jge _l11
+	_l12:
+	mov _t7, a
+	mov rdi, _t7
 	and rsp, -16
 	call _Iisprime_bi
 	mov _RV1, rax
-	mov t31, _RV1
-	mov t6, t31
-	mov t32, 1
-	mov t33, t6
-	xor t33, t32
-	test t33, t33
-	jnz l14
-	l15:
+	mov _t33, _RV1
+	mov _t6, _t33
+	mov _t34, 1
+	mov _t35, _t6
+	xor _t35, _t34
+	test _t35, _t35
+	jnz _l14
+	_l15:
 	mov largest, a
-	l14:
-	mov t34, 1
-	lea t35, qword ptr [a + t34]
-	mov a, t35
-	jmp l13
-	l11:
-	mov t8, largest
-	mov rax, t8
+	_l14:
+	lea _t36, qword ptr [a + 1]
+	mov a, _t36
+	jmp _l13
+	_l11:
+	mov _t8, largest
+	mov rax, _t8
 	leave
 	ret
 _Imain_paai:
 	mov _ARG1, rdi
-	mov t36, _ARG1
-	mov args, t36
-	mov t37, 30
-	mov t13, t37
-	mov rdi, t13
+	mov _t38, _ARG1
+	mov args, _t38
+	mov _t39, 30
+	mov _t13, _t39
+	mov rdi, _t13
 	and rsp, -16
 	call _Ilargestprime_ii
 	mov _RV1, rax
-	mov t38, _RV1
-	mov t12, t38
-	mov t11, t12
-	mov rdi, t11
+	mov _t40, _RV1
+	mov _t12, _t40
+	mov _t11, _t12
+	mov rdi, _t11
 	and rsp, -16
 	call _IunparseInt_aii
 	mov _RV1, rax
-	mov t39, _RV1
-	mov t10, t39
-	mov t9, t10
-	mov rdi, t9
+	mov _t41, _RV1
+	mov _t10, _t41
+	mov _t9, _t10
+	mov rdi, _t9
 	and rsp, -16
 	call _Iprintln_pai
 	leave

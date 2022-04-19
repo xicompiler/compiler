@@ -3,26 +3,16 @@ open Option.Monad_infix
 open Util.Fn
 
 module Index = struct
-  type scale =
-    [ `One
-    | `Two
-    | `Four
-    | `Eight
-    ]
+  module Scale = struct
+    type t = int64
 
-  (** [int_of_scale scale] is the integer representation of [scale] *)
-  let int_of_scale = function
-    | `One -> 1
-    | `Two -> 2
-    | `Four -> 4
-    | `Eight -> 8
-
-  (** [string_of_scale scale] is the string representation of [scale] *)
-  let string_of_scale = int_of_scale >> string_of_int
+    let is_valid = function 1L | 2L | 4L | 8L -> true | _ -> false
+    let to_string = Int64.to_string
+  end
 
   type 'a t = {
     index : 'a;
-    scale : scale option;
+    scale : Scale.t option;
   }
   [@@deriving fields]
 
@@ -33,7 +23,7 @@ module Index = struct
     match scale with
     | None -> index
     | Some scale ->
-        let scale = string_of_scale scale in
+        let scale = Scale.to_string scale in
         Printf.sprintf "%s * %s" index scale
 
   let with_index idx ~index = { idx with index }

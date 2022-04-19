@@ -71,6 +71,10 @@ makeRotor(sig: int[]): int[][], int[][], int {
             backward[rot][c] = inv[c]
             c = c + 1
         }
+<<<<<<< HEAD
+        
+=======
+>>>>>>> d5aacd842110a79f16e217d1cdc5656adc834336
         //Simulate rotation..
         first:int = (base[0] - 1 + 26)%26
         pos:int = 1
@@ -102,6 +106,10 @@ rotorEncryptBack(forward: int[][], backward: int[][], pos: int, letter: int): in
 
 makeReflector(encoding: int[]): int[] {
     perm:int[26]
+<<<<<<< HEAD
+    
+=======
+>>>>>>> d5aacd842110a79f16e217d1cdc5656adc834336
     //Extract the base permutation.
     c: int = 0
     while c < 26 {
@@ -129,12 +137,22 @@ main(a: int[][]) {
     r2f: int[][], r2b: int[][], r2p: int = makeRotor("AJDKSIRUXBLHWTMCQGZNPYFVOE")
     r3f: int[][], r3b: int[][], r3p: int = makeRotor("BDFHJLCPRTXVZNYEIWGAKMUSQO")
     mb: int[] = makeReflector("YRUHQSLDPXNGOKMIEBFZCWVJAT")
+<<<<<<< HEAD
+    
+=======
+>>>>>>> d5aacd842110a79f16e217d1cdc5656adc834336
     pos: int = 0
     while (pos < 26*26*26) {
+        println("hello")
         //Guess where the first letter in the loop goes to..
         guess: int = 0
         while guess < 26 {
+            println("hello")
             allMatch: bool = true
+<<<<<<< HEAD
+            
+=======
+>>>>>>> d5aacd842110a79f16e217d1cdc5656adc834336
             loop: int = 0
             while loop < length(loops) {
                 l: int = guess
@@ -142,6 +160,10 @@ main(a: int[][]) {
                 loopPos: int = 0
                 while (loops[loop][loopPos] != -1) {
                     epos: int = pos + loops[loop][loopPos]
+<<<<<<< HEAD
+                    
+=======
+>>>>>>> d5aacd842110a79f16e217d1cdc5656adc834336
                     r1p = epos % 26
                     r2p = (epos/26)%26
                     r3p = epos/(26*26)%26
@@ -179,4 +201,5 @@ main(a: int[][]) {
         
         pos = pos + 1
     } // while pos
+    println("hello")
 }

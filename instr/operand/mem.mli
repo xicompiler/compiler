@@ -6,17 +6,18 @@ module Index : sig
   (** ['a t] represents an index of a memory operand, along with an
       optional scalar *)
 
-  type scale =
-    [ `One
-    | `Two
-    | `Four
-    | `Eight
-    ]
-  (** [scale] is the type of a scalar multiplier used to scale the
-      [scale] register *)
+  (** [Scale] represents a scalar to the index register *)
+  module Scale : sig
+    type t = int64
+    (** A [t] is an [int64] *)
 
-  val create : ?scale:scale -> 'a -> 'a t
-  (** [create index ~scale] is an index argument of a memory operand *)
+    val is_valid : t -> bool
+    (** [is_valid scale] is [true] iff [scale] is 1, 2, 4, or 8 *)
+  end
+
+  val create : ?scale:Scale.t -> 'a -> 'a t
+  (** [create index ~scale] is an index argument of a memory operand.
+      Requires: [Scale.is_valid scale] *)
 
   val index : 'a t -> 'a
   (** [index idx] is the index register of [idx] *)

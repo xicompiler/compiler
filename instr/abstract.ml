@@ -40,6 +40,83 @@ module Expr = struct
     | `Mem e -> rev_munch_mem ~init ~gensym e
     | (`Arg _ | `Rv _) as t -> rev_munch_virtual ~init ~gensym t
 
+  and rev_munch_index ?offset ?scale ~init ~gensym ~index base =
+    let s, base, index = rev_munch2 ~init ~gensym base index in
+    let index = Mem.Index.create ?scale (`Temp index) in
+    (s, Mem.create ~index ?offset (`Temp base))
+
+  and rev_munch_base ~init ~gensym ?offset base =
+    let s, base = rev_munch ~init ~gensym base in
+    (s, Mem.create ?offset (`Temp base))
+
+  and rev_munch_mem_sum ~init ~gensym e1 e2 =
+    let open Mem.Index in
+    match (e1, e2) with
+    | base, `Bop (`Add, `Bop (`Mul, idx, `Const scale), `Const off)
+      when Scale.is_valid scale ->
+        rev_munch_index ~offset:off ~scale ~init ~gensym ~index:idx base
+    | base, `Bop (`Add, `Bop (`Mul, `Const scale, idx), `Const off)
+      when Scale.is_valid scale ->
+        rev_munch_index ~offset:off ~scale ~init ~gensym ~index:idx base
+    | base, `Bop (`Add, `Const off, `Bop (`Mul, idx, `Const scale))
+      when Scale.is_valid scale ->
+        rev_munch_index ~offset:off ~scale ~init ~gensym ~index:idx base
+    | base, `Bop (`Add, `Const off, `Bop (`Mul, `Const scale, idx))
+      when Scale.is_valid scale ->
+        rev_munch_index ~offset:off ~scale ~init ~gensym ~index:idx base
+    | `Bop (`Add, `Bop (`Mul, idx, `Const scale), `Const off), base
+      when Scale.is_valid scale ->
+        rev_munch_index ~offset:off ~scale ~init ~gensym ~index:idx base
+    | `Bop (`Add, `Bop (`Mul, `Const scale, idx), `Const off), base
+      when Scale.is_valid scale ->
+        rev_munch_index ~offset:off ~scale ~init ~gensym ~index:idx base
+    | `Bop (`Add, `Const off, `Bop (`Mul, idx, `Const scale)), base
+      when Scale.is_valid scale ->
+        rev_munch_index ~offset:off ~scale ~init ~gensym ~index:idx base
+    | `Bop (`Add, `Const off, `Bop (`Mul, `Const scale, idx)), base
+      when Scale.is_valid scale ->
+        rev_munch_index ~offset:off ~scale ~init ~gensym ~index:idx base
+    | `Const off, `Bop (`Add, `Bop (`Mul, idx, `Const scale), base)
+      when Scale.is_valid scale ->
+        rev_munch_index ~offset:off ~scale ~init ~gensym ~index:idx base
+    | `Const off, `Bop (`Add, `Bop (`Mul, `Const scale, idx), base)
+      when Scale.is_valid scale ->
+        rev_munch_index ~offset:off ~scale ~init ~gensym ~index:idx base
+    | `Const off, `Bop (`Add, base, `Bop (`Mul, idx, `Const scale))
+      when Scale.is_valid scale ->
+        rev_munch_index ~offset:off ~scale ~init ~gensym ~index:idx base
+    | `Const off, `Bop (`Add, base, `Bop (`Mul, `Const scale, idx))
+      when Scale.is_valid scale ->
+        rev_munch_index ~offset:off ~scale ~init ~gensym ~index:idx base
+    | `Bop (`Add, `Bop (`Mul, idx, `Const scale), base), `Const off
+      when Scale.is_valid scale ->
+        rev_munch_index ~offset:off ~scale ~init ~gensym ~index:idx base
+    | `Bop (`Add, `Bop (`Mul, `Const scale, idx), base), `Const off
+      when Scale.is_valid scale ->
+        rev_munch_index ~offset:off ~scale ~init ~gensym ~index:idx base
+    | `Bop (`Add, base, `Bop (`Mul, idx, `Const scale)), `Const off
+      when Scale.is_valid scale ->
+        rev_munch_index ~offset:off ~scale ~init ~gensym ~index:idx base
+    | `Bop (`Add, base, `Bop (`Mul, `Const scale, idx)), `Const off
+      when Scale.is_valid scale ->
+        rev_munch_index ~offset:off ~scale ~init ~gensym ~index:idx base
+    | base, `Bop (`Mul, idx, `Const scale) when Scale.is_valid scale ->
+        rev_munch_index ~scale ~init ~gensym ~index:idx base
+    | base, `Bop (`Mul, `Const scale, idx) when Scale.is_valid scale ->
+        rev_munch_index ~scale ~init ~gensym ~index:idx base
+    | `Bop (`Mul, idx, `Const scale), base when Scale.is_valid scale ->
+        rev_munch_index ~scale ~init ~gensym ~index:idx base
+    | `Bop (`Mul, `Const scale, idx), base when Scale.is_valid scale ->
+        rev_munch_index ~scale ~init ~gensym ~index:idx base
+    | base, `Bop (`Add, idx, `Const off)
+    | base, `Bop (`Add, `Const off, idx)
+    | `Bop (`Add, idx, `Const off), base
+    | `Bop (`Add, `Const off, idx), base ->
+        rev_munch_index ~gensym ~init ~offset:off ~index:idx base
+    | base, `Const off | `Const off, base ->
+        rev_munch_base ~init ~gensym ~offset:off base
+    | _, _ -> rev_munch_index ~init ~gensym ~index:e2 e1
+
   (** [rev_munch2 ~init ~gensym e1 e2] is [(s, t1, t2)], where [s] is
       the reverse sequence of instructions to move [e1] into [t1], then
       [e2] into [t2] *)
@@ -48,24 +125,49 @@ module Expr = struct
     let s2, t2 = rev_munch ~init:s1 ~gensym e2 in
     (s2, t1, t2)
 
+  and rev_munch_mr ~init ~gensym addr e =
+    let s1, mem = rev_munch_addr ~init ~gensym addr in
+    let s2, t = rev_munch ~init:s1 ~gensym e in
+    (s2, `Mem mem, `Temp t)
+
+  and rev_munch_rm ~init ~gensym e addr =
+    let s1, t = rev_munch ~init ~gensym e in
+    let s2, mem = rev_munch_addr ~init:s1 ~gensym addr in
+    (s2, `Temp t, `Mem mem)
+
+  and rev_munch_operand ~init ~gensym = function
+    | `Mem addr ->
+        let s, mem = rev_munch_addr ~init ~gensym addr in
+        (s, `Mem mem)
+    | e ->
+        let s, t = rev_munch ~init ~gensym e in
+        (s, `Temp t)
+
   (** [rev_munch2_map ~f ~init:\[sn; ...; s1\] ~gensym e1 e2] is
       [\[f t1 t2; si; ...; sj; ...; sn; ... s1\]] where
       [\[sj; ...; sn+1\]] move the translation of [e1] into [t1] in
       reverse order and [si; ...; sj+1] move the translation of [e2]
       into [t2] in reverse order *)
   and rev_munch2_map ~f ~init ~gensym e1 e2 =
-    let s, t1, t2 = rev_munch2 ~init ~gensym e1 e2 in
+    let s1, e1 = rev_munch_operand ~init ~gensym e1 in
+    let s2, e2 = rev_munch_operand ~init:s1 ~gensym e2 in
     let dst = gensym () in
-    (f (`Temp dst) (`Temp t2) :: Mov (`Temp dst, `Temp t1) :: s, dst)
+    let t = `Temp dst in
+    (f t e2 :: Mov (`Temp dst, e1) :: s2, dst)
+
+  and rev_munch_addr ~init ~gensym = function
+    | `Bop (`Add, e1, e2) -> rev_munch_mem_sum ~init ~gensym e1 e2
+    | e ->
+        let s, t = rev_munch ~init ~gensym e in
+        (s, Mem.create (`Temp t))
 
   (** [rev_munch_mem ~init ~gensym e] is the translation of the lowered,
       reordered IR statement [`Mem e], followed by init *)
   and rev_munch_mem ~init ~gensym e : translation =
     (* TODO : better tiling *)
-    let s, t = rev_munch ~init ~gensym e in
-    let tmp = `Temp t in
-    let mem = Mem.create tmp in
-    (Mov (tmp, `Mem mem) :: s, t)
+    let s, mem = rev_munch_addr ~init ~gensym e in
+    let t = gensym () in
+    (Mov (`Temp t, `Mem mem) :: s, t)
 
   (** [rev_munch_bop ~init ~gensym op e1 e2] is the translation of the
       lowered, reordered IR statement [`Bop (op, e1, e2)], followed by
@@ -84,12 +186,10 @@ module Expr = struct
     | #Ir.Op.cmp as op -> rev_munch_cmp ~init ~gensym op
 
   (** [rev_munch_add ~init ~gensym e1 e2] is the translation of the
-      lowered, reordered IR statement [`Bop (`And, e1, e2)], followed by
+      lowered, reordered IR statement [`Bop (`Add, e1, e2)], followed by
       init *)
   and rev_munch_add ~init ~gensym e1 e2 =
-    let s, t1, t2 = rev_munch2 ~init ~gensym e1 e2 in
-    let index = Mem.Index.create (`Temp t2) in
-    let sum = Mem.create (`Temp t1) ~index in
+    let s, sum = rev_munch_mem_sum ~init ~gensym e1 e2 in
     let t3 = gensym () in
     (Lea (`Temp t3, `Mem sum) :: s, t3)
 
