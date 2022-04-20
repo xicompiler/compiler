@@ -1,5 +1,5 @@
 (library
  (name util)
- (libraries core core_unix ounit2)
+ (libraries core core_unix ounit2 core_unix.sys_unix)
  (preprocess
   (pps ppx_jane)))

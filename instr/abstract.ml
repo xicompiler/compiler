@@ -125,15 +125,6 @@ module Expr = struct
     let s2, t2 = rev_munch ~init:s1 ~gensym e2 in
     (s2, t1, t2)
 
-  and rev_munch_mr ~init ~gensym addr e =
-    let s1, mem = rev_munch_addr ~init ~gensym addr in
-    let s2, t = rev_munch ~init:s1 ~gensym e in
-    (s2, `Mem mem, `Temp t)
-
-  and rev_munch_rm ~init ~gensym e addr =
-    let s1, t = rev_munch ~init ~gensym e in
-    let s2, mem = rev_munch_addr ~init:s1 ~gensym addr in
-    (s2, `Temp t, `Mem mem)
 
   and rev_munch_operand ~init ~gensym = function
     | `Mem addr ->
@@ -142,6 +133,16 @@ module Expr = struct
     | e ->
         let s, t = rev_munch ~init ~gensym e in
         (s, `Temp t)
+
+    and rev_munch_rmi ~init ~gensym = function
+      | `Const i -> (init, `Imm i)
+      | e -> rev_munch_operand ~init ~gensym e
+
+  and rev_munch_ri ~init ~gensym = function
+      | `Const i -> (init, `Imm i)
+      | e ->
+          let s, t = rev_munch ~init ~gensym e in
+          (s, `Temp t)
 
   (** [rev_munch2_map ~f ~init:\[sn; ...; s1\] ~gensym e1 e2] is
       [\[f t1 t2; si; ...; sj; ...; sn; ... s1\]] where
@@ -423,12 +424,12 @@ module Stmt = struct
     (* TODO : eliminate uneeded temps *)
     match e1 with
     | `Mem addr ->
-        let s, addr, t2 = Expr.rev_munch2 ~init ~gensym addr e2 in
-        let mem = Mem.create (`Temp addr) in
-        Mov (`Mem mem, `Temp t2) :: s
-    | `Temp _ as t1 ->
-        let s, t2 = Expr.rev_munch ~init ~gensym e2 in
-        Mov (t1, `Temp t2) :: s
+        let s1, loc = Expr.rev_munch_addr ~init ~gensym addr in
+        let s2, e2 = Expr.rev_munch_ri ~init:s1 ~gensym e2 in
+        Mov (`Mem loc, e2) :: s2
+    | `Temp _ as t1 -> 
+        let s, e2 = Expr.rev_munch_rmi ~init ~gensym e2 in
+        Mov (t1, e2) :: s
 
   (** [return_ith ~ret t i] moves [t] into into return register [i] or
       the appropriate memory address *)

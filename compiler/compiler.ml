@@ -1,5 +1,4 @@
 open Core
-open Core_unix
 open Result.Let_syntax
 open Frontend
 open Util.File
@@ -29,7 +28,7 @@ let check_out ?cache ~dir ~src ~deps () =
 let ir_run ir =
   if Util.File.accessible ir then
     let command = Printf.sprintf "./irrun %s" ir in
-    ignore (Sys.command command)
+    ignore (Sys_unix.command command)
 
 (** [ir_out ?cache ~args ~dir ~src ~deps ()] outputs IR of file with
     path [src] writing the results to a file in directory [dir] *)
@@ -57,7 +56,7 @@ let abstract_asm_out ?cache ~args ~dir ~src ~deps () =
 let asm_run asm =
   if Util.File.accessible asm then
     let command = Printf.sprintf "./asmrun %s" asm in
-    ignore (Sys.command command)
+    ignore (Sys_unix.command command)
 
 (** [asm_out ?cache ~args ~dir ~src ~deps ()] outputs ASM of file with
     path [src] writing the results to a file in directory [dir] *)

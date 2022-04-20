@@ -8,7 +8,7 @@ let ixi_of_dir ~dir file = Filename.concat dir (ixi file)
 let is_xi = Caml.Filename.extension >> String.equal ".xi"
 
 let accessible path =
-  match Sys.file_exists path with
+  match Sys_unix.file_exists path with
   | `Yes -> true
   | `Unknown | `No -> false
 
@@ -28,7 +28,7 @@ let make_out_path ~dir ~file ext =
     [make_out_path ~dir ~file ext] if absent and returns the result. *)
 let create_out_path ~dir ~file ext =
   let path = make_out_path ~dir ~file ext in
-  Unix.mkdir_p (Filename.dirname path);
+  mkdir_p (Filename.dirname path);
   path
 
 let diagnostic ~dir ~src = create_out_path ~dir ~file:src

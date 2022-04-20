@@ -36,6 +36,7 @@ bisect*.coverage
 # output
 output
 *.output
+*.sout
 
 # executable
 /xic
@@ -47,3 +48,4 @@ output
 
 # runtime
 runtime
+gc-7.6.4*

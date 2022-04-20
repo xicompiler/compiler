@@ -23,5 +23,5 @@ let rec rev_concat_acc acc = function
   | [] :: t -> rev_concat_acc acc t
 
 let rev_concat lst = rev_concat_acc [] lst
-let rev_filter_opt = List.rev_filter_map ~f:ident
+let rev_filter_opt = List.rev_filter_map ~f:Fn.id
 let length lst = lst |> List.length |> Int64.of_int

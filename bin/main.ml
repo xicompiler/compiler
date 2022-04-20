@@ -23,7 +23,7 @@ let command =
   Command.basic ~summary:usage_msg
     Command.Let_syntax.(
       let%map_open files =
-        anon (sequence ("filename" %: Filename.arg_type))
+        anon (sequence ("filename" %: Filename_unix.arg_type))
       and src_dir =
         flag "-sourcepath"
           (optional_with_default "." string)
@@ -90,5 +90,5 @@ let command =
       fun () -> try_compile args)
 
 let () =
-  Command.run ~version:"1.0" ~build_info:"bfs45_dc854_vmj5_zak33"
+  Command_unix.run ~version:"1.0" ~build_info:"bfs45_dc854_vmj5_zak33"
     command

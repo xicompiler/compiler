@@ -1,5 +1,5 @@
 (executable
  (name main)
- (libraries compiler core)
+ (libraries core core_unix compiler core_unix.filename_unix core_unix.command_unix)
  (preprocess
   (pps ppx_jane)))
