@@ -413,7 +413,7 @@ module Stmt = struct
     let s2, ts = Expr.rev_munch_list ~init:s1 ~gensym es in
     (* [n] is the number of args *)
     let n = List.length es in
-    let call = Call name :: align :: rev_pass_args ~init:s2 ~m ~n ts in
+    let call = Call name :: rev_pass_args ~init:s2 ~m ~n ts in
     let dealloc = rev_dealloc_args ~init:call ~n es in
     rev_get_rets ~init:(dealloc ~m) ~m
 
@@ -487,7 +487,8 @@ module Toplevel = struct
     | 4 -> Mov (arg, `rcx)
     | 5 -> Mov (arg, `r8)
     | 6 -> Mov (arg, `r9)
-    | _ -> Pop arg
+    | j -> let offset = Int64.of_int (8 * (j - 5)) in
+      Mov (arg, `Mem (Mem.create ~offset `rbp))
 
   (** [munch_fn ~gensym stmts ~n ~m] is the abstract assembly
       translation of the __body__ of [`Func (l, stmts, n, m)] *)
@@ -505,7 +506,7 @@ end
 let munch ~gensym top =
   let f = function
     | `Func (name, stmts, n, m) ->
-        let body = Toplevel.munch_fn ~gensym stmts ~n ~m in
+        let body = Stmt.align :: Toplevel.munch_fn ~gensym stmts ~n ~m in
         First (Asm.Fn.create ~name ~body)
     | `Data (label, value) -> Second (Asm.Data.create ~label ~value)
   in
