@@ -17,6 +17,19 @@ val translate :
 
 (** [Output] represents the file functions needed for IR translation *)
 module Output : sig
+  val iter_source :
+    src:string ->
+    ok:(Ast.Decorated.source -> unit) ->
+    ?err:(Frontend.Check.error -> unit) ->
+    ?cache:Frontend.Check.cache ->
+    deps:Frontend.Check.dependencies ->
+    unit ->
+    Frontend.Check.result File.Xi.result
+  (** [iter_source ?cache ~src ~deps ~f ()] applies f to the decorated
+      AST source constructed from the file at [src] if possible
+      resolving dependentcies from [deps], or is [()] if this is not
+      possible. *)
+
   val file_to_file :
     ?cache:Frontend.Check.cache ->
     src:string ->
@@ -24,7 +37,7 @@ module Output : sig
     deps:Frontend.Check.dependencies ->
     optimize:bool ->
     unit ->
-    unit File.Xi.result
+    Frontend.Check.result File.Xi.result
   (** [file_to_file ~start lexbuf out] parses and typechecks the
       contents of file [src] and generates ir to file [out] *)
 end

@@ -159,6 +159,10 @@ let translate ~optimize ?(gensym = IrGensym.create ()) ast =
   if optimize then const_fold stmts else stmts
 
 module Output = struct
+  let iter_source ~src ~ok ?err =
+    let ok = Ast.iter_source ~f:ok in
+    Check.Diagnostic.iter_file ~src ~ok ?err
+
   (** [print_source ~out ~compunit ~optimize source] prints [source] to
       [out] as an s-expression *)
   let print_source ~out ~compunit ~optimize source =
@@ -167,10 +171,9 @@ module Output = struct
 
   let file_to_file ?cache ~src ~out ~deps ~optimize () =
     let compunit = Util.File.base src in
-    let f =
-      Ast.iter_source ~f:(print_source ~out ~compunit ~optimize)
-    in
-    Check.Diagnostic.iter_file ?cache ~src ~out ~deps ~f ()
+    iter_source ?cache
+      ~ok:(print_source ~out ~compunit ~optimize)
+      ~src ~deps ()
 end
 
 include Subtype

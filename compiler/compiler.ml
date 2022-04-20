@@ -27,19 +27,21 @@ let check_out ?cache ~dir ~src ~deps () =
 
 (** [ir_run ir] interprets and executes the ir file at path [ir] *)
 let ir_run ir =
-  let command = Printf.sprintf "./irrun %s" ir in
-  ignore (Sys.command command)
+  if Util.File.accessible ir then
+    let command = Printf.sprintf "./irrun %s" ir in
+    ignore (Sys.command command)
 
 (** [ir_out ?cache ~args ~dir ~src ~deps ()] outputs IR of file with
     path [src] writing the results to a file in directory [dir] *)
 let ir_out ?cache ~args ~dir ~src ~deps () =
   let out = Util.File.diagnostic ~dir ~src ".ir" in
   let optimize = not args.disable_optimize in
-  if Util.File.is_xi src then begin
+  if Util.File.is_xi src then
     let open Ir.Output in
-    ignore (file_to_file ?cache ~src ~out ~deps ~optimize ());
-    if args.irrun then ir_run out
-  end
+    let res = file_to_file ?cache ~src ~out ~deps ~optimize () in
+    match res with
+    | Ok (Ok _) -> if args.irrun then ir_run out
+    | _ -> ()
 
 (** [abstract_asm_out ?cache ~args ~dir ~src ~deps ()] outputs ASM of
     file with path [src] writing the results to a file in directory
@@ -53,18 +55,21 @@ let abstract_asm_out ?cache ~args ~dir ~src ~deps () =
 
 (** [asm_run asm] interprets and executes the asm file at path [asm] *)
 let asm_run asm =
-  let command = Printf.sprintf "./asmrun %s" asm in
-  ignore (Sys.command command)
+  if Util.File.accessible asm then
+    let command = Printf.sprintf "./asmrun %s" asm in
+    ignore (Sys.command command)
 
 (** [asm_out ?cache ~args ~dir ~src ~deps ()] outputs ASM of file with
     path [src] writing the results to a file in directory [dir] *)
 let asm_out ?cache ~args ~dir ~src ~deps () =
   let out = Util.File.diagnostic ~dir ~src ".s" in
   let optimize = not args.disable_optimize in
-  if Util.File.is_xi src then (
+  if Util.File.is_xi src then
     let open Instr.Output in
-    ignore (file_to_file ?cache ~src ~out ~deps ~optimize ());
-    if args.asmrun then asm_run out)
+    let res = file_to_file ?cache ~src ~out ~deps ~optimize () in
+    match res with
+    | Ok (Ok _) -> if args.asmrun then asm_run out
+    | _ -> ()
 
 (** [deps_of_args args] are the semantic dependecies corresponding to
     [args] *)

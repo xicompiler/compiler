@@ -1,6 +1,7 @@
 open Core
 open Result.Let_syntax
 open Ast
+open Util.Fn
 
 module Error = struct
   type t =
@@ -98,18 +99,25 @@ module Diagnostic = struct
       is semantically valid *)
   let valid_xi_program = "Valid Xi Program"
 
-  (** [iter_result ~out ~f r] prints an error message serializing [e] to
-      [out] if [r] is [Error e] and is [f ast] if [r] is [Ok ast] *)
-  let iter_result ~out ~f = function
-    | Ok ast -> f ast
-    | Error e -> e |> Error.to_string |> Util.File.println ~out
+  (** [iter_result ~ok ~err r] is [err e] if [r] is [Error e] and is
+      [ok ast] if [r] is [Ok ast] *)
+  let iter_result ~ok ~err = function
+    | Ok ast -> ok ast
+    | Error e -> err e
 
-  let iter_file ?cache ~src ~out ~deps ~f () =
+  let iter_file
+      ?cache
+      ~src
+      ~deps
+      ?(ok = fun _ -> ())
+      ?(err = fun _ -> ())
+      () =
     let r = type_check_file ?cache ~deps src in
-    Result.iter ~f:(iter_result ~out ~f) r;
-    Result.ignore_m r
+    Result.iter ~f:(iter_result ~ok ~err) r;
+    r
 
   let file_to_file ?cache ~src ~out ~deps =
-    let f _ = Util.File.println valid_xi_program ~out in
-    iter_file ?cache ~src ~out ~deps ~f
+    let ok _ = Util.File.println valid_xi_program ~out in
+    let err = Error.to_string >> Util.File.println ~out in
+    iter_file ?cache ~src ~deps ~ok ~err
 end

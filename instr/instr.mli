@@ -21,14 +21,6 @@ module ConditionCode : module type of struct
   include ConditionCode
 end
 
-val ir_to_file :
-  gensym:(unit -> string) ->
-  out:string ->
-  Ir.Reorder.toplevel list ->
-  unit
-
-val string_to_file : out:string -> string -> unit
-
 (** [Output] represents the file functions needed for instruction
     selection and assembly code generation *)
 module Output : sig
@@ -39,7 +31,7 @@ module Output : sig
     deps:Frontend.Check.dependencies ->
     optimize:bool ->
     unit ->
-    unit File.Xi.result
+    Frontend.Check.result File.Xi.result
   (** [file_to_file ~start lexbuf out] parses and typechecks the
       contents of file [src] and generates concrete asm to file [out] *)
 
@@ -51,7 +43,7 @@ module Output : sig
       deps:Frontend.Check.dependencies ->
       optimize:bool ->
       unit ->
-      unit File.Xi.result
+      Frontend.Check.result File.Xi.result
     (** [file_to_file ~start lexbuf out] parses and typechecks the
         contents of file [src] and generates abstract asm to file [out] *)
   end

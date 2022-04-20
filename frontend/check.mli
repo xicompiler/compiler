@@ -51,15 +51,13 @@ module Diagnostic : sig
   val iter_file :
     ?cache:cache ->
     src:string ->
-    out:string ->
     deps:dependencies ->
-    f:(Ast.Decorated.t -> unit) ->
+    ?ok:(Ast.Decorated.t -> unit) ->
+    ?err:(error -> unit) ->
     unit ->
-    unit File.Xi.result
-  (** [iter_file ?cache ~src ~out ~deps ~f ()] applies f to the
-      decorated AST constructed from the file at [src] if possible
-      resolving dependentcies from [deps], or is [()] if this is not
-      possible. *)
+    result File.Xi.result
+  (** [iter_file ?cache ~src ~out ~deps ?ok ?err ()] is
+      [iter_result ~ok ~err] if the file is a valid Xi file. *)
 
   val file_to_file :
     ?cache:cache ->
@@ -67,7 +65,7 @@ module Diagnostic : sig
     out:string ->
     deps:dependencies ->
     unit ->
-    unit File.Xi.result
+    result File.Xi.result
   (** [file_to_file ~cache ~src ~out { lib_dir; src_dir }] writes
       checking diagnostic information to a file located at path [out],
       reading from file at path [src]. It yields [Ok ()] on success and
