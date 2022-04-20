@@ -37,6 +37,7 @@ let skip_load = function
   | _ -> false
 
 let is_setcc = function Setcc _ -> true | _ -> false
+let is_call = function Call _ -> true | _ -> false
 
 (** [fmt1] represents the format of a 1-operand instruction in x86 *)
 let fmt1 = format_of_string "%s %s"

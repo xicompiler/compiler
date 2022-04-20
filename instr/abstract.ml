@@ -262,7 +262,11 @@ module Expr = struct
     let s, t1, t2 = rev_munch2 ~init ~gensym e1 e2 in
     let t3 = gensym () in
     let cc = ConditionCode.of_cmp op in
-    (Setcc (cc, `Temp t3) :: Cmp (`Temp t1, `Temp t2) :: s, t3)
+    ( Movzx (`Temp t3, `Temp t3)
+      :: Setcc (cc, `Temp t3)
+      :: Cmp (`Temp t1, `Temp t2)
+      :: s,
+      t3 )
 
   (** [rev_munch_list ~init:\[si; ...; sj\] ~gensym \[e1; ...; en\]] is
       a pair [(\[sj; ...; si; ...; s1\], \[tn; ...; t1\])] where

@@ -38,7 +38,7 @@ module Bit8 : sig
   (** [t] is the type of a 8-bit register in x68 *)
 
   val to_64_bit : t -> [> Bit64.t ]
-  (** [to_64_bit r] are the 64 higher order bit register of [r] *)
+  (** [to_64_bit r] is the 64 higher order bit register of [r] *)
 end
 
 type concrete =
@@ -51,7 +51,10 @@ type t = concrete [@@deriving equal]
 (** [t] is the type of a register in x86 *)
 
 val to_64_bit : t -> [> t ]
-(** [to_64_bit r] are the 64 higher order bit register of [r] *)
+(** [to_64_bit r] is the 64 higher order bit register of [r] *)
+
+val to_8_bit : t -> [> Bit8.t ]
+(** [to_8_bit r] is the 8 lower order bit register of [r] *)
 
 include Util.Stringable.S with type t := t
 
@@ -62,6 +65,9 @@ module Abstract : sig
     | Ir.Temp.Virtual.t
     ]
   (** [t] is the type of an abstract register *)
+
+  val to_64_bit : t -> t
+  (** [to_64_bit r] is the 64 higher order bit register of [r] *)
 
   include Util.Stringable.S with type t := t
 

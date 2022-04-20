@@ -3,6 +3,9 @@ open Result.Let_syntax
 
 type 'a t = 'a list
 
+let add_unique ~equal e lst =
+  if List.mem ~equal lst e then lst else e :: lst
+
 let rec fold2_result ~unequal_lengths ~f ~init l1 l2 =
   match (l1, l2) with
   | h1 :: t1, h2 :: t2 ->

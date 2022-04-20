@@ -10,38 +10,38 @@ module Shuttle = struct
     [ `r8
     | `r9
     | `r10
-    | `r8b
     ]
   [@@deriving equal]
 
   let reg_bit64 = [ `r8; `r9; `r10 ]
   let reg_bit8 = `r8b
-  let shuttle = reg_bit8 :: reg_bit64
+  let shuttle = reg_bit64
 
   type t = {
     regs : Reg.t list;
-    map : Reg.Abstract.t Reg.Abstract.Map.t;
+    map : Reg.t Reg.Abstract.Map.t;
   }
 
   let regs { regs } = regs
   let map { map } = map
 
   let set { regs; map } abstract =
-    let reg, tl = Util.List.pop_exn regs in
-    ( reg,
-      {
-        regs = tl;
-        map = Map.set map ~key:abstract ~data:(reg :> Reg.Abstract.t);
-      } )
+    match Map.find map abstract with
+    | Some (#Reg.t as reg) -> (reg, { regs; map })
+    | None ->
+        let reg, tl = Util.List.pop_exn regs in
+        (reg, { regs = tl; map = Map.set map ~key:abstract ~data:reg })
 
   let set_bit8 { regs; map } abstract =
-    (reg_bit8, { regs; map = Map.set map ~key:abstract ~data:reg_bit8 })
+    match Map.find map abstract with
+    | Some (#Reg.t as reg) -> (reg, { regs; map })
+    | None ->
+        let reg = Reg.to_64_bit reg_bit8 in
+        (reg, { regs; map = Map.set map ~key:abstract ~data:reg })
 
   let find_default { map } abstract : Reg.t =
     match Map.find map abstract with
     | Some (#Reg.t as reg) -> reg
-    | Some #Ir.Temp.Virtual.t ->
-        failwith "not a valid value in shuttle map"
     | None -> begin
         match abstract with
         | #Reg.t as reg -> reg
@@ -50,7 +50,7 @@ module Shuttle = struct
 
   let find_bit8_exn { map } abstract =
     match Map.find map abstract with
-    | Some (#Reg.Bit8.t as reg) -> reg
+    | Some (#Reg.t as reg) -> Reg.to_8_bit reg
     | _ -> failwith "not a bit8 reg"
 
   let empty = { regs = reg_bit64; map = Reg.Abstract.Map.empty }
@@ -66,7 +66,7 @@ end
 
 let rec spill ?(init = []) : Operand.Abstract.t -> Spill.t list =
   function
-  | #Spill.t as t -> t :: init
+  | #Spill.t as t -> Util.List.add_unique ~equal:Spill.equal t init
   | `Mem mem ->
       let spill ~init x = spill ~init (x :> Operand.Abstract.t) in
       let init =
@@ -78,7 +78,7 @@ let rec spill ?(init = []) : Operand.Abstract.t -> Spill.t list =
 
 let spill2 e = spill ~init:(spill e)
 
-(** [spills instr] is the list of spills used by [instr] *)
+(** [spills instr] is the list of unique spills used by [instr] *)
 let spills : Abstract.t -> Spill.t list = function
   | Label _ | Enter _ | Jcc _ | Leave | Ret -> []
   | Jmp e
@@ -144,72 +144,79 @@ let concretize_mul ~shuttle = function
       let f x y = imul (`RMI (x, y, imm)) in
       concretize2_map ~shuttle ~f op1 op2
 
-let concretize_setcc ~shuttle ~init cc = function
+let concretize_bit8 ~shuttle ~f = function
   | #Spill.t as op ->
       let reg8 = Shuttle.find_bit8_exn shuttle op in
-      Movzx (Reg.Bit8.to_64_bit reg8, reg8) :: Setcc (cc, reg8) :: init
-  | #Reg.Bit8.t as reg8 ->
-      Movzx (Reg.Bit8.to_64_bit reg8, reg8) :: Setcc (cc, reg8) :: init
-  | #Operand.Abstract.t -> failwith "unexpected operand for setcc"
+      f reg8
+  | #Reg.Bit8.t as reg8 -> f reg8
+  | #Operand.Abstract.t ->
+      failwith "unexpected operand for 8bit instruction"
 
-let rev_concretize_instr ~shuttle ~init : Abstract.t -> Concrete.t list
-    = function
-  | (Label _ | Enter _ | Jcc _ | Leave | Ret) as instr -> instr :: init
-  | Jmp op -> concretize_map ~shuttle ~f:jmp op :: init
-  | Setcc (cc, op) -> concretize_setcc ~shuttle ~init cc op
-  | Cmp (op1, op2) -> concretize2_map ~shuttle ~f:cmp op1 op2 :: init
-  | Test (op1, op2) -> concretize2_map ~shuttle ~f:test op1 op2 :: init
-  | Push op -> concretize_map ~shuttle ~f:push op :: init
-  | Pop op -> concretize_map ~shuttle ~f:pop op :: init
-  | IMul mul -> concretize_mul ~shuttle mul :: init
-  | Inc op -> concretize_map ~shuttle ~f:inc op :: init
-  | Dec op -> concretize_map ~shuttle ~f:dec op :: init
-  | Call op -> concretize_map ~shuttle ~f:call op :: init
-  | IDiv op -> concretize_map ~shuttle ~f:idiv op :: init
-  | Shl (op, imm) ->
-      concretize_map ~shuttle ~f:(fun x -> shl x imm) op :: init
-  | Shr (op, imm) ->
-      concretize_map ~shuttle ~f:(fun x -> shr x imm) op :: init
-  | Sar (op, imm) ->
-      concretize_map ~shuttle ~f:(fun x -> sar x imm) op :: init
-  | Add (op1, op2) -> concretize2_map ~shuttle ~f:add op1 op2 :: init
-  | Sub (op1, op2) -> concretize2_map ~shuttle ~f:sub op1 op2 :: init
-  | Xor (op1, op2) -> concretize2_map ~shuttle ~f:xor op1 op2 :: init
-  | And (op1, op2) -> concretize2_map ~shuttle ~f:and_ op1 op2 :: init
-  | Or (op1, op2) -> concretize2_map ~shuttle ~f:or_ op1 op2 :: init
-  | Lea (op1, op2) -> concretize2_map ~shuttle ~f:lea op1 op2 :: init
-  | Mov (op1, op2) -> concretize2_map ~shuttle ~f:mov op1 op2 :: init
-  | Movzx (op1, op2) ->
-      concretize2_map ~shuttle ~f:movzx op1 op2 :: init
+let concretize_movzx ~shuttle op1 op2 =
+  let op = concretize_operand ~shuttle op1 in
+  concretize_bit8 ~shuttle ~f:(movzx op) op2
 
-(** [address_of ~offset ?size t] is the memory operand of temp [t] in
-    stack space, depending on [alloc] *)
-let address_of ~offset ?(size = Mem.Size.Qword) t =
+let rev_concretize_instr ~shuttle : Abstract.t -> Concrete.t = function
+  | (Label _ | Enter _ | Jcc _ | Leave | Ret) as instr -> instr
+  | Jmp op -> concretize_map ~shuttle ~f:jmp op
+  | Setcc (cc, op) -> concretize_bit8 ~shuttle ~f:(setcc cc) op
+  | Cmp (op1, op2) -> concretize2_map ~shuttle ~f:cmp op1 op2
+  | Test (op1, op2) -> concretize2_map ~shuttle ~f:test op1 op2
+  | Push op -> concretize_map ~shuttle ~f:push op
+  | Pop op -> concretize_map ~shuttle ~f:pop op
+  | IMul mul -> concretize_mul ~shuttle mul
+  | Inc op -> concretize_map ~shuttle ~f:inc op
+  | Dec op -> concretize_map ~shuttle ~f:dec op
+  | Call op -> concretize_map ~shuttle ~f:call op
+  | IDiv op -> concretize_map ~shuttle ~f:idiv op
+  | Shl (op, imm) -> concretize_map ~shuttle ~f:(fun x -> shl x imm) op
+  | Shr (op, imm) -> concretize_map ~shuttle ~f:(fun x -> shr x imm) op
+  | Sar (op, imm) -> concretize_map ~shuttle ~f:(fun x -> sar x imm) op
+  | Add (op1, op2) -> concretize2_map ~shuttle ~f:add op1 op2
+  | Sub (op1, op2) -> concretize2_map ~shuttle ~f:sub op1 op2
+  | Xor (op1, op2) -> concretize2_map ~shuttle ~f:xor op1 op2
+  | And (op1, op2) -> concretize2_map ~shuttle ~f:and_ op1 op2
+  | Or (op1, op2) -> concretize2_map ~shuttle ~f:or_ op1 op2
+  | Lea (op1, op2) -> concretize2_map ~shuttle ~f:lea op1 op2
+  | Mov (op1, op2) -> concretize2_map ~shuttle ~f:mov op1 op2
+  | Movzx (op1, op2) -> concretize_movzx ~shuttle op1 op2
+
+(** [address_of ~offset t] is the memory operand of spill [t] in stack
+    space, depending on [alloc] *)
+let address_of ~offset t =
   let default () = succ (Hashtbl.length offset) in
   let off = Hashtbl.find_or_add offset t ~default in
   let off = Int64.of_int (~-8 * off) in
-  Mem.create ~offset:off ~size `rbp
+  Mem.create ~offset:off `rbp
 
-let load ~offset ~src dst =
-  let size =
-    match dst with #Reg.Bit8.t -> Some Mem.Size.Byte | _ -> None
-  in
-  let mem = `Mem (address_of ~offset ?size src) in
-  Mov ((dst :> Operand.t), mem)
+let load ~offset ~src = function
+  | #Reg.t as dst ->
+      let mem = `Mem (address_of ~offset src) in
+      Mov ((dst :> Operand.t), mem)
+  | _ -> failwith "cannot load into abstract dst"
 
 (** [rev_reg_alloc_load ~offset ~shuttle ~init ?def instr] loads the
     values of all temporaries used by [instr] into the appropriate
     shuttling registers *)
-let rev_reg_alloc_load ~offset ~shuttle ~init ?def instr =
+let rec rev_reg_alloc_load ~offset ~shuttle ~init ?def instr :
+    Concrete.t list * Shuttle.t =
   let abstract = spills instr in
+  let init =
+    if Generic.is_call instr then
+      let f acc reg = load ~offset ~src:reg reg :: acc in
+      List.fold ~f ~init Shuttle.shuttle
+    else init
+  in
   let f (init, shuttle) = function
     | #Spill.t as t
-      when false
-           &&
-           match def with
+      when match def with
            | Some (#Spill.t as t') ->
-               Spill.equal t t' && Generic.skip_load instr (* TODO *)
+               Spill.equal t t' && Generic.skip_load instr
            | _ -> false ->
+        let _, shuttle =
+          if Generic.is_setcc instr then Shuttle.set_bit8 shuttle t
+          else Shuttle.set shuttle t
+        in
         (init, shuttle)
     | #Spill.t as src ->
         let dst, shuttle =
@@ -220,24 +227,22 @@ let rev_reg_alloc_load ~offset ~shuttle ~init ?def instr =
   in
   List.fold ~init:(init, shuttle) ~f abstract
 
-let store ~offset ~src dst =
-  let size =
-    match src with #Reg.Bit8.t -> Some Mem.Size.Byte | _ -> None
-  in
-  let mem = `Mem (address_of ~offset ?size dst) in
-  Mov (mem, (src :> Operand.t))
+let store ~offset ~dst = function
+  | #Reg.t as src ->
+      let mem = `Mem (address_of ~offset dst) in
+      Mov (mem, (src :> Operand.t))
+  | _ -> failwith "cannot store from abstract src"
 
 (** [rev_reg_alloc_store ~offset ~shuttle ~init instr operand] stores
     the value of the shuttling register of [operand] into the memory
     address of [operand], if [operand] is a spill *)
-let rev_reg_alloc_store ~offset ~shuttle ~init instr = function
-  | Some (#Spill.t as dst) when Generic.is_setcc instr ->
-      let reg = concretize_reg ~shuttle dst in
-      let src = Reg.to_64_bit reg in
-      store ~offset ~src dst :: init
+let rev_reg_alloc_store ~offset ~shuttle ~init = function
+  | Some (#Reg.Bit8.t as dst) ->
+      let src = Shuttle.find_bit8_exn shuttle dst in
+      store ~offset ~dst src :: init
   | Some (#Spill.t as dst) ->
       let src = concretize_reg ~shuttle dst in
-      store ~offset ~src dst :: init
+      store ~offset ~dst src :: init
   | Some #Operand.Abstract.t | None -> init
 
 let rev_reg_alloc_instr ~offset ~init instr =
@@ -246,13 +251,12 @@ let rev_reg_alloc_instr ~offset ~init instr =
   let loaded, shuttle =
     rev_reg_alloc_load ~offset ~shuttle ~init ?def instr
   in
-  let concretized = rev_concretize_instr ~shuttle ~init:loaded instr in
-  rev_reg_alloc_store ~offset ~shuttle ~init:concretized instr def
+  let concretized = rev_concretize_instr ~shuttle instr :: loaded in
+  let t = rev_reg_alloc_store ~offset ~shuttle ~init:concretized def in
+  t
 
 let rev_reg_alloc_fn ~offset =
-  let f acc reg =
-    store ~offset ~src:reg (reg :> Reg.Abstract.t) :: acc
-  in
+  let f acc reg = store ~offset ~dst:reg reg :: acc in
   let init = List.fold ~f ~init:[] Shuttle.shuttle in
   let f acc instr = rev_reg_alloc_instr ~offset ~init:acc instr in
   List.fold ~f ~init

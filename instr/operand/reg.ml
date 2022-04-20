@@ -22,6 +22,14 @@ module Bit64 = struct
     | `r15
     ]
   [@@deriving variants, equal, sexp, compare, hash]
+
+  let to_8_bit = function
+    | `rax -> `al
+    | `rbx -> `bl
+    | `rcx -> `cl
+    | `rdx -> `dl
+    | `r8 -> `r8b
+    | #t -> failwith "no 8bit representation"
 end
 
 module Bit8 = struct
@@ -58,6 +66,10 @@ let to_64_bit = function
   | #Bit64.t as r -> r
   | #Bit8.t as r -> Bit8.to_64_bit r
 
+let to_8_bit = function
+  | #Bit64.t as r -> Bit64.to_8_bit r
+  | #Bit8.t as r -> r
+
 let to_string : [< t ] -> string = function
   | #Bit64.t as r -> Bit64.Variants.to_name r
   | #Bit8.t as r -> Bit8.Variants.to_name r
@@ -76,6 +88,10 @@ module Abstract = struct
   let to_string : [< t ] -> string = function
     | #concrete as reg -> to_string reg
     | #Ir.Temp.Virtual.t as t -> Ir.Temp.Virtual.to_string t
+
+  let to_64_bit = function
+    | #concrete as reg -> to_64_bit reg
+    | abstract -> abstract
 
   include Comparable.Make (Args)
   include Hashable.Make (Args)

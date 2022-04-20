@@ -36,6 +36,9 @@ val skip_load : 'a t -> bool
 val is_setcc : 'a t -> bool
 (** [is_setcc instr] is [true] if [instr] is a [setcc] instruction *)
 
+val is_call : 'a t -> bool
+(** [is_call instr] is [true] if [instr] is a [call] instruction *)
+
 val def : 'a t -> 'a option
 (** [def instr] is [Some def] if the instruction [instr] updates an
     operand, or [None] *)
