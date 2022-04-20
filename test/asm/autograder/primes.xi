@@ -4,7 +4,7 @@ use io
 use conv
 
 gcd(a:int, b:int):int {
-    while (a != 0) {        
+    while (a != 0) {
         if (a<b) b = b - a
         else a = a - b
     }
@@ -26,12 +26,12 @@ largestprime(max:int):int {
     a:int = 1
     largest:int = 1
     while (a < max) {
-        if (isprime(a)) largest = a
-        a = a+1
+      if (isprime(a)) largest = a
+      a = a+1
     }
     return largest
 }
 
 main(args:int[][]) {
-    println(unparseInt(largestprime(30)))
+    print("Largest prime less than 1,000 is " + unparseInt(largestprime(1000)))
 }
