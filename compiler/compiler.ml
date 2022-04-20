@@ -64,12 +64,13 @@ let asm_run asm =
 let asm_out ?cache ~args ~dir ~src ~deps () =
   let out = Util.File.diagnostic ~dir ~src ".s" in
   let optimize = not args.disable_optimize in
-  if Util.File.is_xi src then
-    let open Instr.Output in
-    let res = file_to_file ?cache ~src ~out ~deps ~optimize () in
-    match res with
-    | Ok (Ok _) -> if args.asmrun then asm_run out
-    | _ -> ()
+  let open Instr.Output in
+  let res = file_to_file ?cache ~src ~out ~deps ~optimize () in
+  match res with
+  | Ok (Ok _) ->
+      if args.asmrun then asm_run out;
+      res
+  | _ -> res
 
 (** [deps_of_args args] are the semantic dependecies corresponding to
     [args] *)
@@ -91,8 +92,7 @@ let compile_file ?cache ~args src =
   let deps = deps_of_args args in
   let dir = args.asm_out_dir in
   let _ = target_of_args args in
-  asm_out ?cache ~args ~dir ~src ~deps ();
-  let%map r = Check.type_check_file ?cache ~deps src_path in
+  let%map r = asm_out ?cache ~args ~dir ~src ~deps () in
   r
   |> Result.map_error ~f:(Check.Error.to_string src_path)
   |> Result.ignore_m
