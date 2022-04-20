@@ -25,14 +25,17 @@ bisect*.coverage
 \#*\#
 .DS_Store
 
-# compiler output
-output
-*.output
+# compiler tests
 *.lexed
 *.parsed
 *.typed
 *.ir
-!helloworld.ir
+*.s
+!helloworld.*
+
+# output
+output
+*.output
 
 # executable
 /xic
