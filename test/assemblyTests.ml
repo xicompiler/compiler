@@ -18,15 +18,20 @@ let asm_file_test name ~src ~reference =
   let asm_out_optimized = output_file ~ext:"o.s" src in
   print_endline asm_out;
   ignore
-    (Instr.Output.file_to_file ~src ~out:asm_out ~deps ~optimize:false ());
+    (Instr.Output.file_to_file ~src ~out:asm_out ~deps ~optimize:false
+       ());
   ignore
     (Instr.Output.file_to_file ~src ~out:asm_out_optimized ~deps
        ~optimize:true ());
   let out = output_file src in
   let out_optimized = output_file ~ext:"o.output" src in
   let command =
-    Printf.sprintf "./runtime/linkxi.sh %s -o %s\n%s > %s\n./runtime/linkxi.sh %s -o %s\n%s > %s" asm_out chopped chopped out
-      asm_out_optimized chopped_o chopped_o out_optimized
+    Printf.sprintf
+      "./runtime/linkxi.sh %s -o %s\n\
+       %s > %s\n\
+       ./runtime/linkxi.sh %s -o %s\n\
+       %s > %s" asm_out chopped chopped out asm_out_optimized chopped_o
+      chopped_o out_optimized
   in
   ignore (Sys.command command);
   let actual = file_contents out in
@@ -39,8 +44,8 @@ let asm_file_test name ~src ~reference =
     [asm_file_test] *)
 let asm_file_tests = map2_file_tests_xi ~f:asm_file_test ".ssol.nml"
 
-(** [asm_file_test_cases] is a list of unit tests for assembly generation
-    files. *)
+(** [asm_file_test_cases] is a list of unit tests for assembly
+    generation files. *)
 let asm_file_test_cases =
   List.flatten
     [

@@ -12,41 +12,45 @@ module Expr = struct
       abstract assembly instructions necessary to effect the movement of
       the translation of an expression into temporary [t] *)
 
-  (** [rev_munch_name ~init ~gensym l] is the translation of the
-      lowered, reordered IR statement [`Name l], followed by init *)
-  let rev_munch_name ~init ~gensym l : translation =
-    let t = gensym () in
+  (** [rev_munch_name ~init  l] is the translation of the lowered,
+      reordered IR statement [`Name l], followed by init *)
+  let rev_munch_name ~init ~t l =
     let mem = Mem.create ~segment:l `rip in
-    (Lea (`Temp t, `Mem mem) :: init, t)
+    Lea (`Temp t, `Mem mem) :: init
 
   (** [rev_munch_const ~init ~gensym i] is the translation of the
       lowered, reordered IR statement [`Const i], followed by init *)
-  let rev_munch_const ~init ~gensym i : translation =
-    let t = gensym () in
-    (Mov (`Temp t, `Imm i) :: init, t)
+  let rev_munch_const ~init ~t i = Mov (`Temp t, `Imm i) :: init
 
   (** [rev_munch_virtual ~init ~gensym v] is the translation of moving a
       virtual arg or register into a fresh temp, followed by init *)
-  let rev_munch_virtual ~init ~gensym v : translation =
-    let t = gensym () in
-    (Mov (`Temp t, v) :: init, t)
+  let rev_munch_move ~init ~t v = Mov (`Temp t, v) :: init
 
-  let rec rev_munch ~init ~gensym : Ir.Lir.expr -> translation =
-    function
-    | `Name l -> rev_munch_name ~init ~gensym l
-    | `Const i -> rev_munch_const ~init ~gensym i
+  let rec rev_munch ~t ~init ~gensym = function
+    | `Name l -> rev_munch_name ~init ~t l
+    | `Const i -> rev_munch_const ~init ~t i
     | `Bop (op, e1, e2) -> rev_munch_bop ~init ~gensym op e1 e2
+    | `Mem e -> rev_munch_mem ~t ~init ~gensym e
+    | #Ir.Temp.Virtual.t as t' -> rev_munch_move ~t ~init t'
+
+  and rev_munch_immut ~init ~gensym = function
     | `Temp t -> (init, t)
-    | `Mem e -> rev_munch_mem ~init ~gensym e
-    | (`Arg _ | `Rv _) as t -> rev_munch_virtual ~init ~gensym t
+    | e -> 
+        let t = gensym () in 
+        (rev_munch ~t ~init ~gensym e, t)
+
+  and rev_munch2_immut ~init ~gensym e1 e2 =
+    let s1, t1 = rev_munch_immut ~init ~gensym e1 in
+    let s2, t2 = rev_munch_immut ~init:s1 ~gensym e2 in
+    (s1, t1, t2)
 
   and rev_munch_index ?offset ?scale ~init ~gensym ~index base =
-    let s, base, index = rev_munch2 ~init ~gensym base index in
+    let s, base, index = rev_munch2_immut ~init ~gensym base index in
     let index = Mem.Index.create ?scale (`Temp index) in
     (s, Mem.create ~index ?offset (`Temp base))
 
   and rev_munch_base ~init ~gensym ?offset base =
-    let s, base = rev_munch ~init ~gensym base in
+    let s, base = rev_munch_immut ~init ~gensym base in
     (s, Mem.create ?offset (`Temp base))
 
   and rev_munch_mem_sum ~init ~gensym e1 e2 =
@@ -120,84 +124,77 @@ module Expr = struct
   (** [rev_munch2 ~init ~gensym e1 e2] is [(s, t1, t2)], where [s] is
       the reverse sequence of instructions to move [e1] into [t1], then
       [e2] into [t2] *)
-  and rev_munch2 ~init ~gensym e1 e2 =
-    let s1, t1 = rev_munch ~init ~gensym e1 in
-    let s2, t2 = rev_munch ~init:s1 ~gensym e2 in
-    (s2, t1, t2)
-
+  and rev_munch2 ~init ~gensym ~t1 ~t2 e1 e2 =
+    let s = rev_munch ~t:t1 ~init ~gensym e1 in
+    rev_munch ~t:t2 ~init:s ~gensym e2
 
   and rev_munch_operand ~init ~gensym = function
     | `Mem addr ->
         let s, mem = rev_munch_addr ~init ~gensym addr in
         (s, `Mem mem)
     | e ->
-        let s, t = rev_munch ~init ~gensym e in
+        let s, t = rev_munch_immut ~init ~gensym e in
         (s, `Temp t)
 
-    and rev_munch_rmi ~init ~gensym = function
-      | `Const i -> (init, `Imm i)
-      | e -> rev_munch_operand ~init ~gensym e
+  and rev_munch_rmi ~init ~gensym = function
+    | `Const i -> (init, `Imm i)
+    | e -> rev_munch_operand ~init ~gensym e
 
   and rev_munch_ri ~init ~gensym = function
-      | `Const i -> (init, `Imm i)
-      | e ->
-          let s, t = rev_munch ~init ~gensym e in
-          (s, `Temp t)
+    | `Const i -> (init, `Imm i)
+    | e ->
+        let s, t = rev_munch_immut ~init ~gensym e in
+        (s, `Temp t)
 
   (** [rev_munch2_map ~f ~init:\[sn; ...; s1\] ~gensym e1 e2] is
       [\[f t1 t2; si; ...; sj; ...; sn; ... s1\]] where
       [\[sj; ...; sn+1\]] move the translation of [e1] into [t1] in
       reverse order and [si; ...; sj+1] move the translation of [e2]
       into [t2] in reverse order *)
-  and rev_munch2_map ~f ~init ~gensym e1 e2 =
-    let s1, e1 = rev_munch_operand ~init ~gensym e1 in
+  and rev_munch2_map ~f ~t ~init ~gensym e1 e2 =
+    let s1 = rev_munch ~t ~init ~gensym e1 in
     let s2, e2 = rev_munch_operand ~init:s1 ~gensym e2 in
-    let dst = gensym () in
-    let t = `Temp dst in
-    (f t e2 :: Mov (`Temp dst, e1) :: s2, dst)
+    f (`Temp t) e2 :: s2
 
   and rev_munch_addr ~init ~gensym = function
     | `Bop (`Add, e1, e2) -> rev_munch_mem_sum ~init ~gensym e1 e2
     | e ->
-        let s, t = rev_munch ~init ~gensym e in
+        let s, t = rev_munch_immut ~init ~gensym e in
         (s, Mem.create (`Temp t))
 
   (** [rev_munch_mem ~init ~gensym e] is the translation of the lowered,
       reordered IR statement [`Mem e], followed by init *)
-  and rev_munch_mem ~init ~gensym e : translation =
+  and rev_munch_mem ~t ~init ~gensym e =
     (* TODO : better tiling *)
     let s, mem = rev_munch_addr ~init ~gensym e in
-    let t = gensym () in
-    (Mov (`Temp t, `Mem mem) :: s, t)
+    Mov (`Temp t, `Mem mem) :: s
 
   (** [rev_munch_bop ~init ~gensym op e1 e2] is the translation of the
       lowered, reordered IR statement [`Bop (op, e1, e2)], followed by
       init *)
-  and rev_munch_bop ~init ~gensym op =
-    match op with
-    | `Add -> rev_munch_add ~init ~gensym
-    | `And -> rev_munch_and ~init ~gensym
-    | `Div -> rev_munch_div ~init ~gensym
-    | `HMul -> rev_munch_hmul ~init ~gensym
-    | `Mod -> rev_munch_mod ~init ~gensym
-    | `Mul -> rev_munch_mul ~init ~gensym
-    | `Or -> rev_munch_or ~init ~gensym
-    | `Sub -> rev_munch_sub ~init ~gensym
-    | `Xor -> rev_munch_xor ~init ~gensym
-    | #Ir.Op.cmp as op -> rev_munch_cmp ~init ~gensym op
+  and rev_munch_bop ~t ~init ~gensym : t list = function
+    | `Add -> rev_munch_add ~t ~init ~gensym
+    | `And -> rev_munch_and ~t ~init ~gensym
+    | `Div -> rev_munch_div ~t ~init ~gensym
+    | `HMul -> rev_munch_hmul ~t ~init ~gensym
+    | `Mod -> rev_munch_mod ~t ~init ~gensym
+    | `Mul -> rev_munch_mul ~t ~init ~gensym
+    | `Or -> rev_munch_or ~t ~init ~gensym
+    | `Sub -> rev_munch_sub ~t ~init ~gensym
+    | `Xor -> rev_munch_xor ~t ~init ~gensym
+    | #Ir.Op.cmp as op -> rev_munch_cmp ~t ~init ~gensym op
 
   (** [rev_munch_add ~init ~gensym e1 e2] is the translation of the
       lowered, reordered IR statement [`Bop (`Add, e1, e2)], followed by
       init *)
-  and rev_munch_add ~init ~gensym e1 e2 =
+  and rev_munch_add ~t ~init ~gensym e1 e2 =
     let s, sum = rev_munch_mem_sum ~init ~gensym e1 e2 in
-    let t3 = gensym () in
-    (Lea (`Temp t3, `Mem sum) :: s, t3)
+    Lea (`Temp t, `Mem sum) :: s
 
   (** [rev_munch_and ~init ~gensym e1 e2] is the translation of the
       lowered, reordered IR statement [`Bop (`And, e1, e2)], followed by
       init *)
-  and rev_munch_and ~init = rev_munch2_map ~f:and_ ~init
+  and rev_munch_and ~t ~init = rev_munch2_map ~f:and_ ~init
 
   (** [rev_munch_div ~init ~gensym e1 e2] is the translation of the
       lowered, reordered IR statement [`Bop (`Div, e1, e2)], followed by
@@ -427,7 +424,7 @@ module Stmt = struct
         let s1, loc = Expr.rev_munch_addr ~init ~gensym addr in
         let s2, e2 = Expr.rev_munch_ri ~init:s1 ~gensym e2 in
         Mov (`Mem loc, e2) :: s2
-    | `Temp _ as t1 -> 
+    | `Temp _ as t1 ->
         let s, e2 = Expr.rev_munch_rmi ~init ~gensym e2 in
         Mov (t1, e2) :: s
 
@@ -488,8 +485,9 @@ module Toplevel = struct
     | 4 -> Mov (arg, `rcx)
     | 5 -> Mov (arg, `r8)
     | 6 -> Mov (arg, `r9)
-    | j -> let offset = Int64.of_int (8 * (j - 5)) in
-      Mov (arg, `Mem (Mem.create ~offset `rbp))
+    | j ->
+        let offset = Int64.of_int (8 * (j - 5)) in
+        Mov (arg, `Mem (Mem.create ~offset `rbp))
 
   (** [munch_fn ~gensym stmts ~n ~m] is the abstract assembly
       translation of the __body__ of [`Func (l, stmts, n, m)] *)
@@ -507,7 +505,9 @@ end
 let munch ~gensym top =
   let f = function
     | `Func (name, stmts, n, m) ->
-        let body = Stmt.align :: Toplevel.munch_fn ~gensym stmts ~n ~m in
+        let body =
+          Stmt.align :: Toplevel.munch_fn ~gensym stmts ~n ~m
+        in
         First (Asm.Fn.create ~name ~body)
     | `Data (label, value) -> Second (Asm.Data.create ~label ~value)
   in
