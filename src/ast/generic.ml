@@ -108,91 +108,6 @@ module Expr = struct
   let arr_of_base b =
     let%map r = b in
     Array r
-
-  (** [const_fold_bop_opt bop e1 e2] is the AST node [e1 bop e2] where
-      all constant expressions have been folded *)
-  let const_fold_bop_opt bop e1 e2 =
-    match (e1, e2) with
-    | Primitive x1, Primitive x2 ->
-        prim_of_base (Binop.eval_primitive bop x1 x2)
-    | Array a1, Array a2 -> arr_of_base (Binop.eval_array bop a1 a2)
-    | _ -> None
-
-  (** [const_fold_uop_opt uop e] is the AST node [uop e] where all
-      constant expressions have been folded *)
-  let const_fold_uop_opt uop = function
-    | Primitive x -> prim_of_base (Unop.eval uop x)
-    | _ -> None
-
-  (** [const_fold e] is the AST node [e] where all constant expressions
-      have been folded *)
-  let rec const_fold = function
-    | Array es -> const_fold_array es
-    | Bop (bop, e1, e2) -> const_fold_bop bop e1 e2
-    | Uop (uop, e) -> const_fold_uop uop e
-    | FnCall (id, es) -> const_fold_fn_call id es
-    | Length e -> const_fold_length e
-    | Index (e1, e2) -> const_fold_index e1 e2
-    | e -> e
-
-  (** [const_fold_node e] is the AST node [e] where all constant
-      expressions have been folded *)
-  and const_fold_node e = Entry.Key.map ~f:const_fold e
-
-  (** [const_fold_nodes es] is [es] where each expression has been
-      constant folded, if possible *)
-  and const_fold_nodes es = List.map ~f:const_fold_node es
-
-  (** [const_fold_array es] is the AST node [Array es] where all
-      constant expressions have been folded *)
-  and const_fold_array es = Array (const_fold_nodes es)
-
-  (** [const_fold_bop bop e1 e2] is the AST node [Bop (bop, e1, e2)]
-      where all constant expressions have been folded recursive in [e1]
-      and [e2], folding the resulting operation if possible. *)
-  and const_fold_bop bop enode1 enode2 =
-    let enode1 = const_fold_node enode1 in
-    let enode2 = const_fold_node enode2 in
-    let e1 = Entry.key enode1 in
-    let e2 = Entry.key enode2 in
-    let default () = Bop (bop, enode1, enode2) in
-    Lazy.value ~default (const_fold_bop_opt bop e1 e2)
-
-  (** [const_fold_uop uop e] is the AST node [Uop (uop, e1)] where all
-      constant expressions have been folded recursive in [e], folding
-      the resulting operation if possible. *)
-  and const_fold_uop uop enode =
-    let enode = const_fold_node enode in
-    let e = Entry.key enode in
-    let default () = Uop (uop, enode) in
-    Lazy.value ~default (const_fold_uop_opt uop e)
-
-  (** [const_fold_fn_call bop e1 e2] is the AST node [FnCall (id, es)]
-      where all constant expressions of each expression in [es] have
-      been folded *)
-  and const_fold_fn_call id es = FnCall (id, const_fold_nodes es)
-
-  (** [const_fold_length e] is the AST node [Length e] where all
-      constant expressions of each expression in [e] have been folded *)
-  and const_fold_length e = Length (const_fold_node e)
-
-  (** [const_fold_index e1 e2] is the AST node [Index (e1, e2)] where
-      all constant expressions of each expression in [e1] and [e2] have
-      been folded *)
-  and const_fold_index e1 e2 =
-    Index (const_fold_node e1, const_fold_node e2)
-
-  type ('a, 'e, 'acc) folder =
-    primitive:(primitive -> 'e -> 'acc) ->
-    id:(id -> 'e -> 'acc) ->
-    array:('acc list -> 'e -> 'acc) ->
-    string:(string -> 'e -> 'acc) ->
-    bop:(binop -> 'acc -> 'acc -> 'e -> 'acc) ->
-    uop:(unop -> 'acc -> 'e -> 'acc) ->
-    fn_call:(id -> 'acc list -> 'e -> 'acc) ->
-    length:('acc -> 'e -> 'acc) ->
-    index:('acc -> 'acc -> 'e -> 'acc) ->
-    'a
 end
 
 module Stmt = struct
@@ -324,104 +239,6 @@ module Stmt = struct
       serialization of the statement [_ = id(e1, ..., en)]. *)
   and sexp_of_expr_stmt id args =
     sexp_of_gets (Sexp.Atom "_") (Expr.sexp_of_call id args)
-
-  (** [const_fold_array_decl id typ es] is the statement
-      [ArrayDecl (id, typ, es)] where each expression of [es] has been
-      constant folded *)
-  let const_fold_array_decl id typ es =
-    let es = List.map ~f:(Option.map ~f:Expr.const_fold_node) es in
-    ArrayDecl (id, typ, es)
-
-  (** [const_fold_assign id e] is the statement [Assign (id, e)] where
-      each expression of [e] has been constant folded *)
-  let const_fold_assign id e = Assign (id, Expr.const_fold_node e)
-
-  (** [const_fold_arr_assign e1 e2 e3] is the statement
-      [ArrAssign (e1, e2, e3)] where each expression of [e1], [e2], and
-      [e3] has been constant folded *)
-  let const_fold_arr_assign e1 e2 e3 =
-    let f = Expr.const_fold_node in
-    let e1, e2, e3 = Tuple3.map ~f (e1, e2, e3) in
-    ArrAssign (e1, e2, e3)
-
-  (** [const_fold_expr_stmt e] is the statement [ExprStmt e] where each
-      expression of [e] has been constant folded *)
-  let const_fold_expr_stmt id es =
-    ExprStmt (id, Expr.const_fold_nodes es)
-
-  (** [const_fold_var_init id typ e] is the statement
-      [VarInit (id, typ, e)] where each expression of [e] has been
-      constant folded *)
-  let const_fold_var_init id typ e =
-    VarInit (id, typ, Expr.const_fold_node e)
-
-  (** [const_fold_multi_assign ds typ es] is the statement
-      [MultiAssign (ds, id, es)] where each expression of [es] has been
-      constant folded *)
-  let const_fold_multi_assign ds id es =
-    MultiAssign (ds, id, Expr.const_fold_nodes es)
-
-  (** [const_fold_pr_call id es] is the statement [PrCall (id, es)]
-      where each expression of [es] has been constant folded *)
-  let const_fold_pr_call id es = PrCall (id, Expr.const_fold_nodes es)
-
-  (** [const_fold_return es] is the statement [Return es] where each
-      expression of [es] has been constant folded *)
-  let const_fold_return es = Return (Expr.const_fold_nodes es)
-
-  (** [const_fold_cond2 ~t ~f ~default e] is [t ()] if [e] wraps a
-      [true] literal, [f ()] if it wraps a [false] literal, and
-      [default ()] otherwise *)
-  let const_fold_cond2 ~t ~f ~default e =
-    match Entry.key e with
-    | Expr.Primitive (`Bool b) -> (if b then t else f) ()
-    | _ -> default ()
-
-  (** [const_fold s] is the statement [s] where each expression
-      contained in [s] has been recursively constant folded *)
-  let rec const_fold = function
-    | If (e, s) -> const_fold_if e s
-    | IfElse (e, s1, s2) -> const_fold_if_else e s1 s2
-    | While (e, s) -> const_fold_while e s
-    | VarDecl _ as decl -> decl
-    | ArrayDecl (id, typ, es) -> const_fold_array_decl id typ es
-    | Assign (id, e) -> const_fold_assign id e
-    | ArrAssign (e1, e2, e3) -> const_fold_arr_assign e1 e2 e3
-    | ExprStmt (id, es) -> const_fold_expr_stmt id es
-    | VarInit (id, typ, e) -> const_fold_var_init id typ e
-    | MultiAssign (ds, id, es) -> const_fold_multi_assign ds id es
-    | PrCall (id, es) -> const_fold_pr_call id es
-    | Return es -> const_fold_return es
-    | Block block -> const_fold_block block
-
-  (** [const_fold_node s] is the statement [s] where each expression
-      contained in the statement pointed to by [s] has been recursively
-      constant folded *)
-  and const_fold_node snode = Entry.Key.map ~f:const_fold snode
-
-  (** [const_fold_nodes block] is [block] where each statement has been
-      recursively constant folded *)
-  and const_fold_nodes block = List.map ~f:const_fold_node block
-
-  (** [const_fold_if e s] is the statement [If (e, s)] where [e] and
-      each expression in [s] has been constant folded *)
-  and const_fold_if e s = If (Expr.const_fold_node e, const_fold_node s)
-
-  (** [const_fold_if_else e s1 s2] is the statement [IfElse (e, s1, s2)]
-      where [e] and each expression in [s1] and [s2] has been constant
-      folded *)
-  and const_fold_if_else e s1 s2 =
-    let e' = Expr.const_fold_node e in
-    IfElse (e', const_fold_node s1, const_fold_node s2)
-
-  (** [const_fold_while e s] is the statement [If (e, s)] where [e] and
-      each expression in [s] has been constant folded *)
-  and const_fold_while e s =
-    While (Expr.const_fold_node e, const_fold_node s)
-
-  (** [const_fold_block stmts] is [Block stmts] where each statement in
-      [stmts] has been recursively constant folded *)
-  and const_fold_block block = Block (const_fold_nodes block)
 end
 
 (** [Toplevel] represents the toplevel definitions of the AST *)
@@ -504,16 +321,6 @@ module Toplevel = struct
   (** [sexp_of_intf intf] is the s-expression serialization of the AST
       [intf]. *)
   let sexp_of_intf sigs = Sexp.List [ sexp_of_nodes sexp_of_fn sigs ]
-
-  (** [const_fold_defn def] is [def] where each constituent expression
-      has been recursively constant folded *)
-  let const_fold_defn = function
-    | FnDefn (sg, block) -> FnDefn (sg, Stmt.const_fold_nodes block)
-    | global -> global
-
-  (** [const_fold_defls defs] is [defs] where each constituent
-      definition has been recursively constant folded *)
-  let const_fold_defs = List.map ~f:(Entry.Key.map ~f:const_fold_defn)
 end
 
 (** An expression of type [t] is an expression representing a node of
@@ -529,13 +336,6 @@ open Toplevel
 let sexp_of_t = function
   | Source s -> Source.sexp_of_t s
   | Intf sigs -> sexp_of_intf sigs
-
-let const_fold = function
-  | Source src ->
-      let open Source in
-      let defs = const_fold_defs src.defs in
-      Source { src with defs }
-  | intf -> intf
 
 let iter_source ast ~f =
   match ast with Source src -> f src | Intf _ -> ()

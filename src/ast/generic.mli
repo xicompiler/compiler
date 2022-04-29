@@ -37,21 +37,6 @@ module Expr : sig
   (** A [call] is the type of a function call represented as a pair
       [(id, args)] where [id] is the name of the function and [args] is
       the list of arguments *)
-
-  type ('a, 'e, 'acc) folder =
-    primitive:(primitive -> 'e -> 'acc) ->
-    id:(id -> 'e -> 'acc) ->
-    array:('acc list -> 'e -> 'acc) ->
-    string:(string -> 'e -> 'acc) ->
-    bop:(binop -> 'acc -> 'acc -> 'e -> 'acc) ->
-    uop:(unop -> 'acc -> 'e -> 'acc) ->
-    fn_call:(id -> 'acc list -> 'e -> 'acc) ->
-    length:('acc -> 'e -> 'acc) ->
-    index:('acc -> 'acc -> 'e -> 'acc) ->
-    'a
-  (** An [('a, 'e, 'acc) folder] represents a fold over ['e t],
-      accumulating a term of type ['acc], and producing a term of type
-      ['a] *)
 end
 
 module Stmt : sig
@@ -161,10 +146,6 @@ type ('e, 's, 't) t =
 
 val sexp_of_t : ('e, 's, 't) t -> Sexp.t
 (** [sexp_of_t ast] is the s-expression serialization of [ast]. *)
-
-val const_fold : ('e, 's, 't) t -> ('e, 's, 't) t
-(** [const_fold ast] is [ast] where all constants expressions have been
-    fully evaluated. Conditionals are also folded, if possible. *)
 
 val iter_source :
   ('e, 's, 't) t -> f:(('e, 's, 't) Toplevel.Source.t -> unit) -> unit

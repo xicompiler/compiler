@@ -4,9 +4,6 @@ val sexp_of_t : compunit:string -> Reorder.t -> Sexp.t
 (** [sexp_of_t ~compunit tlist] is the s-expression representation of
     the reordered toplevel list with COMPUNIT name [compunit] *)
 
-val const_fold : Reorder.t -> Reorder.t
-(** [const_fold stmts] is [stmts] constant folded at the IR level *)
-
 val translate :
   optimize:bool ->
   ?gensym:IrGensym.t ->
@@ -74,4 +71,9 @@ end
 (** [Temp] represents a temporary in IR *)
 module Temp : module type of struct
   include Temp
+end
+
+(** [ConstFold] contains functions for constant folding IR *)
+module ConstFold : module type of struct
+  include ConstFold
 end

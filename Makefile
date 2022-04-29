@@ -35,9 +35,11 @@ bisect-clean:
 
 format:
 	ocamlformat */*.ml */*.mli --inplace
+	ocamlformat */*/*.ml */*/*.mli --inplace
 
 format-check:
 	ocamlformat */*.ml */*.mli --check
+	ocamlformat */*/*.ml */*/*.mli --check
 
 zip: clean-all
 	zip bfs45_dc854_vmj5_zak33.zip -r . -x@exclude.lst

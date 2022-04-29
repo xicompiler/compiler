@@ -7,7 +7,7 @@ open Int64
     [name] asserting that the constant folded IR of [prog] is
     structurally equal to [expect] *)
 let const_fold_test ~name ~expect prog =
-  name >:: fun _ -> assert_equal expect (const_fold prog)
+  name >:: fun _ -> assert_equal expect (ConstFold.const_fold prog)
 
 (** [const_fold_same ~name prog] tests that no constant folding occurs
     on [prog] *)
