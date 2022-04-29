@@ -46,6 +46,33 @@ module type S = sig
     val weight : ('v, 'e) t -> 'e
   end
 
+  type ('v, 'e) t
+
+  val create : ?size:int -> unit -> ('v, 'e) t
+
+  module Dataflow : sig
+    type 'data meet = 'data list -> 'data
+
+    type direction =
+      [ `Forward
+      | `Backward
+      ]
+
+    module Params : sig
+      type 'data t
+
+      val create :
+        f:('data -> 'data) ->
+        meet:'data meet ->
+        top:'data ->
+        direction:direction ->
+        equal:('data -> 'data -> bool) ->
+        'data t
+    end
+
+    val analyze : ('v, 'e) t -> 'data Params.t -> key -> 'data
+  end
+
   val graphviz :
     string_of_vertex:(('v, 'e) vertex -> string) ->
     string_of_weight:('e -> string) ->

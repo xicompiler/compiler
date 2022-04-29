@@ -114,6 +114,49 @@ module type S = sig
     (** [weight edge] is the weight carried by [edge] *)
   end
 
+  type ('v, 'e) t
+  (** [('v, 'e) t] is the type of a graph with vertices carrying values
+      of type ['v] and edges carrying values of type ['e] *)
+
+  val create : ?size:int -> unit -> ('v, 'e) t
+  (** [create ~size ()] is a fresh graph with size [size] *)
+
+  module Dataflow : sig
+    type 'data meet = 'data list -> 'data
+    (** ['data meet] is the type of a meet function that takes the meet
+        of values of type ['data] *)
+
+    type direction =
+      [ `Forward
+      | `Backward
+      ]
+    (** [direction] is the direction in a datalow analysis *)
+
+    (** [Params] represent the parameters for a dataflow analysis *)
+    module Params : sig
+      type 'data t
+      (** A ['data t] is an instance of dataflow analysis parameters
+          parameterized over dataflow values of type ['data] *)
+
+      val create :
+        f:('data -> 'data) ->
+        meet:'data meet ->
+        top:'data ->
+        direction:direction ->
+        equal:('data -> 'data -> bool) ->
+        'data t
+      (** [create ~f ~meet ~top ~direction ~equal] is a ['data t] with
+          transfer function [f], meet operator [meet], top value [top]
+          and direction [direction], where dataflow values are compared
+          using [equal] *)
+    end
+
+    val analyze : ('v, 'e) t -> 'data Params.t -> key -> 'data
+    (** [analyze g params] is a function [data : key -> 'data] such
+        that, for any bound node key [k], [data k] is the dataflow value
+        associated with the node with key [k] *)
+  end
+
   val graphviz :
     string_of_vertex:(('v, 'e) vertex -> string) ->
     string_of_weight:('e -> string) ->

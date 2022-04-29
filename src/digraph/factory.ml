@@ -1,11 +1,14 @@
 open Core
 open Option.Monad_infix
 open Abstract
+open Util.Fn
 
 module Make (Key : Key) = struct
   module Key = Key
 
   type key = Key.t
+
+  module Table = Hashtbl.Make (Key)
 
   type ('v, 'e) vertex = {
     key : key;
@@ -36,12 +39,22 @@ module Make (Key : Key) = struct
     let incoming { incoming } = incoming
     let pred { incoming } = List.rev_map ~f:Edge.src incoming
 
+    (** [fold_pred v ~init ~f] folds function [f] over each predecessor
+        of [v] with initial value [init] and returns the result *)
+    let fold_pred v ~init ~f =
+      List.fold v.incoming ~init ~f:(fun acc -> Edge.src >> f acc)
+
     (** [add_incoming ~edge v] pushes [edge] onto the incoming edges of
         [v] *)
     let add_incoming ~edge v = v.incoming <- edge :: v.incoming
 
     let outgoing { outgoing } = outgoing
     let succ { outgoing } = List.rev_map ~f:Edge.dst outgoing
+
+    (** [fold_succ u ~init ~f] folds function [f] over each successor of
+        [u] with initial value [init] and returns the result *)
+    let fold_succ u ~init ~f =
+      List.fold u.outgoing ~init ~f:(fun acc -> Edge.dst >> f acc)
 
     let has_succ v ~target =
       let f { dst } = phys_equal target dst in
@@ -130,6 +143,91 @@ module Make (Key : Key) = struct
         incoming = [];
         outgoing = [];
       }
+  end
+
+  type ('v, 'e) t = ('v, 'e) vertex Table.t
+
+  let create ?size () = Table.create ?size ()
+
+  module Dataflow = struct
+    type 'data meet = 'data list -> 'data
+
+    type direction =
+      [ `Forward
+      | `Backward
+      ]
+
+    module Params = struct
+      type 'data t = {
+        f : 'data -> 'data;
+        meet : 'data meet;
+        top : 'data;
+        direction : direction;
+        equal : 'data -> 'data -> bool;
+      }
+      [@@deriving fields]
+
+      let create = Fields.create
+    end
+
+    (** [create_data_map ~top g] is a fresh hashtable where every key in
+        [g] is bound to [init] *)
+    let create_data_map ~top = Hashtbl.map ~f:(fun _ -> top)
+
+    (** [input_nodes ~direction v] is the list of nodes whose dataflow
+        values are inputs to the meet operator of [v], i.e. the
+        predecessors of [v] if direction is [`Forward] and the
+        successors of [v] if direction if [`Backward] *)
+    let input_nodes ~direction =
+      match direction with
+      | `Forward -> Vertex.pred
+      | `Backward -> Vertex.succ
+
+    (** [input_data ~direction ~data u] is a list of the dataflow values
+        that are the input to the meet function for [u] where the
+        dataflow value of a node is resolved via [data]. The input to
+        the meet operator are the incoming dataflow values if
+        [direction] is [`Forward] and the outgoing dataflow values if
+        [direction] is [`Backward] *)
+    let input_data ~direction ~data =
+      let f = Vertex.key >> Hashtbl.find_exn data in
+      input_nodes ~direction >> List.map ~f
+
+    (** [update_worklist v ~init ~direction] is [init] together with all
+        of the nodes whose dataflow values may have been immediately
+        impacted by the modification of dataflow values at node [v]; the
+        successors of [v] if [direction] is [`Forward], and the
+        predecessors of [v] if [direction] is [`Backward] *)
+    let update_worklist v ~init ~direction =
+      let f acc u = u :: acc in
+      match direction with
+      | `Forward -> Vertex.fold_succ v ~init ~f
+      | `Backward -> Vertex.fold_pred v ~init ~f
+
+    let analyze g Params.{ f; meet; top; direction; equal } =
+      (* Initialize dataflow values to top element *)
+      let data = create_data_map ~top g in
+      let rec loop = function
+        | [] -> () (* If worklist empty, we're done *)
+        | (Vertex.{ key; _ } as v) :: t ->
+            (* current dataflow value for node v *)
+            let l = Hashtbl.find_exn data key in
+            (* apply transfer function to meet at node to get updated
+               dataflow values *)
+            let l' = f (meet (input_data v ~direction ~data)) in
+            if not (equal l l') then (
+              (* If dataflow values changed, updated table to reflect
+                 this and push nodes onto the worklist who dataflow
+                 values may have changed *)
+              Hashtbl.set data ~key ~data:l';
+              loop (update_worklist v ~init:t ~direction))
+            else loop t (* Otherwise, don't need to update worklist *)
+      in
+      (* Initially, the worklist contains every node *)
+      loop (Hashtbl.data g);
+      (* Return a function mapping the key of a node to its dataflow
+         value *)
+      fun k -> Hashtbl.find_exn data k
   end
 
   let graphviz ~string_of_vertex ~string_of_weight nodes =

@@ -1,5 +1,7 @@
 (library
  (name digraph)
- (libraries core)
+ (libraries core util)
+ (preprocess
+  (pps ppx_jane))
  (instrumentation
   (backend bisect_ppx)))
