@@ -37,6 +37,7 @@ bisect*.coverage
 output
 *.output
 *.sout
+*.s
 
 # executable
 /xic
