@@ -22,7 +22,7 @@ type t = toplevel list
     beginning with label [li] *)
 let label_map =
   let f acc v =
-    match Vertex.map v ~f:BasicBlock.first with
+    match Vertex.fold v ~f:BasicBlock.first with
     | Some (`Label l) -> Map.set ~key:l ~data:v acc
     | Some _ | None -> acc
   in
@@ -78,7 +78,7 @@ let add_edge ~src ~labels next =
     | `Return _ | `Jump _ -> ()
     | #Lir.stmt -> add_ordinary_edge ~src next
   in
-  src |> Vertex.map ~f:BasicBlock.last |> Option.iter ~f
+  src |> Vertex.fold ~f:BasicBlock.last |> Option.iter ~f
 
 (** [add_edges ~labels vs] constructs the cfg by adding edges to every
     vertex in [vs], where [labels] maps labels to the nodes they are
@@ -171,9 +171,9 @@ let rev_traces = rev_traces_acc []
     [pred] to CJUMP (!e, f, t) if basic block [next] begins with label
     [t]. Returns: [`Inverted] on inversion, [`Unchanged] if unchanged *)
 let invert_cjump ~pred ~succ e t f =
-  if Vertex.map ~f:(BasicBlock.has_label ~label:t) succ then begin
+  if Vertex.fold ~f:(BasicBlock.has_label ~label:t) succ then begin
     let stmt = `CJump (log_neg e, f, t) in
-    Vertex.map_set pred ~f:(BasicBlock.set_last ~stmt);
+    Vertex.update pred ~f:(BasicBlock.set_last ~stmt);
     `Inverted
   end
   else `Unchanged
@@ -181,8 +181,8 @@ let invert_cjump ~pred ~succ e t f =
 (** [elide_jump ~pred ~succ l] deletes the last statement in the basic
     block of [pred] if [succ] is labeled with [l] *)
 let elide_jump ~pred ~succ label =
-  if Vertex.map succ ~f:(BasicBlock.has_label ~label) then begin
-    Vertex.map_set pred ~f:BasicBlock.remove_last;
+  if Vertex.fold succ ~f:(BasicBlock.has_label ~label) then begin
+    Vertex.update pred ~f:BasicBlock.remove_last;
     Vertex.set_edge ~src:pred ~dst:succ ~weight:Fallthrough
   end
 
@@ -190,13 +190,13 @@ let elide_jump ~pred ~succ label =
     onto the end of [vertex] *)
 let append_jump vertex ~target =
   let jump = `Jump (`Name target) in
-  Vertex.map_set vertex ~f:(BasicBlock.insert_last ~stmt:jump)
+  Vertex.update vertex ~f:(BasicBlock.insert_last ~stmt:jump)
 
 (** [fix_cjump_fallthrough ~target ~block ~succ] appends an
     unconditional jump to [target] if [next] does not begin with label
     [target] *)
 let fix_cjump_fallthrough ~target ~pred ~succ =
-  if not (Vertex.map ~f:(BasicBlock.has_label ~label:target) succ) then
+  if not (Vertex.fold ~f:(BasicBlock.has_label ~label:target) succ) then
     append_jump pred ~target
 
 (** [label v ~gensym] is the label of the basic block wrapped in [v] if
@@ -205,10 +205,10 @@ let fix_cjump_fallthrough ~target ~pred ~succ =
 let label v ~gensym =
   let default () =
     let label = gensym () in
-    Vertex.map_set v ~f:(BasicBlock.insert_label ~label);
+    Vertex.update v ~f:(BasicBlock.insert_label ~label);
     label
   in
-  v |> Vertex.map ~f:BasicBlock.label |> Lazy.value ~default
+  v |> Vertex.fold ~f:BasicBlock.label |> Lazy.value ~default
 
 (** [add_jump_between ~gensym ~src ~dst] appends to [src] an
     unconditional jump to [dst] and creates an edge [(src, dst)] to
@@ -257,7 +257,7 @@ let fix_jump_stmt ~gensym ~pred ~succ = function
     contains no statements, or is [f s'], where [s'] is the last
     statement in the block, ohterwise. *)
 let iter_last ~f ~gensym pred =
-  pred |> Vertex.map ~f:BasicBlock.last |> Option.iter ~f
+  pred |> Vertex.fold ~f:BasicBlock.last |> Option.iter ~f
 
 (** [fix_jump ~gensym ~pred ~succ] fixes any jumps present in [pred],
     where [succ] is the basic block following [pred]. Fresh labels are
@@ -297,9 +297,9 @@ let has_labeled_incoming =
     wrapped in [v] if it is present and [v] has no incoming labeled
     edges *)
 let remove_unused_label v =
-  match Vertex.map v ~f:BasicBlock.first with
+  match Vertex.fold v ~f:BasicBlock.first with
   | Some (`Label l) when not (has_labeled_incoming v) ->
-      Vertex.map_set ~f:BasicBlock.remove_first v
+      Vertex.update ~f:BasicBlock.remove_first v
   | Some _ | None -> ()
 
 (** [remove_unused_labels vs] deletes unused labels from every basic
@@ -332,7 +332,7 @@ let reorder_stmts ~gensym stmts =
   fix_jumps ~gensym traces;
   remove_unused_labels traces;
   traces
-  |> List.concat_map ~f:(Vertex.map ~f:BasicBlock.to_list)
+  |> List.concat_map ~f:(Vertex.fold ~f:BasicBlock.to_list)
   |> List.map ~f:remove_false_label
 
 let reorder_toplevel ~gensym : Lir.toplevel -> toplevel = function

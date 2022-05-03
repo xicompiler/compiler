@@ -5,13 +5,10 @@ open Util.Fn
 
 module Make (Key : Key) = struct
   module Key = Key
-
-  type key = Key.t
-
   module Table = Hashtbl.Make (Key)
 
   type ('v, 'e) vertex = {
-    key : key;
+    key : Key.t;
     mutable value : 'v;
     mutable marked : bool;
     mutable unmarked_pred : int;
@@ -34,7 +31,43 @@ module Make (Key : Key) = struct
   end
 
   module Vertex = struct
-    type ('v, 'e) t = ('v, 'e) vertex
+    (** [decr_unmarked_pred v] decrements the number of unmarked
+        predecessors of [v]*)
+    let decr_unmarked_pred v =
+      v.unmarked_pred <- Int.pred v.unmarked_pred
+
+    (** [incr_unmarked_pred v] increments the number of unmarked
+        predecessors of [v] *)
+    let incr_unmarked_pred v =
+      v.unmarked_pred <- Int.succ v.unmarked_pred
+
+    include Graph.Vertex.Make2 (struct
+      module Key = Key
+
+      type ('v, 'e) t = ('v, 'e) vertex
+
+      let key { key } = key
+      let value { value } = value
+      let set v ~value = v.value <- value
+      let marked { marked } = marked
+
+      let mark v =
+        if not (marked v) then begin
+          v.marked <- true;
+          let f { dst } = decr_unmarked_pred dst in
+          List.iter ~f v.outgoing
+        end
+
+      let create ~key ~value =
+        {
+          key;
+          value;
+          marked = false;
+          unmarked_pred = 0;
+          incoming = [];
+          outgoing = [];
+        }
+    end)
 
     let incoming { incoming } = incoming
     let pred { incoming } = List.rev_map ~f:Edge.src incoming
@@ -56,8 +89,6 @@ module Make (Key : Key) = struct
     let fold_succ u ~init ~f =
       List.fold u.outgoing ~init ~f:(fun acc -> Edge.dst >> f acc)
 
-    let equal v1 v2 = Key.compare v1.key v2.key = 0
-
     let has_succ v ~target =
       let f { dst } = equal target dst in
       List.exists ~f v.outgoing
@@ -67,31 +98,6 @@ module Make (Key : Key) = struct
     (** [add_outgoing ~edge v] pushes [edge] onto the outgoing edges of
         [v] *)
     let add_outgoing ~edge v = v.outgoing <- edge :: v.outgoing
-
-    let key { key } = key
-    let value { value } = value
-    let set v ~value = v.value <- value
-    let map_set v ~f = set v (f v.value)
-    let map v ~f = f v.value
-    let marked { marked } = marked
-    let unmarked v = not (marked v)
-
-    (** [decr_unmarked_pred v] decrements the number of unmarked
-        predecessors of [v]*)
-    let decr_unmarked_pred v =
-      v.unmarked_pred <- Int.pred v.unmarked_pred
-
-    (** [incr_unmarked_pred v] increments the number of unmarked
-        predecessors of [v] *)
-    let incr_unmarked_pred v =
-      v.unmarked_pred <- Int.succ v.unmarked_pred
-
-    let mark v =
-      if unmarked v then begin
-        v.marked <- true;
-        let f { dst } = decr_unmarked_pred dst in
-        List.iter ~f v.outgoing
-      end
 
     let has_unmarked_pred { unmarked_pred } = unmarked_pred > 0
 
@@ -133,16 +139,6 @@ module Make (Key : Key) = struct
     let set_edge ~src ~dst ~weight =
       remove_edge ~src ~dst;
       add_edge ~src ~dst ~weight
-
-    let create ~key ~value =
-      {
-        key;
-        value;
-        marked = false;
-        unmarked_pred = 0;
-        incoming = [];
-        outgoing = [];
-      }
   end
 
   type ('v, 'e) t = ('v, 'e) vertex Table.t
@@ -156,7 +152,7 @@ module Make (Key : Key) = struct
     }
     [@@deriving fields]
 
-    type 'data map = key -> 'data values
+    type 'data map = Key.t -> 'data values
 
     (** [create_data_map ~top g] is a fresh hashtable where every key in
         [g] is bound to [init] *)

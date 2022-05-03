@@ -1,15 +1,12 @@
 open Core
 
-module type Key = Hashtbl.Key
+module type Key = Graph.Key
 (** [Key] is the module type of a key in the graph *)
 
 (** [S] is the abstract type of a graph *)
 module type S = sig
   module Key : Key
   (** [Key] represents the key in the graph *)
-
-  type key = Key.t
-  (** [key] is the type of a key of a node *)
 
   type ('v, 'e) vertex
   (** A [('v, 'e) vertex] is a vertex carrying a value of type ['v] and
@@ -21,13 +18,10 @@ module type S = sig
 
   (** [Vertex] represents a vertex in a directed graph *)
   module Vertex : sig
-    type ('v, 'e) t = ('v, 'e) vertex
-    (** A [('v, 'e) t] is a vertex carrying a value of type ['v] and
-        adjacent to edges carrying type ['e] *)
-
-    val create : key:key -> value:'v -> ('v, 'e) t
-    (** [create ~key ~value] is a fresh unmarked vertex with key [key],
-        value [value] and no incident edges *)
+    include
+      Graph.Vertex.S2
+        with type ('v, 'e) t = ('v, 'e) vertex
+        with module Key := Key
 
     val incoming : ('v, 'e) t -> ('v, 'e) edge list
     (** [incoming vertex] is the list of edges entering [vertex] *)
@@ -49,31 +43,6 @@ module type S = sig
     (** [peek_succ u] is [Some v] if there exists an edge [(u, v)], or
         [None] if [u] has no successors *)
 
-    val key : ('v, 'e) t -> key
-    (** [key v] is the unique key of [v] *)
-
-    val value : ('v, 'e) t -> 'v
-    (** [value vertex] is the value stored by [vertex] *)
-
-    val set : ('v, 'e) t -> value:'v -> unit
-    (** [set_value v ~value] sets the value of vertex [v] to [value] *)
-
-    val map_set : ('v, 'e) t -> f:('v -> 'v) -> unit
-    (** [map_set v ~f] applies [f] to the value of [g] and writes the
-        computed result back to [v] *)
-
-    val map : ('v, 'e) t -> f:('v -> 'a) -> 'a
-    (** [map vertex ~f] is [f (value vertex)] *)
-
-    val marked : ('v, 'e) t -> bool
-    (** [marked vertex] is [true] iff [vertex] has been marked *)
-
-    val unmarked : ('v, 'e) t -> bool
-    (** [unmarked vertex] is [true] iff [vertex] is unmarked *)
-
-    val mark : ('v, 'e) t -> unit
-    (** [mark vertex] marks [vertex] *)
-
     val has_unmarked_pred : ('v, 'e) t -> bool
     (** [has_marked_pred vertex] is [true] iff [vertex] has an unmarked
         predecessor *)
@@ -93,9 +62,6 @@ module type S = sig
       ('v, 'e) t -> f:(('v, 'e) edge -> bool) -> bool
     (** [exists_incoming v ~f] is [true] iff there exists an edge [e]
         entering [v] for which [f e] is [true] *)
-
-    val equal : ('v, 'e) t -> ('v, 'e) t -> bool
-    (** [equal v1 v2] is [true] iff their keys are equivalent *)
   end
 
   (** [Edge] represents an edge in a directed graph *)
@@ -131,7 +97,7 @@ module type S = sig
         node, i.e. the dataflow values that are the input and output to
         the transfer function *)
 
-    type 'data map = key -> 'data values
+    type 'data map = Key.t -> 'data values
     (** A ['data map] maps a vertex's unique key to its data *)
 
     val analyze :
