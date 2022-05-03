@@ -150,11 +150,18 @@ module Make (Key : Key) = struct
   let create ?size () = Table.create ?size ()
 
   module Dataflow = struct
-    type 'data map = key -> 'data
+    type 'data values = {
+      input : 'data;
+      output : 'data;
+    }
+    [@@deriving fields]
+
+    type 'data map = key -> 'data values
 
     (** [create_data_map ~top g] is a fresh hashtable where every key in
         [g] is bound to [init] *)
-    let create_data_map ~top = Hashtbl.map ~f:(fun _ -> top)
+    let create_data_map ~top =
+      Hashtbl.map ~f:(fun _ -> { input = top; output = top })
 
     (** [input_nodes ~direction v] is the list of nodes whose dataflow
         values are inputs to the meet operator of [v], i.e. the
@@ -172,7 +179,7 @@ module Make (Key : Key) = struct
         [direction] is [`Forward] and the outgoing dataflow values if
         [direction] is [`Backward] *)
     let input_data ~direction ~data_map =
-      let f = Vertex.key >> Hashtbl.find_exn data_map in
+      let f = Vertex.key >> Hashtbl.find_exn data_map >> output in
       input_nodes ~direction >> List.map ~f
 
     (** [update_worklist v ~init ~direction] is [init] together with all
@@ -193,17 +200,16 @@ module Make (Key : Key) = struct
         | [] -> () (* If worklist empty, we're done *)
         | (Vertex.{ key; value } as v) :: t ->
             (* current dataflow value for node v *)
-            let l = Hashtbl.find_exn data_map key in
+            let { output = l } = Hashtbl.find_exn data_map key in
             (* apply transfer function to meet at node to get updated
                dataflow values *)
-            let data = meet (input_data v ~direction ~data_map) in
-            let l' = f ~data ~vertex:value in
-            if not (equal l l') then (
-              (* If dataflow values changed, updated table to reflect
-                 this and push nodes onto the worklist who dataflow
-                 values may have changed *)
-              Hashtbl.set data_map ~key ~data:l';
-              loop (update_worklist v ~init:t ~direction))
+            let input = meet (input_data v ~direction ~data_map) in
+            let l' = f ~data:input ~vertex:value in
+            Hashtbl.set data_map ~key ~data:{ input; output = l' };
+            if not (equal l l') then
+              (* If dataflow values changed push nodes onto the worklist
+                 who dataflow values may have changed *)
+              loop (update_worklist v ~init:t ~direction)
             else loop t (* Otherwise, don't need to update worklist *)
       in
       (* Initially, the worklist contains every node *)

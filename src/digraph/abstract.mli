@@ -121,8 +121,17 @@ module type S = sig
   val create : ?size:int -> unit -> ('v, 'e) t
   (** [create ~size ()] is a fresh graph with size [size] *)
 
+  (** [Dataflow] contains operations for performing dataflow analysis *)
   module Dataflow : sig
-    type 'data map = key -> 'data
+    type 'data values = {
+      input : 'data;
+      output : 'data;
+    }
+    (** ['data values] represent the dataflow values computed at each
+        node, i.e. the dataflow values that are the input and output to
+        the transfer function *)
+
+    type 'data map = key -> 'data values
     (** A ['data map] maps a vertex's unique key to its data *)
 
     val analyze :

@@ -51,7 +51,12 @@ module type S = sig
   val create : ?size:int -> unit -> ('v, 'e) t
 
   module Dataflow : sig
-    type 'data map = key -> 'data
+    type 'data values = {
+      input : 'data;
+      output : 'data;
+    }
+
+    type 'data map = key -> 'data values
 
     val analyze :
       ('v, 'e) t -> ('data, 'v) Dataflow.Params.t -> 'data map
