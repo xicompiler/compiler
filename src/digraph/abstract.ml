@@ -51,26 +51,10 @@ module type S = sig
   val create : ?size:int -> unit -> ('v, 'e) t
 
   module Dataflow : sig
-    type 'data meet = 'data list -> 'data
+    type 'data map = key -> 'data
 
-    type direction =
-      [ `Forward
-      | `Backward
-      ]
-
-    module Params : sig
-      type 'data t
-
-      val create :
-        f:('data -> 'data) ->
-        meet:'data meet ->
-        top:'data ->
-        direction:direction ->
-        equal:('data -> 'data -> bool) ->
-        'data t
-    end
-
-    val analyze : ('v, 'e) t -> 'data Params.t -> key -> 'data
+    val analyze :
+      ('v, 'e) t -> ('data, 'v) Dataflow.Params.t -> 'data map
   end
 
   val graphviz :

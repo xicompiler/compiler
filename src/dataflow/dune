@@ -1,0 +1,3 @@
+(library
+ (name dataflow)
+ (libraries core))

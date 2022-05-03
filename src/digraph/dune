@@ -1,6 +1,6 @@
 (library
  (name digraph)
- (libraries core util)
+ (libraries core dataflow util)
  (preprocess
   (pps ppx_jane))
  (instrumentation

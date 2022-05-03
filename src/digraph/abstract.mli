@@ -122,36 +122,11 @@ module type S = sig
   (** [create ~size ()] is a fresh graph with size [size] *)
 
   module Dataflow : sig
-    type 'data meet = 'data list -> 'data
-    (** ['data meet] is the type of a meet function that takes the meet
-        of values of type ['data] *)
+    type 'data map = key -> 'data
+    (** A ['data map] maps a vertex's unique key to its data *)
 
-    type direction =
-      [ `Forward
-      | `Backward
-      ]
-    (** [direction] is the direction in a datalow analysis *)
-
-    (** [Params] represent the parameters for a dataflow analysis *)
-    module Params : sig
-      type 'data t
-      (** A ['data t] is an instance of dataflow analysis parameters
-          parameterized over dataflow values of type ['data] *)
-
-      val create :
-        f:('data -> 'data) ->
-        meet:'data meet ->
-        top:'data ->
-        direction:direction ->
-        equal:('data -> 'data -> bool) ->
-        'data t
-      (** [create ~f ~meet ~top ~direction ~equal] is a ['data t] with
-          transfer function [f], meet operator [meet], top value [top]
-          and direction [direction], where dataflow values are compared
-          using [equal] *)
-    end
-
-    val analyze : ('v, 'e) t -> 'data Params.t -> key -> 'data
+    val analyze :
+      ('v, 'e) t -> ('data, 'v) Dataflow.Params.t -> 'data map
     (** [analyze g params] is a function [data : key -> 'data] such
         that, for any bound node key [k], [data k] is the dataflow value
         associated with the node with key [k] *)
