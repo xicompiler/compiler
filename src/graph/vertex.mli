@@ -20,7 +20,7 @@ module type Params2 = sig
   (** [key v] is the unique key of [v] *)
 
   val set : ('v, 'e) t -> value:'v -> unit
-  (** [set_value v ~value] sets the value of vertex [v] to [value] *)
+  (** [set v ~value] sets the value of vertex [v] to [value] *)
 
   val value : ('a, 'b) t -> 'a
   (** [value vertex] is the value stored by [vertex] *)

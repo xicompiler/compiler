@@ -107,6 +107,8 @@ module Make (Key : Key) = struct
       add_outgoing ~edge src;
       if unmarked src then incr_unmarked_pred dst
 
+    let add_unweighted_edge ~src ~dst = add_edge ~src ~dst ~weight:()
+
     (** [filter_incoming ~src ~dst] is the list of all edges [(u, dst)]
         with [u] not equal to [src] *)
     let filter_incoming ~src ~dst =
@@ -143,6 +145,13 @@ module Make (Key : Key) = struct
 
   type ('v, 'e) t = ('v, 'e) vertex Table.t
 
+  let iter_vertices = Hashtbl.iter
+
+  let add_vertex g v =
+    let key = Vertex.key v in
+    Hashtbl.add_exn g ~key ~data:v
+
+  let of_vertices vs = Table.create_with_key_exn ~get_key:Vertex.key vs
   let create ?size () = Table.create ?size ()
 
   module Dataflow = struct

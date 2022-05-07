@@ -49,6 +49,12 @@ val jnz : Ir.label -> 'a t
 val zero : 'a -> 'a t
 (** [zero e] is [Xor (e, e)] *)
 
+val cfg :
+  ([> `Name of Ir.label ] as 'a) t list ->
+  ('a t, unit) Digraph.IntDigraph.t
+(** [cfg instrs] is a control flow graph representing the sequence of
+    instructions [instrs] *)
+
 type 'a instr = 'a t
 (** [instr] is alias for [t] *)
 

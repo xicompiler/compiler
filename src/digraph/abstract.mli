@@ -47,6 +47,11 @@ module type S = sig
     (** [has_marked_pred vertex] is [true] iff [vertex] has an unmarked
         predecessor *)
 
+    val add_unweighted_edge :
+      src:('v, unit) t -> dst:('v, unit) t -> unit
+    (** [add_unweighted_edge ~src ~dst] adds a directed unweighted (unit
+        weight) edge from [src] to [dst] *)
+
     val add_edge : src:('v, 'e) t -> dst:('v, 'e) t -> weight:'e -> unit
     (** [add_edge ~src ~dst ~weight] adds an edge [(src, dst)] with
         weight [weight] *)
@@ -86,6 +91,17 @@ module type S = sig
 
   val create : ?size:int -> unit -> ('v, 'e) t
   (** [create ~size ()] is a fresh graph with size [size] *)
+
+  val iter_vertices : ('v, 'e) t -> f:(('v, 'e) vertex -> unit) -> unit
+  (** [iter_vertices g ~f] applies [f] to each of the vertices of [g] *)
+
+  val add_vertex : ('v, 'e) t -> ('v, 'e) vertex -> unit
+  (** [add_vertex g v] adds vertex [v] to graph [g]. Requires : there
+      exists no vertex bound to the unique key of [v] in [g] *)
+
+  val of_vertices : ('v, 'e) vertex list -> ('v, 'e) t
+  (* [of_vertices vs] is a graph containing each of the vertices in
+     [vs]. Requires: each of the vertices in [vs] have distinct keys. *)
 
   (** [Dataflow] contains operations for performing dataflow analysis *)
   module Dataflow : sig

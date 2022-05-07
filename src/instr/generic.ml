@@ -1,5 +1,6 @@
 open Core
 open Util.Fn
+module CFG = Digraph.IntDigraph
 
 (** [t] is the type of a generic instruction in x86 *)
 type 'a t =
@@ -172,6 +173,58 @@ let def = function
 
 let jnz l = Jcc (ConditionCode.Nz, l)
 let zero e = Xor (e, e)
+
+(** [nodes instrs] is the forest of CFG nodes created from list of
+    instructions [instrs]. Each node in the forest has no incident
+    edges. *)
+let nodes =
+  List.mapi ~f:(fun i instr -> CFG.Vertex.create ~key:i ~value:instr)
+
+(** [labels g] is a function that maps labels to the nodes of [g] in
+    which they appear. *)
+let labels nodes =
+  let map = String.Table.create () in
+  List.iter nodes ~f:(fun v ->
+      match CFG.Vertex.value v with
+      | Label l -> Hashtbl.add_exn map ~key:l ~data:v
+      | _ -> ());
+  fun k -> Hashtbl.find_exn map k
+
+(** [add_fallthrough_edge ~src rest] adds an edge between [src] and the
+    head of [rest], if it exists. Does nothing if [rest] is [\[\]]. *)
+let add_fallthrough_edge ~src = function
+  | dst :: _ -> CFG.Vertex.add_unweighted_edge ~src ~dst
+  | [] -> ()
+
+(** [add_edge ~labels ~src rest] adds the correct edges exiting CFG
+    vertex [src] where vertices containing a given label are looked up
+    using [labels] and [t] are the remaining CFG nodes following [src] *)
+let add_outgoing ~labels ~src t =
+  match CFG.Vertex.value src with
+  | Jmp (`Name l) ->
+      let dst = labels l in
+      CFG.Vertex.add_unweighted_edge ~src ~dst
+  | Jmp _ | Ret -> ()
+  | Jcc (_, l) ->
+      let dst = labels l in
+      CFG.Vertex.add_unweighted_edge ~src ~dst;
+      add_fallthrough_edge ~src t
+  | _ -> add_fallthrough_edge ~src t
+
+(** [add_edges ~labels nodes] constructs edges in the CFG represented by
+    [nodes] where vertices containing a given label are looked up using
+    [labels] *)
+let rec add_edges ~labels = function
+  | [] -> ()
+  | src :: t ->
+      add_outgoing ~src ~labels t;
+      add_edges ~labels t
+
+let cfg instrs =
+  let nodes = nodes instrs in
+  let labels = labels nodes in
+  add_edges ~labels nodes;
+  CFG.of_vertices nodes
 
 type 'a instr = 'a t
 
