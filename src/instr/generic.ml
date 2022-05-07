@@ -196,7 +196,7 @@ let add_fallthrough_edge ~src = function
   | dst :: _ -> CFG.Vertex.add_unweighted_edge ~src ~dst
   | [] -> ()
 
-(** [add_edge ~labels ~src rest] adds the correct edges exiting CFG
+(** [add_outgoing ~labels ~src rest] adds the correct edges exiting CFG
     vertex [src] where vertices containing a given label are looked up
     using [labels] and [t] are the remaining CFG nodes following [src] *)
 let add_outgoing ~labels ~src t =
