@@ -1,6 +1,6 @@
 open Core
 open Util.Fn
-module CFG = Digraph.IntDigraph
+module CFG = Graph.Directed.IntDigraph
 
 (** [t] is the type of a generic instruction in x86 *)
 type 'a t =

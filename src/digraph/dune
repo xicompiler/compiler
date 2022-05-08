@@ -1,7 +1,0 @@
-(library
- (name digraph)
- (libraries core dataflow graph util)
- (preprocess
-  (pps ppx_jane))
- (instrumentation
-  (backend bisect_ppx)))

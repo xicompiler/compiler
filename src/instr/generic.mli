@@ -51,7 +51,7 @@ val zero : 'a -> 'a t
 
 val cfg :
   ([> `Name of Ir.label ] as 'a) t list ->
-  ('a t, unit) Digraph.IntDigraph.t
+  ('a t, unit) Graph.Directed.IntDigraph.t
 (** [cfg instrs] is a control flow graph representing the sequence of
     instructions [instrs] *)
 

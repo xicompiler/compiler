@@ -41,7 +41,7 @@ module Make (Key : Key) = struct
     let incr_unmarked_pred v =
       v.unmarked_pred <- Int.succ v.unmarked_pred
 
-    include Graph.Vertex.Make2 (struct
+    include Vertex.Make2 (struct
       module Key = Key
 
       type ('v, 'e) t = ('v, 'e) vertex

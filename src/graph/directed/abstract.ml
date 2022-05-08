@@ -1,6 +1,6 @@
 open Core
 
-module type Key = Graph.Key
+module type Key = Hashtbl.Key
 
 module type S = sig
   module Key : Key
@@ -10,7 +10,7 @@ module type S = sig
 
   module Vertex : sig
     include
-      Graph.Vertex.S2
+      Vertex.S2
         with type ('v, 'e) t = ('v, 'e) vertex
         with module Key := Key
 

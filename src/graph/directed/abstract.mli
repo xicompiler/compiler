@@ -1,6 +1,6 @@
 open Core
 
-module type Key = Graph.Key
+module type Key = Hashtbl.Key
 (** [Key] is the module type of a key in the graph *)
 
 (** [S] is the abstract type of a graph *)
@@ -19,7 +19,7 @@ module type S = sig
   (** [Vertex] represents a vertex in a directed graph *)
   module Vertex : sig
     include
-      Graph.Vertex.S2
+      Vertex.S2
         with type ('v, 'e) t = ('v, 'e) vertex
         with module Key := Key
 
