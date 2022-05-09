@@ -41,33 +41,38 @@ module Make (Key : Key) = struct
     let incr_unmarked_pred v =
       v.unmarked_pred <- Int.succ v.unmarked_pred
 
-    include Vertex.Make2 (struct
-      module Key = Key
-
+    module Args = struct
       type ('v, 'e) t = ('v, 'e) vertex
 
       let key { key } = key
       let value { value } = value
       let set v ~value = v.value <- value
       let marked { marked } = marked
+    end
 
-      let mark v =
-        if not (marked v) then begin
-          v.marked <- true;
-          let f { dst } = decr_unmarked_pred dst in
-          List.iter ~f v.outgoing
-        end
+    include Args
 
-      let create ~key ~value =
-        {
-          key;
-          value;
-          marked = false;
-          unmarked_pred = 0;
-          incoming = [];
-          outgoing = [];
-        }
+    include Vertex.Creators.Make2 (struct
+      module Key = Key
+      include Args
     end)
+
+    let mark v =
+      if unmarked v then begin
+        v.marked <- true;
+        let f { dst } = decr_unmarked_pred dst in
+        List.iter ~f v.outgoing
+      end
+
+    let create ~key ~value =
+      {
+        key;
+        value;
+        marked = false;
+        unmarked_pred = 0;
+        incoming = [];
+        outgoing = [];
+      }
 
     let incoming { incoming } = incoming
     let pred { incoming } = List.rev_map ~f:Edge.src incoming
@@ -143,16 +148,13 @@ module Make (Key : Key) = struct
       add_edge ~src ~dst ~weight
   end
 
-  type ('v, 'e) t = ('v, 'e) vertex Table.t
+  include Creators.Make2 (struct
+    type ('a, 'b) vertex = ('a, 'b) Vertex.t
 
-  let iter_vertices = Hashtbl.iter
+    let key = Vertex.key
 
-  let add_vertex g v =
-    let key = Vertex.key v in
-    Hashtbl.add_exn g ~key ~data:v
-
-  let of_vertices vs = Table.create_with_key_exn ~get_key:Vertex.key vs
-  let create ?size () = Table.create ?size ()
+    module Table = Table
+  end)
 
   module Dataflow = struct
     type 'data values = {

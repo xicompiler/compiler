@@ -85,23 +85,7 @@ module type S = sig
     (** [weight edge] is the weight carried by [edge] *)
   end
 
-  type ('v, 'e) t
-  (** [('v, 'e) t] is the type of a graph with vertices carrying values
-      of type ['v] and edges carrying values of type ['e] *)
-
-  val create : ?size:int -> unit -> ('v, 'e) t
-  (** [create ~size ()] is a fresh graph with size [size] *)
-
-  val iter_vertices : ('v, 'e) t -> f:(('v, 'e) vertex -> unit) -> unit
-  (** [iter_vertices g ~f] applies [f] to each of the vertices of [g] *)
-
-  val add_vertex : ('v, 'e) t -> ('v, 'e) vertex -> unit
-  (** [add_vertex g v] adds vertex [v] to graph [g]. Requires : there
-      exists no vertex bound to the unique key of [v] in [g] *)
-
-  val of_vertices : ('v, 'e) vertex list -> ('v, 'e) t
-  (* [of_vertices vs] is a graph containing each of the vertices in
-     [vs]. Requires: each of the vertices in [vs] have distinct keys. *)
+  include Creators.S2 with type ('a, 'b) vertex := ('a, 'b) Vertex.t
 
   (** [Dataflow] contains operations for performing dataflow analysis *)
   module Dataflow : sig

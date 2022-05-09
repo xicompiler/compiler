@@ -41,12 +41,7 @@ module type S = sig
     val weight : ('v, 'e) t -> 'e
   end
 
-  type ('v, 'e) t
-
-  val create : ?size:int -> unit -> ('v, 'e) t
-  val iter_vertices : ('v, 'e) t -> f:(('v, 'e) vertex -> unit) -> unit
-  val add_vertex : ('v, 'e) t -> ('v, 'e) vertex -> unit
-  val of_vertices : ('v, 'e) vertex list -> ('v, 'e) t
+  include Creators.S2 with type ('a, 'b) vertex := ('a, 'b) Vertex.t
 
   module Dataflow : sig
     type 'data values = {

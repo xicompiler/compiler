@@ -3,11 +3,6 @@ open Core
 module type Key = Hashtbl.Key
 (** [Key] is the unique key of a vertex in a graph *)
 
-(** [Vertex] represents a generic vertex in a graph *)
-module Vertex : module type of struct
-  include Vertex
-end
-
 (** [S] is the type of an unwweighted, undirected graph *)
 module type S = sig
   module Key : Key
@@ -36,11 +31,9 @@ module type S = sig
         [(u, v)] *)
   end
 
-  type 'a t
-  (** An ['a t] represents an undirected, unweighted graph whose
-      vertices wrap values of type ['a] *)
-
-  val create : ?size:int -> unit -> 'a t
-  (** [create ?size ()] is a fresh graph with initial capacity for
-      [size] vertices *)
+  include Creators.S with type 'a vertex := 'a Vertex.t
 end
+
+(** [Make (Key)] is an [S], an undirected, unweighted graph, where
+    vertices are indexed with [Key.t] *)
+module Make (Key : Key) : S with module Key = Key
