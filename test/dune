@@ -1,5 +1,5 @@
 (executable
  (name main)
- (libraries ounit2 entry frontend ir core position util instr)
+ (libraries ounit2 graph entry frontend ir core position util instr)
  (instrumentation
   (backend bisect_ppx)))

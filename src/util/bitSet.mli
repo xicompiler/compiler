@@ -36,6 +36,10 @@ val remove : int -> t -> t
 (** [remove i s] is [s] with element [i] removed. Raises:
     [Invalid_argument] if [i < 0] or [i > Int.num_bits]. *)
 
+val min : t -> int option
+(** [min s] is [Some min] where [min] is the minimum element present in
+    [s] or [None] if [s] is empty *)
+
 val pop_min : t -> (int * t) option
 (** [pop_min s] is [Some (i, s')] where [i] is [i] the minimum element
     present in [s] and [Some s'] is [remove s i], or [None] if [s] is

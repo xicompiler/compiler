@@ -1,4 +1,5 @@
 open Core
+open Option.Monad_infix
 
 type t = int
 
@@ -42,6 +43,8 @@ let pop_min s =
     let singleton = s land lnot (pred s) in
     (* Taking the log2 of this number gets its index in the set *)
     Some (log2 singleton, diff s singleton)
+
+let min s = pop_min s >>| fst
 
 let elements s =
   let rec aux acc s =

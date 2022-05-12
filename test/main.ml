@@ -10,9 +10,9 @@ let suite =
          ReorderTests.suite;
          IrConstFoldTests.suite;
          IrCommuteTests.suite;
-         IrRunTests.suite;
-         AssemblyTests.suite;
+         (* IrRunTests.suite; AssemblyTests.suite; *)
          BitSetTests.suite;
+         ColoringTests.suite;
        ]
 
 let _ = run_test_tt_main suite

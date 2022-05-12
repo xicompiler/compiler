@@ -1,6 +1,6 @@
 open Core
 
-module type Key = Hashtbl.Key
+module type Key = Map.Key
 (** [Key] is the unique key of a vertex in a graph *)
 
 (** [S] is the type of an unwweighted, undirected graph *)
@@ -8,30 +8,35 @@ module type S = sig
   module Key : Key
   (** [Key] represents the unique key of a vertex *)
 
-  (** [Vertex] represents a vertex in an undirected graph *)
-  module Vertex : sig
-    include Vertex.S with module Key := Key
+  type t
+  (** [t] is the type of an undirected graph with unweighted edges *)
 
-    val foldi_adjacent :
-      'a t -> init:'acc -> f:(Key.t -> 'acc -> 'a t -> 'acc) -> 'acc
-    (** Same as [fold_adjacent], but [f] takes in the unique key of each
-        adjacent vertex *)
+  val empty : t
+  (** [empty] is a graph with no vertices *)
 
-    val fold_adjacent :
-      'a t -> init:'acc -> f:('acc -> 'a t -> 'acc) -> 'acc
-    (** [fold_adjacent v ~init ~f] folds [f] over all the vertices
-        adjacent to [v], starting with initial value [init] *)
+  val add_vertex : t -> Key.t -> t
+  (** [add_vertex g k] is [g] with an additional vertex with key [k]
+      with no incident edges, or just [g] if a vertex with key [k]
+      already exists in [g] *)
 
-    val iter_adjacent : 'a t -> f:('a t -> unit) -> unit
-    (** [iter_adjacent v ~f] applies [f] to each of the vertices
-        adjacent to [v] *)
+  val add_edge : t -> Key.t -> Key.t -> t
+  (** [add_edge g u v] is [g] with the undirected edge [{u, v}]. Raises
+      if either [u] or [v] are unbound in [g] *)
 
-    val add_edge : 'a t -> 'a t -> unit
-    (** [add_edge u v] constructs an unweighted, undirected edge
-        [(u, v)] *)
-  end
+  val kempe :
+    ?precolor:(Key.t -> int option) ->
+    t ->
+    max:int ->
+    (Key.t -> int, Key.t list) result
+  (** [kempe ?precolor g ~max] is a function [Ok f] such that [f k] is
+      is the color assigned the vertex with unique key [k] given [max]
+      total colors, or [Error spills] where each of the vertices in
+      [spills] could not be colored. *)
 
-  include Creators.S with type 'a vertex := 'a Vertex.t
+  val of_edges : (Key.t * Key.t) list -> t
+  (** [of_edges \[\[(u1, v1); ...; (un, vn)\]\]] is a graph with all of
+      the edges [u1, v1), ..., (un, vn)]. Unbound vertices are added as
+      needed. *)
 end
 
 (** [Make (Key)] is an [S], an undirected, unweighted graph, where
