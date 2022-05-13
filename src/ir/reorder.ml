@@ -312,11 +312,11 @@ let remove_false_label = function
   | `CJump (e, t, _) -> `CJump (e, t)
   | #nocjump as s -> s
 
-(** [concatenated_traces cfg] is a sequence of CFG vertices
-    corresponding to traces of [cfg], with branches between basic blocks
-    broken and unused labels present *)
-let concatenated_traces cfg =
-  cfg |> List.hd_exn |> create_deque |> rev_traces
+(** [concatenated_traces nodes] is a sequence of CFG vertices
+    corresponding to traces of [nodes], with branches between basic
+    blocks broken and unused labels present *)
+let concatenated_traces nodes =
+  nodes |> List.hd_exn |> create_deque |> rev_traces
   |> Util.List.rev_concat
 
 (** [print_cfg ~label cfg] prints [label], along with the graphviz code
@@ -327,8 +327,8 @@ let print_cfg ~label cfg =
 
 let reorder_stmts ~gensym stmts =
   let start = `Label (gensym ()) in
-  let cfg = create_cfg (start :: stmts) in
-  let traces = concatenated_traces cfg in
+  let nodes = create_cfg (start :: stmts) in
+  let traces = concatenated_traces nodes in
   fix_jumps ~gensym traces;
   remove_unused_labels traces;
   traces

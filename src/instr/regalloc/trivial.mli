@@ -1,2 +1,6 @@
-val reg_alloc : Abstract.Asm.t -> Concrete.Asm.t
-(** [reg_alloc asm] is the concretized version of [asm] *)
+val allocate_fn :
+  offset:int Reg.Abstract.Table.t ->
+  Operand.Abstract.t Generic.t list ->
+  Operand.t Generic.t list
+(** [allocate_fn ~offset instrs] is [instrs] with all of its variables
+    concretized *)

@@ -1,7 +1,7 @@
 (library
  (name instr)
- (libraries core graph ir util)
+ (libraries core dataflow graph ir util)
  (preprocess
-  (pps ppx_jane)))
+  (pps ppx_jane -allow-unannotated-ignores)))
 
 (include_subdirs unqualified)

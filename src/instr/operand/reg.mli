@@ -68,7 +68,7 @@ module Abstract : sig
     [ Bit64.t
     | Ir.Temp.Virtual.t
     ]
-  [@@deriving sexp, compare, equal, hash]
+  [@@deriving equal, sexp, compare, hash]
   (** [t] is the type of an abstract register *)
 
   include Util.Stringable.S with type t := t

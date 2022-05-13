@@ -1,7 +1,5 @@
 open Core
 open Generic
-open Asm.Directive
-open Util.Fn
 
 (** [Shuttle] represents the shuttling registers and convenient
     functions for each abstract instruction translation *)
@@ -194,10 +192,10 @@ let load ~offset ~src = function
       Mov ((dst :> Operand.t), mem)
   | _ -> failwith "cannot load into abstract dst"
 
-(** [rev_reg_alloc_load ~offset ~shuttle ~init ?def instr] loads the
+(** [rev_allocate_load ~offset ~shuttle ~init ?def instr] loads the
     values of all temporaries used by [instr] into the appropriate
     shuttling registers *)
-let rec rev_reg_alloc_load ~offset ~shuttle ~init ?def instr :
+let rec rev_allocate_load ~offset ~shuttle ~init ?def instr :
     Concrete.t list * Shuttle.t =
   let abstract = spills instr in
   let init =
@@ -232,38 +230,26 @@ let store ~offset ~dst = function
       Mov (mem, (src :> Operand.t))
   | _ -> failwith "cannot store from abstract src"
 
-(** [rev_reg_alloc_store ~offset ~shuttle ~init instr operand] stores
-    the value of the shuttling register of [operand] into the memory
-    address of [operand], if [operand] is a spill *)
-let rev_reg_alloc_store ~offset ~shuttle ~init = function
+(** [rev_allocate_store ~offset ~shuttle ~init instr operand] stores the
+    value of the shuttling register of [operand] into the memory address
+    of [operand], if [operand] is a spill *)
+let rev_allocate_store ~offset ~shuttle ~init = function
   | Some (#Spill.t as dst) ->
       let src = concretize_reg ~shuttle dst in
       store ~offset ~dst src :: init
   | Some #Operand.Abstract.t | None -> init
 
-let rev_reg_alloc_instr ~offset ~init instr =
-  let def = Generic.def instr in
+let rev_allocate_instr ~offset ~init instr =
+  let def = Reg.Abstract.Set.choose (Abstract.def instr) in
   let shuttle = Shuttle.empty in
   let loaded, shuttle =
-    rev_reg_alloc_load ~offset ~shuttle ~init ?def instr
+    rev_allocate_load ~offset ~shuttle ~init ?def instr
   in
   let concretized = rev_concretize_instr ~shuttle instr :: loaded in
-  rev_reg_alloc_store ~offset ~shuttle ~init:concretized def
+  rev_allocate_store ~offset ~shuttle ~init:concretized def
 
-let rev_reg_alloc_fn ~(offset : int Reg.Abstract.Table.t) =
+let allocate_fn ~(offset : int Reg.Abstract.Table.t) instrs =
   let f acc reg = store ~offset ~dst:reg reg :: acc in
   let init = List.fold ~f ~init:[] Shuttle.shuttle in
-  let f acc instr = rev_reg_alloc_instr ~offset ~init:acc instr in
-  List.fold ~f ~init
-
-let reg_alloc_fn fn =
-  let offset = Reg.Abstract.Table.create () in
-  let body = List.rev (rev_reg_alloc_fn ~offset fn) in
-  let temps = Int64.of_int (Hashtbl.length offset * 8) in
-  Enter (temps, 0L) :: body
-
-let reg_alloc_directive = function
-  | (Data _ | Globl _ | IntelSyntax _) as dir -> dir
-  | Text fns -> Text (List.map ~f:(Asm.Fn.map_body ~f:reg_alloc_fn) fns)
-
-let reg_alloc = List.map ~f:reg_alloc_directive
+  let f acc instr = rev_allocate_instr ~offset ~init:acc instr in
+  List.rev (List.fold ~f ~init instrs)

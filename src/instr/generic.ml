@@ -143,34 +143,6 @@ let string_of_data l =
   >> String.concat ~sep:", "
   >> Printf.sprintf data_fmt l
 
-(* [def_of_mul m] is [Some op] for the destination operand in an [imul
-   m] instruction *)
-let def_of_mul = function
-  | `M op | `RM (op, _) | `RMI (op, _, _) -> Some op
-
-let def = function
-  | Label _ | Enter _ | Jmp _ | Jcc _ | Cmp _ | Test _ | Call _ | Leave
-  | Ret | Push _ ->
-      None
-  | Setcc (_, op)
-  | IDiv op
-  | Shl (op, _)
-  | Shr (op, _)
-  | Sar (op, _)
-  | Add (op, _)
-  | Sub (op, _)
-  | Xor (op, _)
-  | And (op, _)
-  | Or (op, _)
-  | Lea (op, _)
-  | Mov (op, _)
-  | Movzx (op, _)
-  | Pop op
-  | Inc op
-  | Dec op ->
-      Some op
-  | IMul m -> def_of_mul m
-
 let jnz l = Jcc (ConditionCode.Nz, l)
 let zero e = Xor (e, e)
 
@@ -220,11 +192,13 @@ let rec add_edges ~labels = function
       add_outgoing ~src ~labels t;
       add_edges ~labels t
 
-let cfg instrs =
+let create_cfg instrs =
   let nodes = nodes instrs in
   let labels = labels nodes in
   add_edges ~labels nodes;
-  CFG.of_vertices nodes
+  nodes
+
+let cfg = CFG.of_vertices
 
 type 'a instr = 'a t
 

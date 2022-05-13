@@ -39,10 +39,6 @@ val is_setcc : 'a t -> bool
 val is_call : 'a t -> bool
 (** [is_call instr] is [true] if [instr] is a [call] instruction *)
 
-val def : 'a t -> 'a option
-(** [def instr] is [Some def] if the instruction [instr] updates an
-    operand, or [None] *)
-
 val jnz : Ir.label -> 'a t
 (** [jnz l] is [Jcc (Nz, l)] *)
 
@@ -54,11 +50,16 @@ module CFG : module type of struct
   include Graph.Directed.IntDigraph
 end
 
-val cfg :
+val create_cfg :
   ([> `Name of Ir.label ] as 'a) t list ->
+  ('a t, unit) Graph.Directed.IntDigraph.Vertex.t list
+(** [create_cfg instrs] is the nodes of a control flow graph
+    representing the sequence of instructions [instrs] *)
+
+val cfg :
+  ('a t, unit) Graph.Directed.IntDigraph.Vertex.t list ->
   ('a t, unit) Graph.Directed.IntDigraph.t
-(** [cfg instrs] is a control flow graph representing the sequence of
-    instructions [instrs] *)
+(** [cfg nodes] is the control flow graph of [nodes] *)
 
 type 'a instr = 'a t
 (** [instr] is alias for [t] *)

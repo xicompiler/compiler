@@ -19,8 +19,12 @@ val fold2_result :
     [Error unequal_lengths] is returned. *)
 
 val pop_exn : 'a t -> 'a * 'a t
-(** [pop_exn lst] is [h :: t] if [lst] is [h :: t]. Raises: [Failure] if
+(** [pop_exn lst] is [(h, t)] if [lst] is [h :: t]. Raises: [Failure] if
     [lst] is nil. *)
+
+val pop_opt : 'a t -> ('a * 'a t) option
+(** [pop_opt lst] is [Some (h, t)] if [lst] is [h :: t], or [None]
+    otherwise. *)
 
 val rev_concat : 'a t t -> 'a t
 (** Same as [Core.List.concat], but in reverse order *)
@@ -30,3 +34,7 @@ val rev_filter_opt : 'a option t -> 'a t
 
 val length : 'a t -> int64
 (** [length lst] is [Int64.of_int (Core.List.length lst)] *)
+
+val max_elt_exn : compare:('a -> 'a -> int) -> 'a t -> 'a
+(** [max_elt_exn ~compare lst] is the value of [max_elt ~compare lst],
+    or raises an exception if [lst] is nil. *)

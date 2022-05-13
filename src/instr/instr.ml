@@ -20,7 +20,7 @@ module Output = struct
   (** [print_source ~out ~optimize source] prints [source] to [out] as
       concrete assembly *)
   let print_source =
-    print_instrs ~f:(Trivial.reg_alloc >> Concrete.Asm.to_string)
+    print_instrs ~f:(RegAlloc.allocate >> Concrete.Asm.to_string)
 
   let file_to_file ?cache ~src ~out ~deps ~optimize () =
     let ok = print_source ~out ~optimize in

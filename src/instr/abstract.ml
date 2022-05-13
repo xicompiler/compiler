@@ -526,3 +526,35 @@ module Asm = struct
 
   let to_string = Generic.Asm.to_string ~f:Operand.Abstract.to_string
 end
+
+(* [def_of_mul m] is [Some op] for the destination operand in an [imul
+   m] instruction *)
+let def_of_mul = function
+  | `M (#Reg.Abstract.t as op)
+  | `RM ((#Reg.Abstract.t as op), _)
+  | `RMI ((#Reg.Abstract.t as op), _, _) ->
+      Reg.Abstract.Set.add Reg.Abstract.Set.empty op
+  | _ -> Reg.Abstract.Set.empty
+
+let def : t -> Reg.Abstract.Set.t = function
+  | Setcc (_, (#Reg.Abstract.t as op))
+  | IDiv (#Reg.Abstract.t as op)
+  | Shl ((#Reg.Abstract.t as op), _)
+  | Shr ((#Reg.Abstract.t as op), _)
+  | Sar ((#Reg.Abstract.t as op), _)
+  | Add ((#Reg.Abstract.t as op), _)
+  | Sub ((#Reg.Abstract.t as op), _)
+  | Xor ((#Reg.Abstract.t as op), _)
+  | And ((#Reg.Abstract.t as op), _)
+  | Or ((#Reg.Abstract.t as op), _)
+  | Lea ((#Reg.Abstract.t as op), _)
+  | Mov ((#Reg.Abstract.t as op), _)
+  | Movzx ((#Reg.Abstract.t as op), _)
+  | Pop (#Reg.Abstract.t as op)
+  | Inc (#Reg.Abstract.t as op)
+  | Dec (#Reg.Abstract.t as op) ->
+      Reg.Abstract.Set.add Reg.Abstract.Set.empty op
+  | IMul m -> def_of_mul m
+  | _ -> Reg.Abstract.Set.empty
+
+let use = function _ -> Reg.Abstract.Set.empty

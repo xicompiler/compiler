@@ -14,3 +14,9 @@ end
 val munch : gensym:(unit -> string) -> Ir.Reorder.toplevel list -> Asm.t
 (** [munch ~gensym top] is the global data and abstract assembly
     instructions having the same effect as [top] *)
+
+val def : t -> Reg.Abstract.Set.t
+(** [def instr] is the set of all operands updated by [instr] *)
+
+val use : t -> Reg.Abstract.Set.t
+(** [use instr] is the set of all operands used by [instr] *)
