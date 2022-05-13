@@ -15,6 +15,8 @@ module Make (Key : Key) = struct
     mutable value : 'v;
     mutable marked : bool;
     mutable unmarked_pred : int;
+    mutable prev : ('v, 'e) vertex option;
+    mutable next : ('v, 'e) vertex option;
     mutable incoming : ('v, 'e) edge list;
     mutable outgoing : ('v, 'e) edge list;
   }
@@ -143,22 +145,57 @@ module Make (Key : Key) = struct
         value;
         marked = false;
         unmarked_pred = 0;
+        prev = None;
+        next = None;
         incoming = [];
         outgoing = [];
       }
+
+    (** insert node [u] after [prev] *)
+    let insert_after u ~prev =
+      (* the node to be inserted *)
+      let ins = Some u in
+      let next = prev.next in
+      Option.iter next ~f:(fun next -> next.prev <- ins);
+      u.next <- next;
+      u.prev <- Some prev;
+      prev.next <- ins
+
+    let insert_before u ~next =
+      let ins = Some u in
+      let prev = next.prev in
+      next.prev <- ins;
+      u.next <- Some next;
+      u.prev <- prev;
+      Option.iter prev ~f:(fun prev -> prev.next <- ins)
+
+    (** [link vs] links each successive pair of vertices in [vs] *)
+    let rec link = function
+      | [ _ ] | [] -> ()
+      | u :: (v :: _ as t) ->
+          u.next <- Some v;
+          v.prev <- Some u;
+          link t
   end
 
   type ('v, 'e) t = {
+    mutable head : ('v, 'e) vertex option;
     vertices : ('v, 'e) vertex Table.t;
     max_key : Key.t option;
   }
   [@@deriving fields]
 
   let create ?size () =
-    { vertices = Table.create ?size (); max_key = None }
+    { head = None; vertices = Table.create ?size (); max_key = None }
+
+  let add_vertex g v =
+    let key = Vertex.key v in
+    Hashtbl.add_exn g.vertices ~key ~data:v
 
   let of_vertices vs =
+    Vertex.link vs;
     {
+      head = List.hd vs;
       vertices = Table.create_with_key_exn ~get_key:Vertex.key vs;
       max_key = List.max_elt vs ~compare:Vertex.compare >>| Vertex.key;
     }
@@ -166,6 +203,19 @@ module Make (Key : Key) = struct
   let foldi_vertices g ~init ~f =
     let f ~key ~data acc = f key acc data in
     Hashtbl.fold g.vertices ~init ~f
+
+  let insert_after g v ~prev =
+    add_vertex g v;
+    Vertex.insert_after v ~prev
+
+  let insert_before g v ~next =
+    add_vertex g v;
+    Vertex.insert_before v ~next;
+    (* The head must be present because we're inserting before an
+       existing node *)
+    let head = Option.value_exn g.head in
+    (* If we're inserting before the head, this node is the new head *)
+    if Vertex.equal head next then g.head <- Some v
 
   open Dataflow.Values
 

@@ -131,6 +131,14 @@ module type S = sig
   (** [max_key g] is greater than or equal to the key of every vertex in
       [g] *)
 
+  val insert_after :
+    ('v, 'e) t -> ('v, 'e) vertex -> prev:('v, 'e) vertex -> unit
+  (** [insert_after g v ~prev] inserts [v] after [prev] *)
+
+  val insert_before :
+    ('v, 'e) t -> ('v, 'e) vertex -> next:('v, 'e) vertex -> unit
+  (** [insert_before g v ~prev] inserts [v] after [prev] *)
+
   val foldi_vertices :
     ('v, 'e) t ->
     init:'acc ->
