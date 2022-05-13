@@ -1,24 +1,35 @@
 open Core
 
 module Bit64 : sig
+  (** [Temp] represents the 64-bit registers that can be used for
+      temporaries *)
+  module Temp : sig
+    type t =
+      [ `rax
+      | `rbx
+      | `rcx
+      | `rdx
+      | `rsi
+      | `rdi
+      | `r8
+      | `r9
+      | `r10
+      | `r11
+      | `r12
+      | `r13
+      | `r14
+      | `r15
+      ]
+    (** [t] is the type of a register than can be used for a temporary *)
+
+    include Intable with type t := t
+  end
+
   type t =
-    [ `rax
-    | `rbx
-    | `rcx
-    | `rdx
-    | `rsi
-    | `rdi
+    [ Temp.t
     | `rsp
     | `rbp
     | `rip
-    | `r8
-    | `r9
-    | `r10
-    | `r11
-    | `r12
-    | `r13
-    | `r14
-    | `r15
     ]
   (** [t] is the type of a 64-bit register in x68 *)
 end

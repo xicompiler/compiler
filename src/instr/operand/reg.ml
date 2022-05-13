@@ -2,26 +2,73 @@ open Core
 open Util.Fn
 
 module Bit64 = struct
+  module Temp = struct
+    module T = struct
+      type t =
+        [ `rax
+        | `rbx
+        | `rcx
+        | `rdx
+        | `rsi
+        | `rdi
+        | `r8
+        | `r9
+        | `r10
+        | `r11
+        | `r12
+        | `r13
+        | `r14
+        | `r15
+        ]
+      [@@deriving variants, equal, sexp, compare, hash]
+    end
+
+    include T
+    module Table = Hashtbl.Make (T)
+
+    let reg_array : t array =
+      [|
+        `rax;
+        `rcx;
+        `rdx;
+        `rsi;
+        `rdi;
+        `r8;
+        `r9;
+        `r10;
+        `r11;
+        `rbx;
+        `r12;
+        `r13;
+        `r14;
+        `r15;
+      |]
+
+    let of_int_exn = Array.get reg_array
+
+    let to_int_exn =
+      let size = Array.length reg_array in
+      let tbl = Table.create ~size () in
+      Array.iteri reg_array ~f:(fun i reg ->
+          Hashtbl.add_exn tbl ~key:reg ~data:i);
+      Hashtbl.find_exn tbl
+
+    let to_string = Variants.to_name
+  end
+
   type t =
-    [ `rax
-    | `rbx
-    | `rcx
-    | `rdx
-    | `rsi
-    | `rdi
+    [ Temp.t
     | `rsp
     | `rbp
     | `rip
-    | `r8
-    | `r9
-    | `r10
-    | `r11
-    | `r12
-    | `r13
-    | `r14
-    | `r15
     ]
-  [@@deriving variants, equal, sexp, compare, hash]
+  [@@deriving equal, sexp, compare, hash]
+
+  let to_string : [< t ] -> string = function
+    | #Temp.t as t -> Temp.to_string t
+    | `rsp -> "rsp"
+    | `rbp -> "rbp"
+    | `rip -> "rip"
 
   let to_8_bit = function
     | `rax -> `al
@@ -71,7 +118,7 @@ let to_8_bit = function
   | #Bit8.t as r -> r
 
 let to_string : [< t ] -> string = function
-  | #Bit64.t as r -> Bit64.Variants.to_name r
+  | #Bit64.t as r -> Bit64.to_string r
   | #Bit8.t as r -> Bit8.Variants.to_name r
 
 module Abstract = struct
