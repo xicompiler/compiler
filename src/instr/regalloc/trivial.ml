@@ -44,13 +44,13 @@ module Shuttle = struct
     | Some (#Reg.t as reg) -> reg
     | None -> begin
         match abstract with
-        | #Reg.t as reg -> reg
+        | #Reg.Bit64.t as reg -> reg
         | _ -> failwith "no value returned in shuttle map"
       end
 
   let find_bit8_exn { map } abstract =
     match Map.find map abstract with
-    | Some (#Reg.t as reg) -> Reg.to_8_bit reg
+    | Some reg -> Reg.to_8_bit reg
     | _ -> failwith "not a bit8 reg"
 
   let empty = { regs = reg_bit64; map = Reg.Abstract.Map.empty }
@@ -148,7 +148,6 @@ let concretize_bit8 ~shuttle ~f = function
   | #Spill.t as op ->
       let reg8 = Shuttle.find_bit8_exn shuttle op in
       f reg8
-  | #Reg.Bit8.t as reg8 -> f reg8
   | #Operand.Abstract.t ->
       failwith "unexpected operand for 8bit instruction"
 
@@ -190,7 +189,7 @@ let address_of ~offset t =
   Mem.create ~offset:off `rbp
 
 let load ~offset ~src = function
-  | #Reg.t as dst ->
+  | #Reg.Bit64.t as dst ->
       let mem = `Mem (address_of ~offset src) in
       Mov ((dst :> Operand.t), mem)
   | _ -> failwith "cannot load into abstract dst"
@@ -228,7 +227,7 @@ let rec rev_reg_alloc_load ~offset ~shuttle ~init ?def instr :
   List.fold ~init:(init, shuttle) ~f abstract
 
 let store ~offset ~dst = function
-  | #Reg.t as src ->
+  | #Reg.Bit64.t as src ->
       let mem = `Mem (address_of ~offset dst) in
       Mov (mem, (src :> Operand.t))
   | _ -> failwith "cannot store from abstract src"
@@ -237,9 +236,6 @@ let store ~offset ~dst = function
     the value of the shuttling register of [operand] into the memory
     address of [operand], if [operand] is a spill *)
 let rev_reg_alloc_store ~offset ~shuttle ~init = function
-  | Some (#Reg.Bit8.t as dst) ->
-      let src = Shuttle.find_bit8_exn shuttle dst in
-      store ~offset ~dst src :: init
   | Some (#Spill.t as dst) ->
       let src = concretize_reg ~shuttle dst in
       store ~offset ~dst src :: init
@@ -252,10 +248,9 @@ let rev_reg_alloc_instr ~offset ~init instr =
     rev_reg_alloc_load ~offset ~shuttle ~init ?def instr
   in
   let concretized = rev_concretize_instr ~shuttle instr :: loaded in
-  let t = rev_reg_alloc_store ~offset ~shuttle ~init:concretized def in
-  t
+  rev_reg_alloc_store ~offset ~shuttle ~init:concretized def
 
-let rev_reg_alloc_fn ~offset =
+let rev_reg_alloc_fn ~(offset : int Reg.Abstract.Table.t) =
   let f acc reg = store ~offset ~dst:reg reg :: acc in
   let init = List.fold ~f ~init:[] Shuttle.shuttle in
   let f acc instr = rev_reg_alloc_instr ~offset ~init:acc instr in

@@ -49,6 +49,11 @@ val jnz : Ir.label -> 'a t
 val zero : 'a -> 'a t
 (** [zero e] is [Xor (e, e)] *)
 
+(** [CFG] represents a control flow graph at the assembly level *)
+module CFG : module type of struct
+  include Graph.Directed.IntDigraph
+end
+
 val cfg :
   ([> `Name of Ir.label ] as 'a) t list ->
   ('a t, unit) Graph.Directed.IntDigraph.t

@@ -18,10 +18,13 @@ module type S = sig
 
   (** [Vertex] represents a vertex in a directed graph *)
   module Vertex : sig
-    include
-      Vertex.S2
-        with type ('v, 'e) t = ('v, 'e) vertex
-        with module Key := Key
+    type ('v, 'e) t = ('v, 'e) vertex
+    (** A [('v, 'e) t] is a vertex carrying a value of type ['v] and
+        adjacent to edges carrying type ['e] *)
+
+    val create : key:Key.t -> value:'v -> ('v, 'e) t
+    (** [create ~key ~value] is a fresh unmarked vertex with key [key],
+        value [value] and no incident edges *)
 
     val incoming : ('v, 'e) t -> ('v, 'e) edge list
     (** [incoming vertex] is the list of edges entering [vertex] *)
@@ -42,6 +45,31 @@ module type S = sig
     val peek_succ : ('v, 'e) t -> ('v, 'e) t option
     (** [peek_succ u] is [Some v] if there exists an edge [(u, v)], or
         [None] if [u] has no successors *)
+
+    val key : ('v, 'e) t -> Key.t
+    (** [key v] is the unique key of [v] *)
+
+    val value : ('v, 'e) t -> 'v
+    (** [value vertex] is the value stored by [vertex] *)
+
+    val set : ('v, 'e) t -> value:'v -> unit
+    (** [set_value v ~value] sets the value of vertex [v] to [value] *)
+
+    val update : ('v, 'e) t -> f:('v -> 'v) -> unit
+    (** [update v ~f] applies [f] to the value of [g] and writes the
+        computed result back to [v] *)
+
+    val fold : ('v, 'e) t -> f:('v -> 'a) -> 'a
+    (** [fold vertex ~f] is [f (value vertex)] *)
+
+    val marked : ('v, 'e) t -> bool
+    (** [marked vertex] is [true] iff [vertex] has been marked *)
+
+    val unmarked : ('v, 'e) t -> bool
+    (** [unmarked vertex] is [true] iff [vertex] is unmarked *)
+
+    val mark : ('v, 'e) t -> unit
+    (** [mark vertex] marks [vertex] *)
 
     val has_unmarked_pred : ('v, 'e) t -> bool
     (** [has_marked_pred vertex] is [true] iff [vertex] has an unmarked
@@ -67,6 +95,9 @@ module type S = sig
       ('v, 'e) t -> f:(('v, 'e) edge -> bool) -> bool
     (** [exists_incoming v ~f] is [true] iff there exists an edge [e]
         entering [v] for which [f e] is [true] *)
+
+    val equal : ('v, 'e) t -> ('v, 'e) t -> bool
+    (** [equal v1 v2] is [true] iff their keys are equivalent *)
   end
 
   (** [Edge] represents an edge in a directed graph *)
@@ -85,27 +116,37 @@ module type S = sig
     (** [weight edge] is the weight carried by [edge] *)
   end
 
-  include Creators.S2 with type ('a, 'b) vertex := ('a, 'b) Vertex.t
+  type ('v, 'e) t
+  (** [('v, 'e) t] is the type of a graph with vertices carrying values
+      of type ['v] and edges carrying values of type ['e] *)
 
-  (** [Dataflow] contains operations for performing dataflow analysis *)
-  module Dataflow : sig
-    type 'data values = {
-      input : 'data;
-      output : 'data;
-    }
-    (** ['data values] represent the dataflow values computed at each
-        node, i.e. the dataflow values that are the input and output to
-        the transfer function *)
+  val create : ?size:int -> unit -> ('v, 'e) t
+  (** [create ~size ()] is a fresh graph with size [size] *)
 
-    type 'data map = Key.t -> 'data values
-    (** A ['data map] maps a vertex's unique key to its data *)
+  val of_vertices : ('v, 'e) vertex list -> ('v, 'e) t
+  (* [of_vertices vs] is a graph containing each of the vertices in
+     [vs]. Requires: each of the vertices in [vs] have distinct keys. *)
 
-    val analyze :
-      ('v, 'e) t -> ('data, 'v) Dataflow.Params.t -> 'data map
-    (** [analyze g params] is a function [data : key -> 'data] such
-        that, for any bound node key [k], [data k] is the dataflow value
-        associated with the node with key [k] *)
-  end
+  val max_key : ('v, 'e) t -> Key.t option
+  (** [max_key g] is greater than or equal to the key of every vertex in
+      [g] *)
+
+  val foldi_vertices :
+    ('v, 'e) t ->
+    init:'acc ->
+    f:(Key.t -> 'acc -> ('v, 'e) vertex -> 'acc) ->
+    'acc
+  (** [foldi_vertices g ~init ~f] folds [f] over the vertices in [g] and
+      their keys from initial vlaue [init] *)
+
+  val analyze :
+    ('v, 'e) t ->
+    ('data, 'v) Dataflow.Params.t ->
+    Key.t ->
+    'data Dataflow.Values.t
+  (** [analyze g params] is a function [data : key -> 'data] such that,
+      for any bound node key [k], [data k] is the dataflow value
+      associated with the node with key [k] *)
 
   val graphviz :
     string_of_vertex:(('v, 'e) vertex -> string) ->

@@ -5,10 +5,13 @@ open Util.Fn
 
 module Make (Key : Key) = struct
   module Key = Key
+
+  type key = Key.t
+
   module Table = Hashtbl.Make (Key)
 
   type ('v, 'e) vertex = {
-    key : Key.t;
+    key : key;
     mutable value : 'v;
     mutable marked : bool;
     mutable unmarked_pred : int;
@@ -31,48 +34,7 @@ module Make (Key : Key) = struct
   end
 
   module Vertex = struct
-    (** [decr_unmarked_pred v] decrements the number of unmarked
-        predecessors of [v]*)
-    let decr_unmarked_pred v =
-      v.unmarked_pred <- Int.pred v.unmarked_pred
-
-    (** [incr_unmarked_pred v] increments the number of unmarked
-        predecessors of [v] *)
-    let incr_unmarked_pred v =
-      v.unmarked_pred <- Int.succ v.unmarked_pred
-
-    module Args = struct
-      type ('v, 'e) t = ('v, 'e) vertex
-
-      let key { key } = key
-      let value { value } = value
-      let set v ~value = v.value <- value
-      let marked { marked } = marked
-    end
-
-    include Args
-
-    include Vertex.Creators.Make2 (struct
-      module Key = Key
-      include Args
-    end)
-
-    let mark v =
-      if unmarked v then begin
-        v.marked <- true;
-        let f { dst } = decr_unmarked_pred dst in
-        List.iter ~f v.outgoing
-      end
-
-    let create ~key ~value =
-      {
-        key;
-        value;
-        marked = false;
-        unmarked_pred = 0;
-        incoming = [];
-        outgoing = [];
-      }
+    type ('v, 'e) t = ('v, 'e) vertex
 
     let incoming { incoming } = incoming
     let pred { incoming } = List.rev_map ~f:Edge.src incoming
@@ -94,6 +56,9 @@ module Make (Key : Key) = struct
     let fold_succ u ~init ~f =
       List.fold u.outgoing ~init ~f:(fun acc -> Edge.dst >> f acc)
 
+    let compare v1 v2 = Key.compare v1.key v2.key
+    let equal v1 v2 = compare v1 v2 = 0
+
     let has_succ v ~target =
       let f { dst } = equal target dst in
       List.exists ~f v.outgoing
@@ -103,6 +68,31 @@ module Make (Key : Key) = struct
     (** [add_outgoing ~edge v] pushes [edge] onto the outgoing edges of
         [v] *)
     let add_outgoing ~edge v = v.outgoing <- edge :: v.outgoing
+
+    let key { key } = key
+    let value { value } = value
+    let set v ~value = v.value <- value
+    let update v ~f = set v (f v.value)
+    let fold v ~f = f v.value
+    let marked { marked } = marked
+    let unmarked v = not (marked v)
+
+    (** [decr_unmarked_pred v] decrements the number of unmarked
+        predecessors of [v]*)
+    let decr_unmarked_pred v =
+      v.unmarked_pred <- Int.pred v.unmarked_pred
+
+    (** [incr_unmarked_pred v] increments the number of unmarked
+        predecessors of [v] *)
+    let incr_unmarked_pred v =
+      v.unmarked_pred <- Int.succ v.unmarked_pred
+
+    let mark v =
+      if unmarked v then begin
+        v.marked <- true;
+        let f { dst } = decr_unmarked_pred dst in
+        List.iter ~f v.outgoing
+      end
 
     let has_unmarked_pred { unmarked_pred } = unmarked_pred > 0
 
@@ -146,92 +136,107 @@ module Make (Key : Key) = struct
     let set_edge ~src ~dst ~weight =
       remove_edge ~src ~dst;
       add_edge ~src ~dst ~weight
+
+    let create ~key ~value =
+      {
+        key;
+        value;
+        marked = false;
+        unmarked_pred = 0;
+        incoming = [];
+        outgoing = [];
+      }
   end
 
-  include Creators.Make2 (struct
-    type ('a, 'b) vertex = ('a, 'b) Vertex.t
+  type ('v, 'e) t = {
+    vertices : ('v, 'e) vertex Table.t;
+    max_key : Key.t option;
+  }
+  [@@deriving fields]
 
-    let key = Vertex.key
+  let create ?size () =
+    { vertices = Table.create ?size (); max_key = None }
 
-    module Table = Table
-  end)
-
-  module Dataflow = struct
-    type 'data values = {
-      input : 'data;
-      output : 'data;
+  let of_vertices vs =
+    {
+      vertices = Table.create_with_key_exn ~get_key:Vertex.key vs;
+      max_key = List.max_elt vs ~compare:Vertex.compare >>| Vertex.key;
     }
-    [@@deriving fields]
 
-    type 'data map = Key.t -> 'data values
+  let foldi_vertices g ~init ~f =
+    let f ~key ~data acc = f key acc data in
+    Hashtbl.fold g.vertices ~init ~f
 
-    (** [create_data_map ~top g] is a fresh hashtable where every key in
-        [g] is bound to [init] *)
-    let create_data_map ~top =
-      Hashtbl.map ~f:(fun _ -> { input = top; output = top })
+  open Dataflow.Values
 
-    (** [input_nodes ~direction v] is the list of nodes whose dataflow
-        values are inputs to the meet operator of [v], i.e. the
-        predecessors of [v] if direction is [`Forward] and the
-        successors of [v] if direction if [`Backward] *)
-    let input_nodes ~direction =
-      match direction with
-      | `Forward -> Vertex.pred
-      | `Backward -> Vertex.succ
+  (** [create_data_map ~top g] is a fresh hashtable where every key in
+      [g] is bound to [init] *)
+  let create_data_map ~top =
+    Hashtbl.map ~f:(fun _ -> { input = top; output = top })
 
-    (** [input_data ~direction ~data u] is a list of the dataflow values
-        that are the input to the meet function for [u] where the
-        dataflow value of a node is resolved via [data]. The input to
-        the meet operator are the incoming dataflow values if
-        [direction] is [`Forward] and the outgoing dataflow values if
-        [direction] is [`Backward] *)
-    let input_data ~direction ~data_map =
-      let f = Vertex.key >> Hashtbl.find_exn data_map >> output in
-      input_nodes ~direction >> List.map ~f
+  (** [input_nodes ~direction v] is the list of nodes whose dataflow
+      values are inputs to the meet operator of [v], i.e. the
+      predecessors of [v] if direction is [`Forward] and the successors
+      of [v] if direction if [`Backward] *)
+  let input_nodes ~direction =
+    match direction with
+    | `Forward -> Vertex.pred
+    | `Backward -> Vertex.succ
 
-    (** [update_worklist v ~init ~direction] is [init] together with all
-        of the nodes whose dataflow values may have been immediately
-        impacted by the modification of dataflow values at node [v]; the
-        successors of [v] if [direction] is [`Forward], and the
-        predecessors of [v] if [direction] is [`Backward] *)
-    let update_worklist v ~init ~direction =
-      let f acc u = u :: acc in
-      match direction with
-      | `Forward -> Vertex.fold_succ v ~init ~f
-      | `Backward -> Vertex.fold_pred v ~init ~f
+  (** [input_data ~direction ~data u] is a list of the dataflow values
+      that are the input to the meet function for [u] where the dataflow
+      value of a node is resolved via [data]. The input to the meet
+      operator are the incoming dataflow values if [direction] is
+      [`Forward] and the outgoing dataflow values if [direction] is
+      [`Backward] *)
+  let input_data ~direction ~data_map =
+    let f = Vertex.key >> Hashtbl.find_exn data_map >> output in
+    input_nodes ~direction >> List.map ~f
 
-    let analyze g Dataflow.Params.{ f; meet; top; direction; equal } =
-      (* Initialize dataflow values to top element *)
-      let data_map = create_data_map ~top g in
-      let rec loop = function
-        | [] -> () (* If worklist empty, we're done *)
-        | (Vertex.{ key; value } as v) :: t ->
-            (* current dataflow value for node v *)
-            let { output = l } = Hashtbl.find_exn data_map key in
-            (* apply transfer function to meet at node to get updated
-               dataflow values *)
-            let input = meet (input_data v ~direction ~data_map) in
-            let l' = f ~data:input ~vertex:value in
-            Hashtbl.set data_map ~key ~data:{ input; output = l' };
-            if not (equal l l') then
-              (* If dataflow values changed push nodes onto the worklist
-                 who dataflow values may have changed *)
-              loop (update_worklist v ~init:t ~direction)
-            else loop t (* Otherwise, don't need to update worklist *)
-      in
-      (* Initially, the worklist contains every node *)
-      loop (Hashtbl.data g);
-      (* Return a function mapping the key of a node to its dataflow
-         value *)
-      fun k -> Hashtbl.find_exn data_map k
-  end
+  (** [update_worklist v ~init ~direction] is [init] together with all
+      of the nodes whose dataflow values may have been immediately
+      impacted by the modification of dataflow values at node [v]; the
+      successors of [v] if [direction] is [`Forward], and the
+      predecessors of [v] if [direction] is [`Backward] *)
+  let update_worklist v ~init ~direction =
+    let f acc u = u :: acc in
+    match direction with
+    | `Forward -> Vertex.fold_succ v ~init ~f
+    | `Backward -> Vertex.fold_pred v ~init ~f
+
+  let analyze
+      { vertices = g }
+      Dataflow.Params.{ f; meet; top; direction; equal } =
+    (* Initialize dataflow values to top element *)
+    let data_map = create_data_map ~top g in
+    let rec loop = function
+      | [] -> () (* If worklist empty, we're done *)
+      | (Vertex.{ key; value } as v) :: t ->
+          (* current dataflow value for node v *)
+          let { output = l } = Hashtbl.find_exn data_map key in
+          (* apply transfer function to meet at node to get updated
+             dataflow values *)
+          let input = meet (input_data v ~direction ~data_map) in
+          let l' = f ~data:input ~vertex:value in
+          Hashtbl.set data_map ~key ~data:{ input; output = l' };
+          if not (equal l l') then
+            (* If dataflow values changed push nodes onto the worklist
+               who dataflow values may have changed *)
+            loop (update_worklist v ~init:t ~direction)
+          else loop t (* Otherwise, don't need to update worklist *)
+    in
+    (* Initially, the worklist contains every node *)
+    loop (Hashtbl.data g);
+    (* Return a function mapping the key of a node to its dataflow
+       value *)
+    Hashtbl.find_exn data_map
 
   let graphviz ~string_of_vertex ~string_of_weight nodes =
     let stringify_vertex = Fn.compose String.escaped string_of_vertex in
     let stringify_weight = Fn.compose String.escaped string_of_weight in
     let f node =
       let v1 = stringify_vertex node in
-      let out = node.outgoing in
+      let out = Vertex.outgoing node in
       if List.is_empty out then Printf.sprintf "\"%s\";" v1
       else
         node.outgoing

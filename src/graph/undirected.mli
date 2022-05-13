@@ -19,9 +19,21 @@ module type S = sig
       with no incident edges, or just [g] if a vertex with key [k]
       already exists in [g] *)
 
+  val add_vertices : t -> Key.t Sequence.t -> t
+  (** [add_vertices g \[v1; ...; vn\]] is [g] with each [vi] bound with
+      no incident edges, if not already bound. *)
+
   val add_edge : t -> Key.t -> Key.t -> t
   (** [add_edge g u v] is [g] with the undirected edge [{u, v}]. Raises
       if either [u] or [v] are unbound in [g] *)
+
+  val add_edges : t -> Key.t -> Key.t Sequence.t -> t
+  (** [add_edges g u \[v1; ...; vn\]] is [g] with additionally every
+      edge [(u, v1) ... (u, vn)] *)
+
+  val add_clique : t -> Key.t Sequence.t -> t
+  (** [add_clique  g \[u1; ...; un\]] is [g] with every edge [(u, v)]
+      added where [u <> v]. If not provided, [init] is [empty] *)
 
   val kempe :
     ?precolor:(Key.t -> int option) ->

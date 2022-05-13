@@ -1,8 +1,11 @@
 open Core
+open Option.Let_syntax
 open Generic
 open Util.Fn
 
 type t = Operand.Abstract.t Generic.t
+
+let def instr = failwith "unimplemented"
 
 (** [Expr] contains functions for manipulating IR expressions and
     translating them into abstract assembly *)

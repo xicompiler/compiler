@@ -9,17 +9,23 @@ module type S = sig
   type ('v, 'e) edge
 
   module Vertex : sig
-    include
-      Vertex.S2
-        with type ('v, 'e) t = ('v, 'e) vertex
-        with module Key := Key
+    type ('v, 'e) t = ('v, 'e) vertex
 
+    val create : key:Key.t -> value:'v -> ('v, 'e) t
     val incoming : ('v, 'e) t -> ('v, 'e) edge list
     val pred : ('v, 'e) t -> ('v, 'e) t list
     val outgoing : ('v, 'e) t -> ('v, 'e) edge list
     val succ : ('v, 'e) t -> ('v, 'e) t list
     val has_succ : ('v, 'e) t -> target:('v, 'e) t -> bool
     val peek_succ : ('v, 'e) t -> ('v, 'e) t option
+    val key : ('v, 'e) t -> Key.t
+    val value : ('v, 'e) t -> 'v
+    val set : ('v, 'e) t -> value:'v -> unit
+    val update : ('v, 'e) t -> f:('v -> 'v) -> unit
+    val fold : ('v, 'e) t -> f:('v -> 'a) -> 'a
+    val marked : ('v, 'e) t -> bool
+    val unmarked : ('v, 'e) t -> bool
+    val mark : ('v, 'e) t -> unit
     val has_unmarked_pred : ('v, 'e) t -> bool
 
     val add_unweighted_edge :
@@ -31,6 +37,8 @@ module type S = sig
 
     val exists_incoming :
       ('v, 'e) t -> f:(('v, 'e) edge -> bool) -> bool
+
+    val equal : ('v, 'e) t -> ('v, 'e) t -> bool
   end
 
   module Edge : sig
@@ -41,19 +49,23 @@ module type S = sig
     val weight : ('v, 'e) t -> 'e
   end
 
-  include Creators.S2 with type ('a, 'b) vertex := ('a, 'b) Vertex.t
+  type ('v, 'e) t
 
-  module Dataflow : sig
-    type 'data values = {
-      input : 'data;
-      output : 'data;
-    }
+  val create : ?size:int -> unit -> ('v, 'e) t
+  val of_vertices : ('v, 'e) vertex list -> ('v, 'e) t
+  val max_key : ('v, 'e) t -> Key.t option
 
-    type 'data map = Key.t -> 'data values
+  val foldi_vertices :
+    ('v, 'e) t ->
+    init:'acc ->
+    f:(Key.t -> 'acc -> ('v, 'e) vertex -> 'acc) ->
+    'acc
 
-    val analyze :
-      ('v, 'e) t -> ('data, 'v) Dataflow.Params.t -> 'data map
-  end
+  val analyze :
+    ('v, 'e) t ->
+    ('data, 'v) Dataflow.Params.t ->
+    Key.t ->
+    'data Dataflow.Values.t
 
   val graphviz :
     string_of_vertex:(('v, 'e) vertex -> string) ->

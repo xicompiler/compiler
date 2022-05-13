@@ -11,7 +11,10 @@ module type S = sig
 
   val empty : t
   val add_vertex : t -> Key.t -> t
+  val add_vertices : t -> Key.t Sequence.t -> t
   val add_edge : t -> Key.t -> Key.t -> t
+  val add_edges : t -> Key.t -> Key.t Sequence.t -> t
+  val add_clique : t -> Key.t Sequence.t -> t
 
   val kempe :
     ?precolor:(Key.t -> int option) ->
@@ -52,17 +55,32 @@ module Make (Key : Key) = struct
        change the map *)
     match Map.add g ~key ~data:v with `Ok g' -> g' | `Duplicate -> g
 
+  let add_vertices init = Sequence.fold ~init ~f:add_vertex
   let update_exn = Util.Map.update_exn ~message:"no vertex with key"
 
   let update_vertex ~f (g : t) u v : t =
     update_exn g u ~f:(fun vertex -> f vertex v)
 
-  let add_adjacent = update_vertex ~f:Vertex.add_adjacent
-  let remove_adjacent = update_vertex ~f:Vertex.remove_adjacent
+  let add_adjacent g u v =
+    Map.update g u ~f:(function
+      | Some u -> Vertex.add_adjacent u v
+      | None -> Vertex.{ key = u; adjacent = Set.singleton v })
+
+  let remove_adjacent g u v =
+    update_exn g u ~f:(fun vertex -> Vertex.remove_adjacent vertex v)
 
   let add_edge g u v =
-    let g' = add_adjacent g u v in
-    add_adjacent g' v u
+    if Key.compare u v = 0 then g
+    else
+      let g' = add_adjacent g u v in
+      add_adjacent g' v u
+
+  let add_edges init u = Sequence.fold ~init ~f:(fun g -> add_edge g u)
+
+  let add_clique init keys =
+    let with_nodes = add_vertices init keys in
+    Sequence.fold keys ~init:with_nodes ~f:(fun init u ->
+        add_edges init u keys)
 
   let remove_vertex g Vertex.{ key = u; adjacent } =
     let f acc v = remove_adjacent acc v u in
@@ -167,8 +185,5 @@ module Make (Key : Key) = struct
     else Error spills
 
   let of_edges =
-    List.fold ~init:empty ~f:(fun g (u, v) ->
-        let g = add_vertex g u in
-        let g = add_vertex g v in
-        add_edge g u v)
+    List.fold ~init:empty ~f:(fun g (u, v) -> add_edge g u v)
 end

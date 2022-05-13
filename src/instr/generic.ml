@@ -1,4 +1,5 @@
 open Core
+open Option.Let_syntax
 open Util.Fn
 module CFG = Graph.Directed.IntDigraph
 
@@ -149,7 +150,7 @@ let def_of_mul = function
 
 let def = function
   | Label _ | Enter _ | Jmp _ | Jcc _ | Cmp _ | Test _ | Call _ | Leave
-  | Ret ->
+  | Ret | Push _ ->
       None
   | Setcc (_, op)
   | IDiv op
@@ -164,7 +165,6 @@ let def = function
   | Lea (op, _)
   | Mov (op, _)
   | Movzx (op, _)
-  | Push op
   | Pop op
   | Inc op
   | Dec op ->

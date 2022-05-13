@@ -10,7 +10,8 @@ let suite =
          ReorderTests.suite;
          IrConstFoldTests.suite;
          IrCommuteTests.suite;
-         (* IrRunTests.suite; AssemblyTests.suite; *)
+         IrRunTests.suite;
+         AssemblyTests.suite;
          BitSetTests.suite;
          ColoringTests.suite;
        ]

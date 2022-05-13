@@ -1,3 +1,5 @@
 (library
  (name dataflow)
- (libraries core))
+ (libraries core)
+ (preprocess
+  (pps ppx_jane)))

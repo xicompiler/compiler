@@ -2,73 +2,68 @@ open Core
 open Util.Fn
 
 module Bit64 = struct
-  module Temp = struct
-    module T = struct
-      type t =
-        [ `rax
-        | `rbx
-        | `rcx
-        | `rdx
-        | `rsi
-        | `rdi
-        | `r8
-        | `r9
-        | `r10
-        | `r11
-        | `r12
-        | `r13
-        | `r14
-        | `r15
-        ]
-      [@@deriving variants, equal, sexp, compare, hash]
-    end
-
-    include T
-    module Table = Hashtbl.Make (T)
-
-    let reg_array : t array =
-      [|
-        `rax;
-        `rcx;
-        `rdx;
-        `rsi;
-        `rdi;
-        `r8;
-        `r9;
-        `r10;
-        `r11;
-        `rbx;
-        `r12;
-        `r13;
-        `r14;
-        `r15;
-      |]
-
-    let of_int_exn = Array.get reg_array
-
-    let to_int_exn =
-      let size = Array.length reg_array in
-      let tbl = Table.create ~size () in
-      Array.iteri reg_array ~f:(fun i reg ->
-          Hashtbl.add_exn tbl ~key:reg ~data:i);
-      Hashtbl.find_exn tbl
-
-    let to_string = Variants.to_name
+  module T = struct
+    type t =
+      [ `rax
+      | `rbx
+      | `rcx
+      | `rdx
+      | `rsi
+      | `rdi
+      | `r8
+      | `r9
+      | `r10
+      | `r11
+      | `r12
+      | `r13
+      | `r14
+      | `r15
+      | `rsp
+      | `rbp
+      | `rip
+      ]
+    [@@deriving variants, equal, sexp, compare, hash]
   end
 
-  type t =
-    [ Temp.t
-    | `rsp
-    | `rbp
-    | `rip
-    ]
-  [@@deriving equal, sexp, compare, hash]
+  include T
 
-  let to_string : [< t ] -> string = function
-    | #Temp.t as t -> Temp.to_string t
-    | `rsp -> "rsp"
-    | `rbp -> "rbp"
-    | `rip -> "rip"
+  let caller_save : [> t ] Sequence.t =
+    Sequence.of_list
+      [ `rax; `rcx; `rdx; `rsi; `rdi; `r8; `r9; `r10; `r11 ]
+
+  module Table = Hashtbl.Make (T)
+
+  let reg_array : t array =
+    [|
+      `rax;
+      `rcx;
+      `rdx;
+      `rsi;
+      `rdi;
+      `r8;
+      `r9;
+      `r10;
+      `r11;
+      `rbx;
+      `r12;
+      `r13;
+      `r14;
+      `r15;
+      `rsp;
+      `rbp;
+      `rip;
+    |]
+
+  let of_int_exn = Array.get reg_array
+
+  let to_int_exn =
+    let size = Array.length reg_array in
+    let tbl = Table.create ~size () in
+    Array.iteri reg_array ~f:(fun i reg ->
+        Hashtbl.add_exn tbl ~key:reg ~data:i);
+    Hashtbl.find_exn tbl
+
+  let to_string = Variants.to_name
 
   let to_8_bit = function
     | `rax -> `al
@@ -101,13 +96,11 @@ module Bit8 = struct
     | `r8b -> `r8
 end
 
-type concrete =
+type t =
   [ Bit64.t
   | Bit8.t
   ]
 [@@deriving equal, sexp, compare, hash]
-
-type t = concrete [@@deriving equal]
 
 let to_64_bit = function
   | #Bit64.t as r -> r
@@ -124,21 +117,17 @@ let to_string : [< t ] -> string = function
 module Abstract = struct
   module Args = struct
     type t =
-      [ concrete
+      [ Bit64.t
       | Ir.Temp.Virtual.t
       ]
-    [@@deriving sexp, compare, hash]
+    [@@deriving equal, sexp, compare, hash]
   end
 
   include Args
 
   let to_string : [< t ] -> string = function
-    | #concrete as reg -> to_string reg
+    | #Bit64.t as r -> Bit64.to_string r
     | #Ir.Temp.Virtual.t as t -> Ir.Temp.Virtual.to_string t
-
-  let to_64_bit = function
-    | #concrete as reg -> to_64_bit reg
-    | abstract -> abstract
 
   include Comparable.Make (Args)
   include Hashable.Make (Args)
