@@ -18,10 +18,14 @@ val def : t -> Reg.Abstract.Set.t
 val use : t -> Reg.Abstract.Set.t
 (** [use instr] is the set of all operands used by [instr] *)
 
-val map : f:(Reg.Abstract.t -> Reg.Abstract.t) -> t list -> t list
-(** [map ~f instrs] applies [f] to every instruction in [instrs] *)
+val map : t -> f:(Reg.Abstract.t -> Reg.Abstract.t) -> t
+(** [map instr ~f] applies [f] to the operands of [instr] and returns
+    the result*)
 
-val map_concrete :
+val map_list : f:(Reg.Abstract.t -> Reg.Abstract.t) -> t list -> t list
+(** [map_list ~f instrs] applies [f] to every instruction in [instrs] *)
+
+val map_concrete_list :
   f:(Reg.Abstract.t -> Reg.t) -> t list -> Concrete.t list
-(** [map_concrete ~f instrs] applies concretizing function [f] to every
-    instruction in [instrs] *)
+(** [map_concrete_list ~f instrs] applies concretizing function [f] to
+    every instruction in [instrs] *)

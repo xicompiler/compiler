@@ -40,9 +40,10 @@ let map_instr instr ~map ~f =
   | Mov (e1, e2) -> Mov (map e1 ~f, map e2 ~f)
   | Movzx (e1, e2) -> Movzx (map e1 ~f, map e2 ~f)
 
-let map ~f = List.map ~f:(map_instr ~map:Operand.Abstract.map ~f)
+let map = map_instr ~map:Operand.Abstract.map
+let map_list ~f = List.map ~f:(map_instr ~map:Operand.Abstract.map ~f)
 
-let map_concrete ~f =
+let map_concrete_list ~f =
   List.map ~f:(map_instr ~map:Operand.Abstract.map_concrete ~f)
 
 (** [Expr] contains functions for manipulating IR expressions and

@@ -54,48 +54,54 @@ module InterferenceGraph = struct
     CFG.foldi_vertices cfg ~init:G.empty ~f
 end
 
-module TempLocations = struct
-  type cfg_vertex = (Abstract.t, unit) CFG.Vertex.t
+module Virtual = Ir.Temp.Virtual
 
-  type t = {
-    uses : cfg_vertex list;
-    defs : cfg_vertex list;
-  }
+(** [find_spill ~gensym] is a mapping from temporaries to spill
+    temporaries *)
+let find_spill ~gensym =
+  let tbl = Ir.Temp.Virtual.Table.create ~size:3 () in
+  Hashtbl.find_or_add tbl ~default:gensym
 
-  let empty = { uses = []; defs = [] }
-  let iter_temps ts ~f = Set.iter ts ~f:(Reg.Abstract.iter_temp ~f)
+(** [replace instr ~src ~dst] replaces every instance of register [src]
+    with register [dst] *)
+let replace instr ~src ~dst =
+  Abstract.map instr ~f:(fun r ->
+      if Reg.Abstract.equal src r then dst else src)
 
-  (** [add_use m t v] adds vertex [v] as a use of temp [t] to map [m] *)
-  let add_use m t v =
-    Hashtbl.update m t ~f:(function
-      | Some locs ->
-          (* If already use/def info, add this vertex onto the uses *)
-          { locs with uses = v :: locs.uses }
-      | None ->
-          (* If no use/def info, no defs and only this vertex is a
-             use *)
-          { uses = [ v ]; defs = [] })
-
-  (** [add_def m t v] adds vertex [v] as a def of temp [t] to map [m] *)
-  let add_def m t v =
-    Hashtbl.update m t ~f:(function
-      | Some locs ->
-          (* If already use/def info, add this vertex onto the defs *)
-          { locs with defs = v :: locs.defs }
-      | None ->
-          (* If no use/def info, there are no uses and this vertex is
-             the only def *)
-          { uses = []; defs = [ v ] })
-
-  let of_cfg cfg =
-    let map = Ir.Temp.Virtual.Table.create () in
-    CFG.iter_vertices cfg ~f:(fun v ->
-        let instr = CFG.Vertex.value v in
-        let use = Abstract.use instr in
-        (* Add the temps used by this vertex to the map *)
-        iter_temps use ~f:(fun t -> add_use map t v);
-        let def = Abstract.def instr in
-        (* Add the temps defined by this vertex to the map *)
-        iter_temps def ~f:(fun t -> add_def map t v));
-    Hashtbl.find map >> Option.value ~default:empty
-end
+(** [rewrite instrs ~spills ~addr ~gensym] is [instrs] rewritten such
+    that every occurrence of some [t] is replaced by a shuttle to/from
+    the stack *)
+let rewrite instrs ~spills ~addr ~gensym : Abstract.t list =
+  let f acc instr =
+    (* function mapping temporaries to their spill temporaries *)
+    let find_spill = find_spill ~gensym in
+    (* Get a pair (instr, acc) where [instr] is the rewritten
+       instruction and [acc] is the list of instructions needed to
+       shuttle from/to stack *)
+    let rewrite ?(init = []) ~instr ~f =
+      Set.fold ~init:(instr, init) ~f:(fun ((instr, lst) as acc) ->
+        function
+        | #Virtual.t as t when Set.mem spills t ->
+            (* If variable is spilled to stack, lookup stack location *)
+            let addr = SpillAddress.find addr t in
+            (* the temporary used to shuttle from/to stack *)
+            let spill = `Temp (find_spill t) in
+            (* replace all occurences of spilled temporary with newly
+               generated one*)
+            let instr = replace instr ~src:t ~dst:spill in
+            (instr, f spill (`Mem addr) :: lst)
+        | _ -> acc)
+    in
+    let use = Abstract.use instr in
+    (* for uses, shuttle off stack into registers *)
+    let instr, from_stk = rewrite use ~instr ~init:acc ~f:Generic.mov in
+    let def = Abstract.def instr in
+    (* for defs, shuttle from register back to stack *)
+    let instr, to_stk = rewrite def ~instr ~f:(Fn.flip Generic.mov) in
+    (* sandwich rewritten instruction in between moves from the stack
+       and writes back to the stack. Append is fast because few
+       instructions shuttling back to stack *)
+    to_stk @ (instr :: from_stk)
+  in
+  (* Instructions produced in reverse order *)
+  instrs |> List.fold ~init:[] ~f |> List.rev

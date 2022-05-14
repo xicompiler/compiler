@@ -143,4 +143,4 @@ let allocate_fn ~offset instrs =
     | Some reg -> reg
     | None -> failwith ""
   in
-  Abstract.map_concrete ~f instrs
+  Abstract.map_concrete_list ~f instrs
