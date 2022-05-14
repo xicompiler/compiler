@@ -129,6 +129,9 @@ module Abstract = struct
     | #Bit64.t as r -> Bit64.to_string r
     | #Ir.Temp.Virtual.t as t -> Ir.Temp.Virtual.to_string t
 
+  let iter_temp r ~f =
+    match r with #Ir.Temp.Virtual.t as t -> f t | #t -> ()
+
   include Comparable.Make (Args)
   include Hashable.Make (Args)
 end

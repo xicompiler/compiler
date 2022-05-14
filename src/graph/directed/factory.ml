@@ -196,6 +196,11 @@ module Make (Key : Key) = struct
     let f ~key ~data acc = f key acc data in
     Hashtbl.fold g.vertices ~init ~f
 
+  let iteri_vertices g ~f =
+    foldi_vertices g ~init:() ~f:(fun i _ v -> f i v)
+
+  let iter_vertices g ~f = iteri_vertices g ~f:(fun _ -> f)
+
   let insert_after g v ~prev =
     add_vertex g v;
     Vertex.insert_after v ~prev

@@ -67,6 +67,11 @@ module type S = sig
     f:(Key.t -> 'acc -> ('v, 'e) vertex -> 'acc) ->
     'acc
 
+  val iteri_vertices :
+    ('v, 'e) t -> f:(Key.t -> ('v, 'e) vertex -> unit) -> unit
+
+  val iter_vertices : ('v, 'e) t -> f:(('v, 'e) vertex -> unit) -> unit
+
   val analyze :
     ('v, 'e) t ->
     ('data, 'v) Dataflow.Params.t ->

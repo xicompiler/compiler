@@ -71,6 +71,10 @@ module Abstract : sig
   [@@deriving equal, sexp, compare, hash]
   (** [t] is the type of an abstract register *)
 
+  val iter_temp : [< t ] -> f:(Ir.Temp.Virtual.t -> unit) -> unit
+  (** [iter_temp r ~f] is [f t] if [r] is temporary [t] and [()]
+      otherwise *)
+
   include Util.Stringable.S with type t := t
 
   module Set : Set.S with type Elt.t = t

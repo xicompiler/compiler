@@ -26,4 +26,7 @@ module Virtual : sig
 
   module Set : Set.S with type Elt.t = t
   (** [Set] is a set of virtual temporaries *)
+
+  module Table : Hashtbl.S with type key = t
+  (** [Table] is a hastable whose keys are virtual registers *)
 end

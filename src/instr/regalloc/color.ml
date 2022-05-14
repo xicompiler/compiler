@@ -1,5 +1,6 @@
 open Core
 open Generic
+open Util.Fn
 
 module InterferenceGraph = struct
   module G = Graph.Undirected.Make (Reg.Abstract)
@@ -51,4 +52,50 @@ module InterferenceGraph = struct
       | v -> add_def_edges g v exit_seq
     in
     CFG.foldi_vertices cfg ~init:G.empty ~f
+end
+
+module TempLocations = struct
+  type cfg_vertex = (Abstract.t, unit) CFG.Vertex.t
+
+  type t = {
+    uses : cfg_vertex list;
+    defs : cfg_vertex list;
+  }
+
+  let empty = { uses = []; defs = [] }
+  let iter_temps ts ~f = Set.iter ts ~f:(Reg.Abstract.iter_temp ~f)
+
+  (** [add_use m t v] adds vertex [v] as a use of temp [t] to map [m] *)
+  let add_use m t v =
+    Hashtbl.update m t ~f:(function
+      | Some locs ->
+          (* If already use/def info, add this vertex onto the uses *)
+          { locs with uses = v :: locs.uses }
+      | None ->
+          (* If no use/def info, no defs and only this vertex is a
+             use *)
+          { uses = [ v ]; defs = [] })
+
+  (** [add_def m t v] adds vertex [v] as a def of temp [t] to map [m] *)
+  let add_def m t v =
+    Hashtbl.update m t ~f:(function
+      | Some locs ->
+          (* If already use/def info, add this vertex onto the defs *)
+          { locs with defs = v :: locs.defs }
+      | None ->
+          (* If no use/def info, there are no uses and this vertex is
+             the only def *)
+          { uses = []; defs = [ v ] })
+
+  let of_cfg cfg =
+    let map = Ir.Temp.Virtual.Table.create () in
+    CFG.iter_vertices cfg ~f:(fun v ->
+        let instr = CFG.Vertex.value v in
+        let use = Abstract.use instr in
+        (* Add the temps used by this vertex to the map *)
+        iter_temps use ~f:(fun t -> add_use map t v);
+        let def = Abstract.def instr in
+        (* Add the temps defined by this vertex to the map *)
+        iter_temps def ~f:(fun t -> add_def map t v));
+    Hashtbl.find map >> Option.value ~default:empty
 end

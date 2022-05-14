@@ -147,6 +147,13 @@ module type S = sig
   (** [foldi_vertices g ~init ~f] folds [f] over the vertices in [g] and
       their keys from initial vlaue [init] *)
 
+  val iteri_vertices :
+    ('v, 'e) t -> f:(Key.t -> ('v, 'e) vertex -> unit) -> unit
+  (** Iterate over the vertices and their keys *)
+
+  val iter_vertices : ('v, 'e) t -> f:(('v, 'e) vertex -> unit) -> unit
+  (** Iterate over the vertices in a graph *)
+
   val analyze :
     ('v, 'e) t ->
     ('data, 'v) Dataflow.Params.t ->
