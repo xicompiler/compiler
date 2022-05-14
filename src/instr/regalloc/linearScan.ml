@@ -1,25 +1,9 @@
 open Core
-open Core_kernel
 open Generic
-open Asm.Directive
 
 (** [pool] is the pool of available registers to be allocated *)
 let pool =
-  [
-    `rbx;
-    `rcx;
-    `rdx;
-    `rsi;
-    `rdi;
-    `r8;
-    `r9;
-    `r10;
-    `r11;
-    `r12;
-    `r13;
-    `r14;
-    `r15;
-  ]
+  [ `rbx; `rcx; `rdx; `rsi; `rdi; `r11; `r12; `r13; `r14; `r15 ]
 
 module LiveInterval = struct
   type t = {
@@ -151,12 +135,12 @@ let concrete_tbl nodes =
   ignore (List.fold ~f ~init:(Int.Map.empty, pool) (intervals tbl));
   concrete
 
-(** [allocate_nodes ~offset nodes] is the concretized instructions of
-    [nodes] *)
-let allocate_nodes ~offset nodes =
-  (* let concrete = concrete_tbl nodes in *)
-  failwith ""
-
 let allocate_fn ~offset instrs =
   let nodes = create_cfg instrs in
-  allocate_nodes ~offset nodes
+  let concrete = concrete_tbl nodes in
+  let f abstract =
+    match Reg.Abstract.Table.find concrete abstract with
+    | Some reg -> reg
+    | None -> failwith ""
+  in
+  Abstract.map_concrete ~f instrs

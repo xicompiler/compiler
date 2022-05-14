@@ -5,16 +5,16 @@ open Util.Fn
 
 type t = Operand.Abstract.t Generic.t
 
-(** [map_imul] applies [f] to every operand within [enc] *)
-let map_imul enc ~f =
-  let open Operand.Abstract in
+(** [map_imul] applies [f] to every operand within [enc] based on [map] *)
+let map_imul enc ~map ~f =
   match enc with
   | `M e -> `M (map e ~f)
   | `RM (e1, e2) -> `RM (map e1 ~f, map e2 ~f)
   | `RMI (e1, e2, i) -> `RMI (map e1 ~f, map e2 ~f, i)
 
-let map instr ~f =
-  let open Operand.Abstract in
+(** [map_instr instr ~map ~f] applies concretizing function [f] to every
+    operand within [instr] based on [map] *)
+let map_instr instr ~map ~f =
   match instr with
   | (Label _ | Enter _ | Jcc _ | Leave | Ret _) as instr -> instr
   | Jmp e -> Jmp (map e ~f)
@@ -23,7 +23,7 @@ let map instr ~f =
   | Test (e1, e2) -> Test (map e1 ~f, map e2 ~f)
   | Push e -> Push (map e ~f)
   | Pop e -> Pop (map e ~f)
-  | IMul enc -> IMul (map_imul enc ~f)
+  | IMul enc -> IMul (map_imul enc ~map ~f)
   | Inc e -> Inc (map e ~f)
   | Dec e -> Dec (map e ~f)
   | Call call -> Call { call with name = map call.name ~f }
@@ -39,6 +39,11 @@ let map instr ~f =
   | Lea (e1, e2) -> Lea (map e1 ~f, map e2 ~f)
   | Mov (e1, e2) -> Mov (map e1 ~f, map e2 ~f)
   | Movzx (e1, e2) -> Movzx (map e1 ~f, map e2 ~f)
+
+let map ~f = List.map ~f:(map_instr ~map:Operand.Abstract.map ~f)
+
+let map_concrete ~f =
+  List.map ~f:(map_instr ~map:Operand.Abstract.map_concrete ~f)
 
 (** [Expr] contains functions for manipulating IR expressions and
     translating them into abstract assembly *)

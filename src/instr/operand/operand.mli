@@ -13,6 +13,9 @@ type t =
   ]
 (** [t] is the type of an operand in x86 *)
 
+type concrete = t
+(** [concrete] is the type of a concrete operand in x86 *)
+
 include Util.Stringable.S with type t := t
 
 (** [Abstract] represents an abstract operand in x86 *)
@@ -23,8 +26,12 @@ module Abstract : sig
     ]
   (** [t] is the type of an abstract operand in x86 *)
 
-  val map : t -> f:(Reg.Abstract.t -> ([> 'a generic ] as 'a)) -> 'a
+  val map : t -> f:(Reg.Abstract.t -> Reg.Abstract.t) -> t
   (** [map op ~f] applies [f] to every register in operand [op] *)
+
+  val map_concrete : t -> f:(Reg.Abstract.t -> Reg.t) -> concrete
+  (** [map_concrete op ~f] applies concretizing function [f] to every
+      register in operand [op] *)
 
   include Util.Stringable.S with type t := t
 end

@@ -17,17 +17,29 @@ let to_string : [< t ] -> string = function
   | `Imm i -> Int64.to_string i
   | `Name l -> l
 
+type concrete = t
+
 module Abstract = struct
   type t =
     [ Reg.Abstract.t generic
     | Reg.Abstract.t
     ]
 
-  let map (op : t) ~f : [> 'a generic ] =
-    match op with
+  (** [map_generic ~f op] applies [f] to every register in generic
+      operand [op] *)
+  let map_generic ~f = function
     | (`Imm _ | `Name _) as op -> op
     | `Mem mem -> `Mem (Mem.map mem ~f)
-    | #Reg.Abstract.t as r -> f r
+
+  let map (op : t) ~f =
+    match op with
+    | (`Imm _ | `Name _ | `Mem _) as op -> map_generic op ~f
+    | #Reg.Abstract.t as r -> (f r :> t)
+
+  let map_concrete (op : t) ~f =
+    match op with
+    | (`Imm _ | `Name _ | `Mem _) as op -> map_generic op ~f
+    | #Reg.Abstract.t as r -> (f r :> concrete)
 
   let to_string : [< t ] -> string = function
     | #Reg.Abstract.t as r -> Reg.Abstract.to_string r
