@@ -24,7 +24,7 @@ clean-all: clean
 	dune clean
 
 cloc: clean-all
-	cloc --by-file --include-lang=OCaml . --exclude-dir=uutf-library
+	cloc --by-file --include-lang=OCaml . --exclude-dir=uutf
 
 bisect: bisect-clean
 	dune exec --instrument-with bisect_ppx --force ./test/main.exe

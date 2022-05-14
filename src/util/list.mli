@@ -22,10 +22,6 @@ val pop_exn : 'a t -> 'a * 'a t
 (** [pop_exn lst] is [(h, t)] if [lst] is [h :: t]. Raises: [Failure] if
     [lst] is nil. *)
 
-val pop_opt : 'a t -> ('a * 'a t) option
-(** [pop_opt lst] is [Some (h, t)] if [lst] is [h :: t], or [None]
-    otherwise. *)
-
 val rev_concat : 'a t t -> 'a t
 (** Same as [Core.List.concat], but in reverse order *)
 

@@ -3,6 +3,7 @@ open Core_kernel
 open Generic
 open Asm.Directive
 
+(** [pool] is the pool of available registers to be allocated *)
 let pool =
   [
     `rbx;
@@ -26,7 +27,7 @@ module LiveInterval = struct
     startpoint : int;
     endpoint : int;
   }
-  [@@deriving fields, equal]
+  [@@deriving equal]
   (** [t] represents a range between [startpoint] and [endpoint] *)
 
   (** [create reg key] is a new [interval] for [reg] [startpoint]
@@ -82,18 +83,22 @@ let intervals tbl =
   List.sort ~compare:LiveInterval.compare_start
     (Reg.Abstract.Table.data tbl)
 
-(** [expire_interval ~concrete active (key, intervals)] expires
-    [intervals] and removes [key] from [active] *)
-let expire_interval ~concrete active (key, intervals) =
-  let f { LiveInterval.reg } = Reg.Abstract.Table.remove concrete reg in
-  List.iter ~f intervals;
-  Map.remove active key
+(** [expire_interval ~concrete (active, pool) (key, intervals)] expires
+    [intervals] and removes [key] from [active], and returns the updated
+    [(active, pool)] *)
+let expire_interval ~concrete (active, pool) (key, intervals) =
+  let f acc { LiveInterval.reg } =
+    let freed = Reg.Abstract.Table.find_exn concrete reg in
+    Reg.Abstract.Table.remove concrete reg;
+    freed :: acc
+  in
+  (Map.remove active key, List.fold ~f ~init:pool intervals)
 
-(** [expire ~concrete ~active interval] expires the intervals that are
-    old when the startpoint of [interval] is reached *)
-let expire ~concrete ~active { LiveInterval.startpoint } =
+(** [expire ~pool ~concrete ~active interval] expires the intervals that
+    are old when the startpoint of [interval] is reached *)
+let expire ~pool ~concrete ~active { LiveInterval.startpoint } =
   let remove = Map.range_to_alist ~min:0 ~max:startpoint active in
-  List.fold ~f:(expire_interval ~concrete) ~init:active remove
+  List.fold ~f:(expire_interval ~concrete) ~init:(active, pool) remove
 
 (** [allocate ~pool concrete interval] allocates a new concretized
     register for [interval] *)
@@ -128,13 +133,13 @@ let spill ~concrete ~active (interval : LiveInterval.t) =
   end
   else active
 
-(** [concretize nodes] is a table mapping abstract registers to concrete
-    registers *)
-let concretize nodes =
+(** [concrete_tbl nodes] is a table mapping abstract registers to
+    concrete registers *)
+let concrete_tbl nodes =
   let tbl = intervals_tbl nodes in
   let concrete = Reg.Abstract.Table.create () in
   let f (active, pool) interval =
-    let active = expire ~concrete ~active interval in
+    let active, pool = expire ~pool ~concrete ~active interval in
     if List.is_empty pool then (spill ~concrete ~active interval, pool)
     else
       let pool = allocate ~pool concrete interval in
@@ -149,7 +154,7 @@ let concretize nodes =
 (** [allocate_nodes ~offset nodes] is the concretized instructions of
     [nodes] *)
 let allocate_nodes ~offset nodes =
-  (* let concrete = concretize nodes in *)
+  (* let concrete = concrete_tbl nodes in *)
   failwith ""
 
 let allocate_fn ~offset instrs =

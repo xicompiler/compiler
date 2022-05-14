@@ -15,7 +15,6 @@ let rec fold2_result ~unequal_lengths ~f ~init l1 l2 =
   | _ -> Error unequal_lengths
 
 let pop_exn = function h :: t -> (h, t) | [] -> failwith "list empty"
-let pop_opt = function h :: t -> Some (h, t) | [] -> None
 
 (** Same as [rev_concat] but takes an accumulator *)
 let rec rev_concat_acc acc = function
