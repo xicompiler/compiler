@@ -7,6 +7,40 @@ type t = Operand.Abstract.t Generic.t
 
 let def instr = failwith "unimplemented"
 
+let map_imul enc ~f =
+  let open Operand.Abstract in
+  match enc with
+  | `M e -> `M (map e ~f)
+  | `RM (e1, e2) -> `RM (map e1 ~f, map e2 ~f)
+  | `RMI (e1, e2, i) -> `RMI (map e1 ~f, map e2 ~f, i)
+
+let map instr ~f =
+  let open Operand.Abstract in
+  match instr with
+  | (Label _ | Enter _ | Jcc _ | Leave | Ret) as instr -> instr
+  | Jmp e -> Jmp (map e ~f)
+  | Setcc (cc, e) -> Setcc (cc, map e ~f)
+  | Cmp (e1, e2) -> Cmp (map e1 ~f, map e2 ~f)
+  | Test (e1, e2) -> Test (map e1 ~f, map e2 ~f)
+  | Push e -> Push (map e ~f)
+  | Pop e -> Pop (map e ~f)
+  | IMul enc -> IMul (map_imul enc ~f)
+  | Inc e -> Inc (map e ~f)
+  | Dec e -> Dec (map e ~f)
+  | Call e -> Call (map e ~f)
+  | IDiv e -> IDiv (map e ~f)
+  | Shl (e, i) -> Shl (map e ~f, i)
+  | Shr (e, i) -> Shr (map e ~f, i)
+  | Sar (e, i) -> Sar (map e ~f, i)
+  | Add (e1, e2) -> Add (map e1 ~f, map e2 ~f)
+  | Sub (e1, e2) -> Sub (map e1 ~f, map e2 ~f)
+  | Xor (e1, e2) -> Xor (map e1 ~f, map e2 ~f)
+  | And (e1, e2) -> And (map e1 ~f, map e2 ~f)
+  | Or (e1, e2) -> Or (map e1 ~f, map e2 ~f)
+  | Lea (e1, e2) -> Lea (map e1 ~f, map e2 ~f)
+  | Mov (e1, e2) -> Mov (map e1 ~f, map e2 ~f)
+  | Movzx (e1, e2) -> Movzx (map e1 ~f, map e2 ~f)
+
 (** [Expr] contains functions for manipulating IR expressions and
     translating them into abstract assembly *)
 module Expr = struct

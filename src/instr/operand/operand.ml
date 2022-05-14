@@ -1,13 +1,15 @@
 open Core
 
 type 'a generic =
-  [ Reg.t
-  | `Mem of 'a Mem.generic
+  [ `Mem of 'a Mem.generic
   | `Imm of Imm.t
   | Ir.name
   ]
 
-type t = Reg.t generic
+type t =
+  [ Reg.t
+  | Reg.t generic
+  ]
 
 let to_string : [< t ] -> string = function
   | #Reg.t as r -> Reg.to_string r
@@ -18,15 +20,20 @@ let to_string : [< t ] -> string = function
 module Abstract = struct
   type t =
     [ Reg.Abstract.t generic
-    | Ir.Temp.Virtual.t
+    | Reg.Abstract.t
     ]
 
+  let map (op : t) ~f : [> 'a generic ] =
+    match op with
+    | (`Imm _ | `Name _) as op -> op
+    | `Mem mem -> `Mem (Mem.map mem ~f)
+    | #Reg.Abstract.t as r -> f r
+
   let to_string : [< t ] -> string = function
-    | #Reg.t as r -> Reg.to_string r
+    | #Reg.Abstract.t as r -> Reg.Abstract.to_string r
     | `Mem mem -> Mem.Abstract.to_string mem
     | `Imm i -> Int64.to_string i
     | `Name l -> l
-    | #Ir.Temp.Virtual.t as t -> Ir.Temp.Virtual.to_string t
 end
 
 module Reg = Reg

@@ -26,6 +26,7 @@ module Index = struct
         let scale = Scale.to_string scale in
         Printf.sprintf "%s * %s" index scale
 
+  let map idx ~f = { idx with index = f idx.index }
   let with_index idx ~index = { idx with index }
 end
 
@@ -51,6 +52,9 @@ type 'a generic = {
 
 let create ?segment ?(size = Size.Qword) ?index ?offset base =
   { segment; size; base; index; offset }
+
+let map mem ~f =
+  { mem with base = f mem.base; index = mem.index >>| Index.map ~f }
 
 type t = Reg.t generic
 

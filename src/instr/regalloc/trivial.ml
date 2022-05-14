@@ -121,7 +121,7 @@ let concretize_mem ~shuttle mem =
 let concretize_operand ~shuttle : Operand.Abstract.t -> Operand.t =
   function
   | #Spill.t as reg -> (concretize_reg ~shuttle reg :> Operand.t)
-  | (#Reg.t | `Name _ | `Imm _) as concrete -> concrete
+  | (#Reg.Bit64.t | `Name _ | `Imm _) as concrete -> concrete
   | `Mem mem -> `Mem (concretize_mem ~shuttle mem :> Reg.t Mem.generic)
 
 let concretize_map ~shuttle ~f op = f (concretize_operand ~shuttle op)

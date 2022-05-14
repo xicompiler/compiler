@@ -71,6 +71,10 @@ val index : 'a generic -> 'a Index.t option
     scale of memory operand [mem] if present, or [None] if there is no
     index operand *)
 
+val map : 'a generic -> f:('a -> 'b) -> 'b generic
+(** [map mem ~f] is [mem] with [f] applied to its base and index
+    registers *)
+
 val with_registers :
   ?index:'b Index.t -> base:'b -> 'a generic -> 'b generic
 (** [with_registers ~index ~base mem] is [mem] with its index and base

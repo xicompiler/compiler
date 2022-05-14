@@ -1,14 +1,16 @@
 open Core
 
 type 'a generic =
-  [ Reg.t
-  | `Mem of 'a Mem.generic
+  [ `Mem of 'a Mem.generic
   | `Imm of Imm.t
   | Ir.name
   ]
 (** ['a generic] is the type of an operand with register type ['a] *)
 
-type t = Reg.t generic
+type t =
+  [ Reg.t
+  | Reg.t generic
+  ]
 (** [t] is the type of an operand in x86 *)
 
 include Util.Stringable.S with type t := t
@@ -17,9 +19,12 @@ include Util.Stringable.S with type t := t
 module Abstract : sig
   type t =
     [ Reg.Abstract.t generic
-    | Ir.Temp.Virtual.t
+    | Reg.Abstract.t
     ]
   (** [t] is the type of an abstract operand in x86 *)
+
+  val map : t -> f:(Reg.Abstract.t -> ([> 'a generic ] as 'a)) -> 'a
+  (** [map op ~f] applies [f] to every register in operand [op] *)
 
   include Util.Stringable.S with type t := t
 end
