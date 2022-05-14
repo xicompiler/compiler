@@ -55,11 +55,11 @@ module type S = sig
   val of_vertices : ('v, 'e) vertex list -> ('v, 'e) t
   val max_key : ('v, 'e) t -> Key.t option
 
-  val splice_after :
-    ('v, unit) t -> ('v, unit) vertex -> pred:('v, unit) vertex -> unit
+  val insert_after :
+    ('v, 'e) t -> ('v, 'e) vertex -> prev:('v, 'e) vertex -> unit
 
-  val splice_before :
-    ('v, unit) t -> ('v, unit) vertex -> succ:('v, unit) vertex -> unit
+  val insert_before :
+    ('v, 'e) t -> ('v, 'e) vertex -> next:('v, 'e) vertex -> unit
 
   val foldi_vertices :
     ('v, 'e) t ->

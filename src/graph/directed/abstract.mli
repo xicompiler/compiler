@@ -131,13 +131,13 @@ module type S = sig
   (** [max_key g] is greater than or equal to the key of every vertex in
       [g] *)
 
-  val splice_after :
-    ('v, unit) t -> ('v, unit) vertex -> pred:('v, unit) vertex -> unit
-  (** Splices in a vertex after a predecessor *)
+  val insert_after :
+    ('v, 'e) t -> ('v, 'e) vertex -> prev:('v, 'e) vertex -> unit
+  (** [insert_after g v ~prev] inserts [v] after [prev] *)
 
-  val splice_before :
-    ('v, unit) t -> ('v, unit) vertex -> succ:('v, unit) vertex -> unit
-  (** Splices in a vertex before a successor *)
+  val insert_before :
+    ('v, 'e) t -> ('v, 'e) vertex -> next:('v, 'e) vertex -> unit
+  (** [insert_before g v ~prev] inserts [v] after [prev] *)
 
   val foldi_vertices :
     ('v, 'e) t ->

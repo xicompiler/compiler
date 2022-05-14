@@ -17,8 +17,8 @@ module Make (Key : Key) = struct
     mutable unmarked_pred : int;
     mutable prev : ('v, 'e) vertex option;
     mutable next : ('v, 'e) vertex option;
-    mutable incoming : ('v, 'e) edge Table.t;
-    mutable outgoing : ('v, 'e) edge Table.t;
+    mutable incoming : ('v, 'e) edge list;
+    mutable outgoing : ('v, 'e) edge list;
   }
 
   and ('v, 'e) edge = {
@@ -38,44 +38,38 @@ module Make (Key : Key) = struct
   module Vertex = struct
     type ('v, 'e) t = ('v, 'e) vertex
 
-    let incoming { incoming } = Hashtbl.data incoming
+    let incoming { incoming } = incoming
+    let pred { incoming } = List.rev_map ~f:Edge.src incoming
 
     (** [fold_pred v ~init ~f] folds function [f] over each predecessor
         of [v] with initial value [init] and returns the result *)
     let fold_pred v ~init ~f =
-      Hashtbl.fold v.incoming ~init ~f:(fun ~key:_ ~data acc ->
-          f acc (Edge.src data))
-
-    let pred = fold_pred ~init:[] ~f:(fun acc v -> v :: acc)
+      List.fold v.incoming ~init ~f:(fun acc -> Edge.src >> f acc)
 
     (** [add_incoming ~edge v] pushes [edge] onto the incoming edges of
         [v] *)
-    let add_incoming ~edge v =
-      Hashtbl.set v.incoming ~key:v.key ~data:edge
+    let add_incoming ~edge v = v.incoming <- edge :: v.incoming
 
-    let outgoing { outgoing } = Hashtbl.data outgoing
+    let outgoing { outgoing } = outgoing
+    let succ { outgoing } = List.rev_map ~f:Edge.dst outgoing
 
     (** [fold_succ u ~init ~f] folds function [f] over each successor of
         [u] with initial value [init] and returns the result *)
-    let fold_succ v ~init ~f =
-      Hashtbl.fold v.outgoing ~init ~f:(fun ~key:_ ~data acc ->
-          f acc (Edge.dst data))
+    let fold_succ u ~init ~f =
+      List.fold u.outgoing ~init ~f:(fun acc -> Edge.dst >> f acc)
 
-    let succ = fold_succ ~init:[] ~f:(fun acc v -> v :: acc)
     let compare v1 v2 = Key.compare v1.key v2.key
     let equal v1 v2 = compare v1 v2 = 0
 
     let has_succ v ~target =
       let f { dst } = equal target dst in
-      Hashtbl.exists ~f v.outgoing
+      List.exists ~f v.outgoing
 
-    let peek_succ { outgoing } =
-      Hashtbl.choose outgoing >>| (snd >> Edge.dst)
+    let peek_succ { outgoing } = List.hd outgoing >>| Edge.dst
 
     (** [add_outgoing ~edge v] pushes [edge] onto the outgoing edges of
         [v] *)
-    let add_outgoing ~edge v =
-      Hashtbl.set v.outgoing ~key:v.key ~data:edge
+    let add_outgoing ~edge v = v.outgoing <- edge :: v.outgoing
 
     let key { key } = key
     let value { value } = value
@@ -99,7 +93,7 @@ module Make (Key : Key) = struct
       if unmarked v then begin
         v.marked <- true;
         let f { dst } = decr_unmarked_pred dst in
-        Hashtbl.iter ~f v.outgoing
+        List.iter ~f v.outgoing
       end
 
     let has_unmarked_pred { unmarked_pred } = unmarked_pred > 0
@@ -112,15 +106,29 @@ module Make (Key : Key) = struct
 
     let add_unweighted_edge ~src ~dst = add_edge ~src ~dst ~weight:()
 
+    (** [filter_incoming ~src ~dst] is the list of all edges [(u, dst)]
+        with [u] not equal to [src] *)
+    let filter_incoming ~src ~dst =
+      let f { src = u } = not (equal src u) in
+      List.rev_filter ~f dst.incoming
+
+    (** [filter_outgoing ~src ~dst] is the list of all edges [(src, v)]
+        with [v] not equal to [dst] *)
+    let filter_outgoing ~src ~dst =
+      let f { dst = v } = not (equal dst v) in
+      List.rev_filter ~f src.outgoing
+
     (** [remove_outgoing ~src ~dst] deletes all edges [(src, dst)]
         exiting [src] *)
-    let remove_outgoing ~src ~dst = Hashtbl.remove src.outgoing dst.key
+    let remove_outgoing ~src ~dst =
+      src.outgoing <- filter_outgoing ~src ~dst
 
     (** [remove_incoming ~src ~dst] deletes all edges [(src, dst)]
         entering [dst]*)
-    let remove_incoming ~src ~dst = Hashtbl.remove dst.incoming src.key
+    let remove_incoming ~src ~dst =
+      dst.incoming <- filter_incoming ~src ~dst
 
-    let exists_incoming v ~f = Hashtbl.exists ~f v.incoming
+    let exists_incoming v ~f = List.exists ~f v.incoming
 
     let remove_edge ~src ~dst =
       remove_incoming ~src ~dst;
@@ -139,8 +147,8 @@ module Make (Key : Key) = struct
         unmarked_pred = 0;
         prev = None;
         next = None;
-        incoming = Table.create ();
-        outgoing = Table.create ();
+        incoming = [];
+        outgoing = [];
       }
 
     (** insert node [u] after [prev] *)
@@ -214,45 +222,6 @@ module Make (Key : Key) = struct
     (* If we're inserting before the head, this node is the new head *)
     if Vertex.equal head next then g.head <- Some v
 
-  let splice_before g v ~succ =
-    (* Insert v before succ in linked list *)
-    insert_before g v ~next:succ;
-    (* Edges entering succ *)
-    let incoming = succ.incoming in
-    Hashtbl.map_inplace incoming ~f:(fun (Edge.{ src } as e) ->
-        (* Remove succ from adjacent nodes of predecessors *)
-        Hashtbl.remove src.outgoing succ.key;
-        (* Copy same edge but with destination as spliced node *)
-        let e = Edge.{ e with dst = v } in
-        (* Create an edge (src, v) *)
-        Hashtbl.add_exn src.outgoing ~key:v.key ~data:e;
-        e);
-    (* Set incoming edges to modified incoming edges of succ *)
-    v.incoming <- incoming;
-    (* reset the incoming edges of succ *)
-    succ.incoming <- Table.create ();
-    (* add edge (v, succ) *)
-    Vertex.add_unweighted_edge ~src:v ~dst:succ
-
-  let splice_after g v ~pred =
-    insert_after g v ~prev:pred;
-    (* Edges exiting pred *)
-    let outgoing = pred.outgoing in
-    Hashtbl.map_inplace outgoing ~f:(fun (Edge.{ dst } as e) ->
-        (* Remove pred from adjacent nodes of successors *)
-        Hashtbl.remove dst.incoming pred.key;
-        (* Copy same edge but with source as spliced node *)
-        let e = Edge.{ e with src = v } in
-        (* Create edge (v, dst) *)
-        Hashtbl.add_exn dst.incoming ~key:v.key ~data:e;
-        e);
-    (* Set outgoing edges to modified outgoing edges of succ *)
-    v.outgoing <- outgoing;
-    (* reset the outgoing edges of pred *)
-    pred.outgoing <- Table.create ();
-    (* add edge (pred, v) *)
-    Vertex.add_unweighted_edge ~src:pred ~dst:v
-
   open Dataflow.Values
 
   (** [create_data_map ~top g] is a fresh hashtable where every key in
@@ -325,7 +294,7 @@ module Make (Key : Key) = struct
       let out = Vertex.outgoing node in
       if List.is_empty out then Printf.sprintf "\"%s\";" v1
       else
-        out
+        node.outgoing
         |> List.map ~f:(fun e ->
                let v2 = stringify_vertex e.dst in
                let w = stringify_weight e.weight in
