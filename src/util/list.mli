@@ -38,3 +38,6 @@ val length : 'a t -> int64
 val max_elt_exn : compare:('a -> 'a -> int) -> 'a t -> 'a
 (** [max_elt_exn ~compare lst] is the value of [max_elt ~compare lst],
     or raises an exception if [lst] is nil. *)
+
+val first_n : 'a list -> int -> 'a list
+(** [first_n lst n] is the first [n] elements of [lst] *)

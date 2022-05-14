@@ -29,3 +29,5 @@ let length lst = lst |> List.length |> Int64.of_int
 
 let max_elt_exn ~compare lst =
   lst |> List.max_elt ~compare |> Option.value_exn
+
+let first_n lst n = fst (List.split_n lst n)

@@ -78,9 +78,9 @@ let spill2 e = spill ~init:(spill e)
 
 (** [spills instr] is the list of unique spills used by [instr] *)
 let spills : Abstract.t -> Spill.t list = function
-  | Label _ | Enter _ | Jcc _ | Leave | Ret -> []
+  | Label _ | Enter _ | Jcc _ | Leave | Ret _ -> []
   | Jmp e
-  | Call e
+  | Call { name = e }
   | Setcc (_, e)
   | Push e
   | Pop e
@@ -154,7 +154,7 @@ let concretize_movzx ~shuttle op1 op2 =
   concretize_bit8 ~shuttle ~f:(movzx op) op2
 
 let rev_concretize_instr ~shuttle : Abstract.t -> Concrete.t = function
-  | (Label _ | Enter _ | Jcc _ | Leave | Ret) as instr -> instr
+  | (Label _ | Enter _ | Jcc _ | Leave | Ret _) as instr -> instr
   | Jmp op -> concretize_map ~shuttle ~f:jmp op
   | Setcc (cc, op) -> concretize_bit8 ~shuttle ~f:(setcc cc) op
   | Cmp (op1, op2) -> concretize2_map ~shuttle ~f:cmp op1 op2
@@ -164,7 +164,8 @@ let rev_concretize_instr ~shuttle : Abstract.t -> Concrete.t = function
   | IMul mul -> concretize_mul ~shuttle mul
   | Inc op -> concretize_map ~shuttle ~f:inc op
   | Dec op -> concretize_map ~shuttle ~f:dec op
-  | Call op -> concretize_map ~shuttle ~f:call op
+  | Call { name = op; n; m } ->
+      concretize_map ~shuttle ~f:(fun x -> call { name = x; n; m }) op
   | IDiv op -> concretize_map ~shuttle ~f:idiv op
   | Shl (op, imm) -> concretize_map ~shuttle ~f:(fun x -> shl x imm) op
   | Shr (op, imm) -> concretize_map ~shuttle ~f:(fun x -> shr x imm) op

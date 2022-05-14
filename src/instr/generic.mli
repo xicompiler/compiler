@@ -1,3 +1,10 @@
+type 'a call = {
+  name : 'a;
+  n : int;
+  m : int;
+}
+(** [call] is the type of a generic call instruction in x86 *)
+
 (** [t] is the type of a generic instruction in x86 *)
 type 'a t =
   | Label of Ir.label
@@ -12,7 +19,7 @@ type 'a t =
   | IMul of [ `M of 'a | `RM of 'a * 'a | `RMI of 'a * 'a * Imm.t ]
   | Inc of 'a
   | Dec of 'a
-  | Call of 'a
+  | Call of 'a call
   | IDiv of 'a
   | Shl of 'a * Imm.t
   | Shr of 'a * Imm.t
@@ -26,7 +33,7 @@ type 'a t =
   | Mov of 'a * 'a
   | Movzx of 'a * 'a
   | Leave
-  | Ret
+  | Ret of int
 [@@deriving variants]
 
 val skip_load : 'a t -> bool

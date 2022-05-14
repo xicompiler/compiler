@@ -5,8 +5,7 @@ open Util.Fn
 
 type t = Operand.Abstract.t Generic.t
 
-let def instr = failwith "unimplemented"
-
+(** [map_imul] applies [f] to every operand within [enc] *)
 let map_imul enc ~f =
   let open Operand.Abstract in
   match enc with
@@ -17,7 +16,7 @@ let map_imul enc ~f =
 let map instr ~f =
   let open Operand.Abstract in
   match instr with
-  | (Label _ | Enter _ | Jcc _ | Leave | Ret) as instr -> instr
+  | (Label _ | Enter _ | Jcc _ | Leave | Ret _) as instr -> instr
   | Jmp e -> Jmp (map e ~f)
   | Setcc (cc, e) -> Setcc (cc, map e ~f)
   | Cmp (e1, e2) -> Cmp (map e1 ~f, map e2 ~f)
@@ -27,7 +26,7 @@ let map instr ~f =
   | IMul enc -> IMul (map_imul enc ~f)
   | Inc e -> Inc (map e ~f)
   | Dec e -> Dec (map e ~f)
-  | Call e -> Call (map e ~f)
+  | Call call -> Call { call with name = map call.name ~f }
   | IDiv e -> IDiv (map e ~f)
   | Shl (e, i) -> Shl (map e ~f, i)
   | Shr (e, i) -> Shr (map e ~f, i)
@@ -450,7 +449,7 @@ module Stmt = struct
     let s2, ts = Expr.rev_munch_list ~init:s1 ~gensym es in
     (* [n] is the number of args *)
     let n = List.length es in
-    let call = Call name :: rev_pass_args ~init:s2 ~m ~n ts in
+    let call = Call { name; n; m } :: rev_pass_args ~init:s2 ~m ~n ts in
     let dealloc = rev_dealloc_args ~init:call ~n es in
     rev_get_rets ~init:(dealloc ~m) ~m
 
@@ -481,7 +480,7 @@ module Stmt = struct
   let rev_munch_return ~init ~gensym ~ret es : translation =
     let s, ts = Expr.rev_munch_list ~init ~gensym es in
     let f i s t = return_ith ~ret (`Temp t) (Int.succ i) :: s in
-    Ret :: Leave :: List.foldi (List.rev ts) ~init:s ~f
+    Ret (List.length ts) :: Leave :: List.foldi (List.rev ts) ~init:s ~f
 
   (** [rev_munch ~init ~gensym ~ret e] is the translation of [e], in
       reverse order, followed by [init] *)
@@ -561,34 +560,109 @@ module Asm = struct
   let to_string = Generic.Asm.to_string ~f:Operand.Abstract.to_string
 end
 
-(* [def_of_mul m] is [Some op] for the destination operand in an [imul
-   m] instruction *)
-let def_of_mul = function
-  | `M (#Reg.Abstract.t as op)
-  | `RM ((#Reg.Abstract.t as op), _)
-  | `RMI ((#Reg.Abstract.t as op), _, _) ->
-      Reg.Abstract.Set.add Reg.Abstract.Set.empty op
-  | _ -> Reg.Abstract.Set.empty
+(** [arg_regs] is the argument registers used in a call instruction *)
+let arg_regs = [ `rdi; `rsi; `rdx; `rcx; `r8; `r9 ]
+
+(** [ret_regs] is the return registers used in a call instruction *)
+let ret_regs = [ `rax; `rdx ]
+
+(** [regs_of_ops ?init ops] is a set of abstract registers in [ops] *)
+let rec regs_of_ops ?(init = Reg.Abstract.Set.empty) = function
+  | (#Reg.Abstract.t as h) :: t -> regs_of_ops ~init:(Set.add init h) t
+  | _ -> init
+
+(** [def_of_imul m] is [Some op] for the destination operand in an
+    [imul] instruction *)
+let def_of_imul = function
+  | `M _ -> regs_of_ops [ `rax; `rdx ]
+  | `RM (op, _) | `RMI (op, _, _) -> regs_of_ops [ op ]
+
+(** [def_of_idiv] is the defined variables in an [idiv] instruction *)
+let def_of_idiv = regs_of_ops [ `rax; `rdx ]
+
+(** [def_of_call c] is the defined variables in a [call] instruction *)
+let def_of_call { m } =
+  Reg.Abstract.Set.of_list (Util.List.first_n ret_regs m)
 
 let def : t -> Reg.Abstract.Set.t = function
-  | Setcc (_, (#Reg.Abstract.t as op))
-  | IDiv (#Reg.Abstract.t as op)
-  | Shl ((#Reg.Abstract.t as op), _)
-  | Shr ((#Reg.Abstract.t as op), _)
-  | Sar ((#Reg.Abstract.t as op), _)
-  | Add ((#Reg.Abstract.t as op), _)
-  | Sub ((#Reg.Abstract.t as op), _)
-  | Xor ((#Reg.Abstract.t as op), _)
-  | And ((#Reg.Abstract.t as op), _)
-  | Or ((#Reg.Abstract.t as op), _)
-  | Lea ((#Reg.Abstract.t as op), _)
-  | Mov ((#Reg.Abstract.t as op), _)
-  | Movzx ((#Reg.Abstract.t as op), _)
-  | Pop (#Reg.Abstract.t as op)
-  | Inc (#Reg.Abstract.t as op)
-  | Dec (#Reg.Abstract.t as op) ->
-      Reg.Abstract.Set.add Reg.Abstract.Set.empty op
-  | IMul m -> def_of_mul m
-  | _ -> Reg.Abstract.Set.empty
+  | Label _ | Enter _ | Jmp _ | Jcc _ | Cmp _ | Test _ | Push _ | Leave
+  | Ret _ ->
+      Reg.Abstract.Set.empty
+  | Setcc (_, op)
+  | Shl (op, _)
+  | Shr (op, _)
+  | Sar (op, _)
+  | Add (op, _)
+  | Sub (op, _)
+  | Xor (op, _)
+  | And (op, _)
+  | Or (op, _)
+  | Lea (op, _)
+  | Mov (op, _)
+  | Movzx (op, _)
+  | Pop op
+  | Inc op
+  | Dec op ->
+      regs_of_ops [ op ]
+  | IDiv _ -> def_of_idiv
+  | IMul m -> def_of_imul m
+  | Call c -> def_of_call c
 
-let use = function _ -> Reg.Abstract.Set.empty
+(** [use_of_mem m] is the used variables in a memory operand *)
+let use_of_mem m =
+  let op1 = Some (Mem.base m) in
+  let op2 = Option.map ~f:Mem.Index.index (Mem.index m) in
+  regs_of_ops (List.filter_opt [ op1; op2 ])
+
+(** [use_of_ops ?init ops] is a set of abstract registers used in [ops],
+    including within memory addresses *)
+let rec use_of_ops ?(init = Reg.Abstract.Set.empty) = function
+  | `Mem m :: t ->
+      let mem = use_of_mem m in
+      use_of_ops ~init:(Set.union init mem) t
+  | ops -> regs_of_ops ~init ops
+
+(** [use_of_idiv op] is the used variables in an [idiv] instruction *)
+let use_of_idiv op = regs_of_ops [ op; `rax; `rdx ]
+
+(** [use_of_imul m] is the defined variables in an [imul] instruction *)
+let use_of_imul = function
+  | `M op -> regs_of_ops [ op; `rax ]
+  | `RM (op1, op2) -> regs_of_ops [ op1; op2 ]
+  | `RMI (_, op, _) -> regs_of_ops [ op ]
+
+(* [use_of_call c] is the used variables in a [call] instruction *)
+let use_of_call { n; m } =
+  Reg.Abstract.Set.of_list
+    (Util.List.first_n arg_regs (if m <= 2 then n else succ n))
+
+(* [use_of_ret m] is the used variables in a [ret] instruction *)
+let use_of_ret m =
+  Reg.Abstract.Set.of_list (Util.List.first_n ret_regs m)
+
+let use : t -> Reg.Abstract.Set.t = function
+  | Label _ | Enter _ | Jcc _ | Setcc _ | Pop _ | Leave ->
+      Reg.Abstract.Set.empty
+  | Jmp op
+  | Shl (op, _)
+  | Shr (op, _)
+  | Sar (op, _)
+  | Push op
+  | Inc op
+  | Dec op ->
+      use_of_ops [ op ]
+  | Add (op1, op2)
+  | Sub (op1, op2)
+  | Xor (op1, op2)
+  | And (op1, op2)
+  | Or (op1, op2)
+  | Cmp (op1, op2)
+  | Test (op1, op2)
+  | Lea (op1, op2)
+  | Mov (op1, op2)
+  | Movzx (op1, op2) ->
+      use_of_ops [ op1; op2 ]
+  | IDiv d -> use_of_idiv d
+  | IMul m -> use_of_imul m
+  | Call c -> use_of_call c
+  | Ret m -> use_of_ret m

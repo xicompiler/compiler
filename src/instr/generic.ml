@@ -3,7 +3,12 @@ open Option.Let_syntax
 open Util.Fn
 module CFG = Graph.Directed.IntDigraph
 
-(** [t] is the type of a generic instruction in x86 *)
+type 'a call = {
+  name : 'a;
+  n : int;
+  m : int;
+}
+
 type 'a t =
   | Label of Ir.label
   | Enter of Imm.t * Imm.t
@@ -17,7 +22,7 @@ type 'a t =
   | IMul of [ `M of 'a | `RM of 'a * 'a | `RMI of 'a * 'a * Imm.t ]
   | Inc of 'a
   | Dec of 'a
-  | Call of 'a
+  | Call of 'a call
   | IDiv of 'a
   | Shl of 'a * Imm.t
   | Shr of 'a * Imm.t
@@ -31,7 +36,7 @@ type 'a t =
   | Mov of 'a * 'a
   | Movzx of 'a * 'a
   | Leave
-  | Ret
+  | Ret of int
 [@@deriving variants]
 
 let skip_load = function
@@ -118,7 +123,7 @@ let to_string ~f : 'a t -> string = function
   | IMul m -> string_of_imul ~f m
   | Inc d -> format1 ~f ~name:"inc " d
   | Dec d -> format1 ~f ~name:"dec" d
-  | Call n -> format1 ~f ~name:"call" n
+  | Call { name = n } -> format1 ~f ~name:"call" n
   | IDiv d -> format1 ~f ~name:"idiv" d
   | Shl (d, i) -> format_mi ~f ~name:"shl" d i
   | Shr (d, i) -> format_mi ~f ~name:"shr" d i
@@ -132,7 +137,7 @@ let to_string ~f : 'a t -> string = function
   | Mov (d, o) -> format2 ~f ~name:"mov" d o
   | Movzx (d, o) -> format2 ~f ~name:"movzx" d o
   | Leave -> "leave"
-  | Ret -> "ret"
+  | Ret _ -> "ret"
 
 let data_fmt = format_of_string "%s: .quad %s"
 
@@ -176,7 +181,7 @@ let add_outgoing ~labels ~src t =
   | Jmp (`Name l) ->
       let dst = labels l in
       CFG.Vertex.add_unweighted_edge ~src ~dst
-  | Jmp _ | Ret -> ()
+  | Jmp _ | Ret _ -> ()
   | Jcc (_, l) ->
       let dst = labels l in
       CFG.Vertex.add_unweighted_edge ~src ~dst;
