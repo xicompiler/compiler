@@ -66,7 +66,7 @@ let find_spill ~gensym =
     with register [dst] *)
 let replace instr ~src ~dst =
   Abstract.map instr ~f:(fun r ->
-      if Reg.Abstract.equal src r then dst else src)
+      if Reg.Abstract.equal src r then dst else r)
 
 (** [rewrite instrs ~spills ~addr ~gensym] is [instrs] rewritten such
     that every occurrence of some [t] is replaced by a shuttle to/from
@@ -93,9 +93,9 @@ let rewrite instrs ~spills ~addr ~gensym : Abstract.t list =
         | _ -> acc)
     in
     let use = Abstract.use instr in
+    let def = Abstract.def instr in
     (* for uses, shuttle off stack into registers *)
     let instr, from_stk = rewrite use ~instr ~init:acc ~f:Generic.mov in
-    let def = Abstract.def instr in
     (* for defs, shuttle from register back to stack *)
     let instr, to_stk = rewrite def ~instr ~f:(Fn.flip Generic.mov) in
     (* sandwich rewritten instruction in between moves from the stack
@@ -120,6 +120,8 @@ let replace_abstract instrs ~color ~frame =
   let size = Int64.of_int (8 * frame) in
   Enter (size, 0L) :: Abstract.map_concrete_list instrs ~f:replace
 
+let print_list f = List.iter ~f:(f >> print_endline)
+
 let assign instrs ~gensym =
   let addr = SpillAddress.create () in
   let rec loop (instrs : Abstract.t list) prev =
@@ -129,8 +131,12 @@ let assign instrs ~gensym =
     let intf = InterferenceGraph.create ~live vs in
     match G.kempe ~precolor:Reg.Abstract.to_int intf ~max:8 with
     | Error spills ->
-        Sexp.to_string_hum (G.Set.sexp_of_t spills);
+        (* print_endline (Sexp.to_string_hum (G.Set.sexp_of_t spills));
+           print_endline "....."; print_list Abstract.to_string
+           instrs; *)
         let instrs = rewrite instrs ~spills ~addr ~gensym in
+        (* print_endline "....."; print_list Abstract.to_string
+           instrs; *)
         loop instrs (Set.union prev spills)
     | Ok color ->
         let frame = SpillAddress.count addr in

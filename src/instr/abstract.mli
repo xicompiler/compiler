@@ -1,6 +1,8 @@
 type t = Operand.Abstract.t Generic.t [@@deriving sexp]
 (** [t] is the type of an abstract assembly instruction *)
 
+include Util.Stringable.S with type t := t
+
 module Asm : sig
   type t = Operand.Abstract.t Generic.Asm.t
   (** [asm] is the type of abstract assembly *)

@@ -5,6 +5,8 @@ open Util.Fn
 
 type t = Operand.Abstract.t Generic.t [@@deriving sexp]
 
+let to_string = Generic.to_string ~f:Operand.Abstract.to_string
+
 (** [map_imul] applies [f] to every operand within [enc] based on [map] *)
 let map_imul enc ~map ~f =
   match enc with
