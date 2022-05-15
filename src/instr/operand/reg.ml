@@ -34,7 +34,6 @@ module Bit64 = struct
   let num_caller_save = Sequence.length caller_save
 
   module Table = Hashtbl.Make (T)
-  include Comparable.Make (T)
 
   let reg_array : t array =
     [|
@@ -76,6 +75,8 @@ module Bit64 = struct
     Hashtbl.find_exn tbl
 
   let to_string = Variants.to_name
+
+  include Comparable.Make (T)
 end
 
 module Bit8 = struct
