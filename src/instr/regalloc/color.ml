@@ -110,17 +110,23 @@ module Live = Dataflow.Liveness.Make (Reg.Abstract.Set)
 
 let params = Live.params ~use:Abstract.use ~def:Abstract.def
 
-let replace_abstract instrs ~color ~frame =
-  let replace = function
-    | #Ir.Temp.Virtual.t as t ->
-        let concrete = Reg.Bit64.of_int_exn (color t) in
-        (concrete :> Reg.t)
-    | #Reg.Bit64.t as concrete -> concrete
-  in
-  let size = Int64.of_int (8 * frame) in
-  Enter (size, 0L) :: Abstract.map_concrete_list instrs ~f:replace
+let filter_dead =
+  List.filter_map ~f:(function
+    | Mov ((#Reg.t as r1), (#Reg.t as r2)) when Reg.equal r1 r2 -> None
+    | Setcc (cc, (#Reg.t as r)) -> Some (Setcc (cc, Reg.to_8_bit r))
+    | Movzx (dst, (#Reg.t as src)) ->
+        Some (Movzx (dst, Reg.to_8_bit src))
+    | instr -> Some instr)
 
-let print_list f = List.iter ~f:(f >> print_endline)
+let map_abstract ~f = function
+  | #Ir.Temp.Virtual.t as t -> (f t :> Reg.t)
+  | #Reg.Bit64.t as concrete -> concrete
+
+let replace_abstract instrs ~color ~frame =
+  let replace = map_abstract ~f:(color >> Reg.Bit64.of_int_exn) in
+  let size = Int64.of_int (8 * frame) in
+  let concrete = Abstract.map_concrete_list instrs ~f:replace in
+  Enter (size, 0L) :: filter_dead concrete
 
 let assign instrs ~gensym =
   let addr = SpillAddress.create () in
@@ -129,14 +135,9 @@ let assign instrs ~gensym =
     let cfg = CFG.of_vertices vs in
     let live = CFG.analyze cfg params in
     let intf = InterferenceGraph.create ~live vs in
-    match G.kempe ~precolor:Reg.Abstract.to_int intf ~max:8 with
+    match G.kempe ~precolor:Reg.Abstract.to_int intf ~max:9 with
     | Error spills ->
-        (* print_endline (Sexp.to_string_hum (G.Set.sexp_of_t spills));
-           print_endline "....."; print_list Abstract.to_string
-           instrs; *)
         let instrs = rewrite instrs ~spills ~addr ~gensym in
-        (* print_endline "....."; print_list Abstract.to_string
-           instrs; *)
         loop instrs (Set.union prev spills)
     | Ok color ->
         let frame = SpillAddress.count addr in

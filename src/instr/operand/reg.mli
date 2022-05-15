@@ -31,20 +31,30 @@ end
 
 module Bit8 : sig
   type t =
-    [ `ah
-    | `al
-    | `bh
+    [ `al
     | `bl
-    | `ch
     | `cl
-    | `dh
     | `dl
+    | `spl
+    | `bpl
+    | `sil
+    | `dil
     | `r8b
+    | `r9b
+    | `r10b
+    | `r11b
+    | `r12b
+    | `r13b
+    | `r14b
+    | `r15b
+    | `ip
     ]
   (** [t] is the type of a 8-bit register in x68 *)
 
   val to_64_bit : [< t ] -> [> Bit64.t ]
   (** [to_64_bit r] is the 64 higher order bit register of [r] *)
+
+  val of_64_bit : [< Bit64.t ] -> [> t ]
 end
 
 type t =

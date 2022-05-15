@@ -64,36 +64,67 @@ module Bit64 = struct
     Hashtbl.find_exn tbl
 
   let to_string = Variants.to_name
-
-  let to_8_bit = function
-    | `rax -> `al
-    | `rbx -> `bl
-    | `rcx -> `cl
-    | `rdx -> `dl
-    | `r8 -> `r8b
-    | #t -> failwith "no 8bit representation"
 end
 
 module Bit8 = struct
   type t =
-    [ `ah
-    | `al
-    | `bh
+    [ `al
     | `bl
-    | `ch
     | `cl
-    | `dh
     | `dl
+    | `spl
+    | `bpl
+    | `sil
+    | `dil
     | `r8b
+    | `r9b
+    | `r10b
+    | `r11b
+    | `r12b
+    | `r13b
+    | `r14b
+    | `r15b
+    | `ip
     ]
   [@@deriving variants, equal, sexp, compare, hash]
 
   let to_64_bit = function
-    | `ah | `al -> `rax
-    | `bh | `bl -> `rbx
-    | `ch | `cl -> `rcx
-    | `dh | `dl -> `rdx
+    | `al -> `rax
+    | `bl -> `rbx
+    | `cl -> `rcx
+    | `dl -> `rdx
+    | `spl -> `rsp
+    | `bpl -> `rbp
+    | `sil -> `rsi
+    | `dil -> `rdi
     | `r8b -> `r8
+    | `r9b -> `r9
+    | `r10b -> `r10
+    | `r11b -> `r11
+    | `r12b -> `r12
+    | `r13b -> `r13
+    | `r14b -> `r14
+    | `r15b -> `r15
+    | `ip -> `rip
+
+  let of_64_bit = function
+    | `rax -> `al
+    | `rbx -> `bl
+    | `rcx -> `cl
+    | `rdx -> `dl
+    | `rsp -> `spl
+    | `rbp -> `bpl
+    | `rsi -> `sil
+    | `rdi -> `dil
+    | `r8 -> `r8b
+    | `r9 -> `r9b
+    | `r10 -> `r10b
+    | `r11 -> `r11b
+    | `r12 -> `r12b
+    | `r13 -> `r13b
+    | `r14 -> `r14b
+    | `r15 -> `r15b
+    | `rip -> `ip
 end
 
 type t =
@@ -107,7 +138,7 @@ let to_64_bit = function
   | #Bit8.t as r -> Bit8.to_64_bit r
 
 let to_8_bit = function
-  | #Bit64.t as r -> Bit64.to_8_bit r
+  | #Bit64.t as r -> Bit8.of_64_bit r
   | #Bit8.t as r -> r
 
 let to_string : [< t ] -> string = function
