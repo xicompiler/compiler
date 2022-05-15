@@ -34,7 +34,7 @@ type 'a t =
   | Movzx of 'a * 'a
   | Leave
   | Ret of int
-[@@deriving variants]
+[@@deriving variants, sexp]
 
 val skip_load : 'a t -> bool
 (** [skip_load instr] is [true] if [instr] is an instruction that

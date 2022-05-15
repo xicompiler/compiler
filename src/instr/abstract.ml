@@ -3,7 +3,7 @@ open Option.Let_syntax
 open Generic
 open Util.Fn
 
-type t = Operand.Abstract.t Generic.t
+type t = Operand.Abstract.t Generic.t [@@deriving sexp]
 
 (** [map_imul] applies [f] to every operand within [enc] based on [map] *)
 let map_imul enc ~map ~f =
@@ -655,7 +655,9 @@ let use : t -> Reg.Abstract.Set.t = function
   | Sar (op, _)
   | Push op
   | Inc op
-  | Dec op ->
+  | Dec op
+  | Mov (_, op)
+  | Movzx (_, op) ->
       use_of_ops [ op ]
   | Add (op1, op2)
   | Sub (op1, op2)
@@ -664,9 +666,7 @@ let use : t -> Reg.Abstract.Set.t = function
   | Or (op1, op2)
   | Cmp (op1, op2)
   | Test (op1, op2)
-  | Lea (op1, op2)
-  | Mov (op1, op2)
-  | Movzx (op1, op2) ->
+  | Lea (op1, op2) ->
       use_of_ops [ op1; op2 ]
   | IDiv d -> use_of_idiv d
   | IMul m -> use_of_imul m

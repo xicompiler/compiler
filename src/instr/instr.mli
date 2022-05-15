@@ -21,6 +21,10 @@ module ConditionCode : module type of struct
   include ConditionCode
 end
 
+module RegAlloc : module type of struct
+  include RegAlloc
+end
+
 (** [Output] represents the file functions needed for instruction
     selection and assembly code generation *)
 module Output : sig

@@ -1,9 +1,9 @@
 open Core
 open Generic
 open Util.Fn
+module G = Graph.Undirected.Make (Reg.Abstract)
 
 module InterferenceGraph = struct
-  module G = Graph.Undirected.Make (Reg.Abstract)
   open Dataflow.Values
 
   (** Add interference edges between the variables defined at a node and
@@ -51,7 +51,7 @@ module InterferenceGraph = struct
           add_def_edges g v intf
       | v -> add_def_edges g v exit_seq
     in
-    CFG.foldi_vertices cfg ~init:G.empty ~f
+    List.foldi cfg ~init:G.empty ~f
 end
 
 module Virtual = Ir.Temp.Virtual
@@ -105,3 +105,35 @@ let rewrite instrs ~spills ~addr ~gensym : Abstract.t list =
   in
   (* Instructions produced in reverse order *)
   instrs |> List.fold ~init:[] ~f |> List.rev
+
+module Live = Dataflow.Liveness.Make (Reg.Abstract.Set)
+
+let params = Live.params ~use:Abstract.use ~def:Abstract.def
+
+let replace_abstract instrs ~color ~frame =
+  let replace = function
+    | #Ir.Temp.Virtual.t as t ->
+        let concrete = Reg.Bit64.of_int_exn (color t) in
+        (concrete :> Reg.t)
+    | #Reg.Bit64.t as concrete -> concrete
+  in
+  let size = Int64.of_int (8 * frame) in
+  Enter (size, 0L) :: Abstract.map_concrete_list instrs ~f:replace
+
+let assign instrs ~gensym =
+  let addr = SpillAddress.create () in
+  let rec loop (instrs : Abstract.t list) prev =
+    let vs = Generic.create_cfg instrs in
+    let cfg = CFG.of_vertices vs in
+    let live = CFG.analyze cfg params in
+    let intf = InterferenceGraph.create ~live vs in
+    match G.kempe ~precolor:Reg.Abstract.to_int intf ~max:8 with
+    | Error spills ->
+        Sexp.to_string_hum (G.Set.sexp_of_t spills);
+        let instrs = rewrite instrs ~spills ~addr ~gensym in
+        loop instrs (Set.union prev spills)
+    | Ok color ->
+        let frame = SpillAddress.count addr in
+        replace_abstract instrs ~color ~frame
+  in
+  loop instrs G.Set.empty

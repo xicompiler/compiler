@@ -75,6 +75,9 @@ module Abstract : sig
   (** [iter_temp r ~f] is [f t] if [r] is temporary [t] and [()]
       otherwise *)
 
+  val to_int : t -> int option
+  (** The integer graph color, if any *)
+
   include Util.Stringable.S with type t := t
 
   module Set : Set.S with type Elt.t = t

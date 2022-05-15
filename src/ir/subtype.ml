@@ -1,6 +1,7 @@
+open Core
 open Ast.Op
 
-type label = string
+type label = string [@@deriving sexp]
 type 'expr call = [ `Call of int * 'expr * 'expr list ]
 
 type 'expr dest =
@@ -8,7 +9,7 @@ type 'expr dest =
   | `Mem of 'expr
   ]
 
-type name = [ `Name of label ]
+type name = [ `Name of label ] [@@deriving sexp]
 
 type 'expr expr =
   [ name

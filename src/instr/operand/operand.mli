@@ -24,6 +24,7 @@ module Abstract : sig
     [ Reg.Abstract.t generic
     | Reg.Abstract.t
     ]
+  [@@deriving sexp]
   (** [t] is the type of an abstract operand in x86 *)
 
   val map : t -> f:(Reg.Abstract.t -> Reg.Abstract.t) -> t

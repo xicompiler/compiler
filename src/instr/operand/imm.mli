@@ -1,4 +1,4 @@
-type t = int64
+type t = int64 [@@deriving sexp]
 (** [t] is the type of an immediate operand *)
 
 val of_int : int -> [> `Imm of int64 ]

@@ -1,4 +1,4 @@
-type t = Operand.Abstract.t Generic.t
+type t = Operand.Abstract.t Generic.t [@@deriving sexp]
 (** [t] is the type of an abstract assembly instruction *)
 
 module Asm : sig

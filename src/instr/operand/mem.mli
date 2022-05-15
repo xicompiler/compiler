@@ -39,7 +39,7 @@ module Size : sig
   include Util.Stringable.S with type t := t
 end
 
-type 'a generic
+type 'a generic [@@deriving sexp]
 (** ['a generic] represents a memory operand in Xi *)
 
 val create :

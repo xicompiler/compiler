@@ -14,6 +14,7 @@ type t =
   | Be
   | A
   | Ae
+[@@deriving sexp]
 
 val of_cmp : Ir.Op.cmp -> t
 (** [of_cmp op] is the condition code corresponding to comparison

@@ -15,7 +15,7 @@ type t =
   | Be
   | A
   | Ae
-[@@deriving variants]
+[@@deriving variants, sexp]
 
 let of_cmp : Ir.Op.cmp -> t = function
   | `Eq -> E

@@ -5,6 +5,7 @@ type 'a generic =
   | `Imm of Imm.t
   | Ir.name
   ]
+[@@deriving sexp]
 
 type t =
   [ Reg.t
@@ -24,6 +25,7 @@ module Abstract = struct
     [ Reg.Abstract.t generic
     | Reg.Abstract.t
     ]
+  [@@deriving sexp]
 
   (** [map_generic ~f op] applies [f] to every register in generic
       operand [op] *)

@@ -4,7 +4,7 @@ open Util.Fn
 
 module Index = struct
   module Scale = struct
-    type t = int64
+    type t = int64 [@@deriving sexp]
 
     let is_valid = function 1L | 2L | 4L | 8L -> true | _ -> false
     let to_string = Int64.to_string
@@ -14,7 +14,7 @@ module Index = struct
     index : 'a;
     scale : Scale.t option;
   }
-  [@@deriving fields]
+  [@@deriving fields, sexp]
 
   let create ?scale index = { index; scale }
 
@@ -36,7 +36,7 @@ module Size = struct
     | Dword
     | Word
     | Byte
-  [@@deriving variants]
+  [@@deriving variants, sexp]
 
   let to_string = Variants.to_name >> String.lowercase
 end
@@ -48,7 +48,7 @@ type 'a generic = {
   index : 'a Index.t option;
   offset : int64 option;
 }
-[@@deriving fields]
+[@@deriving fields, sexp]
 
 let create ?segment ?(size = Size.Qword) ?index ?offset base =
   { segment; size; base; index; offset }

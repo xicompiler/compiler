@@ -1,6 +1,6 @@
 open Ast.Op
 
-type label = string
+type label = string [@@deriving sexp]
 (** [label] is the type of a label in Xi *)
 
 type 'expr call = [ `Call of int * 'expr * 'expr list ]
@@ -12,7 +12,7 @@ type 'expr dest =
   ]
 (** An ['expr dest] is an expression that can be the target of a move *)
 
-type name = [ `Name of label ]
+type name = [ `Name of label ] [@@deriving sexp]
 (** [name] represents an expression that is the address of a label *)
 
 type 'expr expr =

@@ -35,11 +35,14 @@ module type S = sig
   (** [add_clique  g \[u1; ...; un\]] is [g] with every edge [(u, v)]
       added where [u <> v]. If not provided, [init] is [empty] *)
 
+  module Set : Set.S with type Elt.t = Key.t
+
   val kempe :
+    ?spills:Set.t ->
     ?precolor:(Key.t -> int option) ->
     t ->
     max:int ->
-    (Key.t -> int, Key.t list) result
+    (Key.t -> int, Set.t) result
   (** [kempe ?precolor g ~max] is a function [Ok f] such that [f k] is
       is the color assigned the vertex with unique key [k] given [max]
       total colors, or [Error spills] where each of the vertices in

@@ -6,6 +6,7 @@ module Generic = Generic
 module Abstract = Abstract
 module Concrete = Concrete
 module ConditionCode = ConditionCode
+module RegAlloc = RegAlloc
 
 module Output = struct
   (** [print_instrs ~out ~optimize ~f source] prints [source] to [out]

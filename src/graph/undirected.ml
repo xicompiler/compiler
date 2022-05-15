@@ -16,11 +16,14 @@ module type S = sig
   val add_edges : t -> Key.t -> Key.t Sequence.t -> t
   val add_clique : t -> Key.t Sequence.t -> t
 
+  module Set : Set.S with type Elt.t = Key.t
+
   val kempe :
+    ?spills:Set.t ->
     ?precolor:(Key.t -> int option) ->
     t ->
     max:int ->
-    (Key.t -> int, Key.t list) result
+    (Key.t -> int, Set.t) result
 
   val of_edges : (Key.t * Key.t) list -> t
 end
@@ -90,37 +93,44 @@ module Make (Key : Key) = struct
     (* and then remove this vertex from the graph *)
     Map.remove g' u
 
+  let enqueue_all w = Set.fold ~f:Fdeque.enqueue_back ~init:w
+
   (** Create the initial map binding the keys of precolored nodes to
       their colors. Also, create the worklist of nodes that have to be
       colored; exactly those that are not precolored. Low-degree nodes
       should be selected first, so they precede all high-degree nodes in
       the queue. *)
-  let create_map_worklist g ~max ~precolor =
+  let create_map_worklist g ~spills ~max ~precolor =
     let init = (Map.empty, Fdeque.empty) in
-    let f ~key ~data (m, w) =
-      match precolor key with
-      | Some c ->
-          (* If this node is precolored, add it to the precolored map,
-             but leave the worklist unchanged; don't color already
-             colored nodes *)
-          (Map.add_exn m ~key ~data:c, w)
-      | None ->
-          (* Otherwise, this vertex isn't precolored so we have to color
-             it, so we add to worklist. *)
-          let side =
-            if Vertex.degree data < max then `front else `back
-          in
-          (* Low-degree nodes at the front, high-degree at the back *)
-          (m, Fdeque.enqueue w side key)
+    let f ~key ~data ((m, w) as acc) =
+      if Set.mem spills key then acc
+      else
+        match precolor key with
+        | Some c ->
+            (* If this node is precolored, add it to the precolored map,
+               but leave the worklist unchanged; don't color already
+               colored nodes *)
+            (Map.add_exn m ~key ~data:c, w)
+        | None ->
+            (* Otherwise, this vertex isn't precolored so we have to
+               color it, so we add to worklist. *)
+            let side =
+              if Vertex.degree data < max then `front else `back
+            in
+            (* Low-degree nodes at the front, high-degree at the back *)
+            (m, Fdeque.enqueue w side key)
     in
-    Map.fold g ~init ~f
+    let m, w = Map.fold g ~init ~f in
+    (m, enqueue_all w spills)
 
-  let update_worklist g vs ~max ~init =
+  let update_worklist g vs ~precolor ~max ~init =
     Set.fold vs ~init ~f:(fun acc key ->
         let v = Map.find_exn g key in
         (* If this vertex has degree exactly max, then deleting exactly
            one neighbor will cause it to become a low-degree node *)
-        if Vertex.degree v = max then Fdeque.enqueue_front acc key
+        let color = Map.find precolor key in
+        if Option.is_none color && Vertex.degree v = max then
+          Fdeque.enqueue_front acc key
         else acc)
 
   let choose_color m adj ~max =
@@ -144,7 +154,7 @@ module Make (Key : Key) = struct
     | None ->
         (* Otherwise, we can't color this node so we add it to the
            spills *)
-        (m, key :: spills)
+        (m, Set.add spills key)
 
   (** Get the mapping binding keys to the colors of their respective
       nodes, and also a list of spilled vertices unable to be colored. *)
@@ -154,7 +164,7 @@ module Make (Key : Key) = struct
         (* If the worklist is empty, there are no nodes to color, so the
            mapping is just the mapping for precolored nodes, and there
            are no spills *)
-        (precolor, [])
+        (precolor, Set.empty)
     | Some (key, vs) -> begin
         match Map.find g key with
         | None ->
@@ -164,10 +174,11 @@ module Make (Key : Key) = struct
         | Some (Vertex.{ adjacent = adj } as v) ->
             (* Update the worklist; some neighbors may become low degree
                after deleting the selected vertex *)
-            let worklist' = update_worklist g adj ~max ~init:worklist in
+            let init = worklist in
+            let w' = update_worklist g adj ~precolor ~max ~init in
             let g' = remove_vertex g v in
             (* Color the subgraph with the selected vertex removed *)
-            let m, spills = color g' worklist' ~max ~precolor in
+            let m, spills = color g' w' ~max ~precolor in
             (* Afterwards, choose a color for the vertex we removed *)
             let color = choose_color m adj ~max in
             update_coloring m ~key ~spills ~color
@@ -176,10 +187,10 @@ module Make (Key : Key) = struct
   (* The default precoloring: no nodes precolored *)
   let no_precolor (_ : Key.t) = None
 
-  let kempe ?(precolor = no_precolor) g ~max =
-    let precolor, w = create_map_worklist g ~max ~precolor in
+  let kempe ?(spills = Set.empty) ?(precolor = no_precolor) g ~max =
+    let precolor, w = create_map_worklist g ~spills ~max ~precolor in
     let m, spills = color g w ~max ~precolor in
-    if List.is_empty spills then
+    if Set.is_empty spills then
       (* No spills, so every node must be assigned a color *)
       Ok (Map.find_exn m)
     else Error spills

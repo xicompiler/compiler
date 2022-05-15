@@ -8,6 +8,7 @@ type 'a call = {
   n : int;
   m : int;
 }
+[@@deriving sexp]
 
 type 'a t =
   | Label of Ir.label
@@ -37,7 +38,7 @@ type 'a t =
   | Movzx of 'a * 'a
   | Leave
   | Ret of int
-[@@deriving variants]
+[@@deriving variants, sexp]
 
 let skip_load = function
   | Setcc _ | Pop _ | Lea _ | Mov _ | Movzx _ -> true

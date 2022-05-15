@@ -129,6 +129,10 @@ module Abstract = struct
     | #Bit64.t as r -> Bit64.to_string r
     | #Ir.Temp.Virtual.t as t -> Ir.Temp.Virtual.to_string t
 
+  let to_int : t -> int option = function
+    | #Bit64.t as r -> Some (Bit64.to_int_exn r)
+    | #Ir.Temp.Virtual.t -> None
+
   let iter_temp r ~f =
     match r with #Ir.Temp.Virtual.t as t -> f t | #t -> ()
 
