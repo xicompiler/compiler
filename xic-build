@@ -1,2 +1,2 @@
 make build
-ln -sf _build/default/bin/main.exe xic
+ln -sf _build/default/src/bin/main.exe xic

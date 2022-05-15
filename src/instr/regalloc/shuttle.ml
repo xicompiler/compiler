@@ -20,6 +20,7 @@ type t = {
   regs : Reg.t list;
   mapping : Reg.t Reg.Abstract.Map.t;
 }
+[@@deriving sexp]
 
 let set { regs; mapping } abstract =
   match Map.find mapping abstract with

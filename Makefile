@@ -1,6 +1,7 @@
 .PHONY: test
 
 build:
+	rm xic 2>/dev/null
 	dune build
 
 build-interpreter:

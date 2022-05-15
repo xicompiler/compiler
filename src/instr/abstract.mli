@@ -13,10 +13,13 @@ val munch : gensym:(unit -> string) -> Ir.Reorder.toplevel list -> Asm.t
     instructions having the same effect as [top] *)
 
 val def : t -> Reg.Abstract.Set.t
-(** [def instr] is the set of all operands updated by [instr] *)
+(** [def instr] is the set of all registers updated by [instr] *)
 
 val use : t -> Reg.Abstract.Set.t
-(** [use instr] is the set of all operands used by [instr] *)
+(** [use instr] is the set of all registers used by [instr] *)
+
+val regs : t -> Reg.Abstract.Set.t
+(** [regs instr] is the set of all registers in [instr] *)
 
 val map : t -> f:(Reg.Abstract.t -> Reg.Abstract.t) -> t
 (** [map instr ~f] applies [f] to the operands of [instr] and returns
