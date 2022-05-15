@@ -15,7 +15,7 @@ let gensym =
     incr counter;
     Printf.sprintf "_t%d" !counter
 
-(* let allocate_fn fn = Color.assign fn ~gensym *)
+let allocate_fn fn = Color.assign fn ~gensym
 
 let allocate_directive = function
   | (Data _ | Globl _ | IntelSyntax _) as dir -> dir

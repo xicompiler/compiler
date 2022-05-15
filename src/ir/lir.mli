@@ -23,3 +23,17 @@ type t = toplevel list
 
 val lower : gensym:IrGensym.t -> Mir.toplevel list -> t
 (** [lower stmt] is the lowered form of mir statement [stmt] *)
+
+module CFG : Graph.Directed.S with type Key.t = int
+(** [CFG] is the type of a CFG in IR *)
+
+val create_cfg : stmt list -> (stmt, unit) CFG.vertex list
+(** [create_cfg stmts] is the control flow graph corresponding to the IR
+    program [stmts] *)
+
+val live_out : stmt list -> int -> Temp.Virtual.Set.t
+(** [live_out stmts i] is the set of variables that are live out of the
+    [i]th statement of [stmts] *)
+
+val dce : stmt list -> stmt list
+(** [dce stmts] is [stmts] with dead definitions removed *)

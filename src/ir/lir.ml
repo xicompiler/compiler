@@ -15,6 +15,94 @@ let log_neg = Subtype.log_neg
 
 type t = toplevel list
 
+open Temp
+
+let def = function
+  | `Move ((`Temp _ as t), _) -> Virtual.Set.singleton t
+  | `Call (m, _, _) ->
+      let range = List.range ~start:`inclusive ~stop:`inclusive 1 m in
+      let init = Virtual.Set.empty in
+      List.fold range ~init ~f:(fun acc i -> Set.add acc (`Rv i))
+  | #stmt -> Virtual.Set.empty
+
+let rec use_expr ~init : expr -> Virtual.Set.t = function
+  | `Name _ | `Const _ -> init
+  | `Bop (_, e1, e2) -> use_expr2 ~init e1 e2
+  | #Virtual.t as t -> Set.add init t
+  | `Mem e -> use_expr ~init e
+
+and use_expr2 ~init e1 e2 =
+  let s = use_expr ~init e1 in
+  use_expr ~init:s e2
+
+let use_exprs ~init = List.fold ~init ~f:(fun acc -> use_expr ~init:acc)
+
+let use_stmt ~init : stmt -> Virtual.Set.t = function
+  | `Call (_, e, es) -> use_exprs ~init:(use_expr ~init e) es
+  | `Move (e1, e2) -> use_expr2 ~init (e1 :> expr) e2
+  | `Return es -> use_exprs ~init es
+  | `Label _ -> init
+  | `CJump (e, _, _) | `Jump e -> use_expr ~init e
+
+let use = use_stmt ~init:Virtual.Set.empty
+
+module Liveness = Dataflow.Liveness.Make (Virtual.Set)
+
+let params = Liveness.params ~use ~def
+
+module CFG = Graph.Directed.IntDigraph
+
+let find_label vs =
+  let map = String.Table.create () in
+  List.iter vs ~f:(fun v ->
+      match CFG.Vertex.value v with
+      | `Label l -> Hashtbl.add_exn map ~key:l ~data:v
+      | _ -> ());
+  Hashtbl.find_exn map
+
+let add_jump src l ~label =
+  let dst = label l in
+  CFG.Vertex.add_unweighted_edge ~src ~dst
+
+let add_fallthrough src = function
+  | [] -> ()
+  | dst :: _ -> CFG.Vertex.add_unweighted_edge ~src ~dst
+
+let add_edge ~label src vs =
+  match CFG.Vertex.value src with
+  | `Jump (`Name l) -> add_jump src l ~label
+  | `Return _ | `Jump _ -> ()
+  | `CJump (_, t, f) ->
+      add_jump src t ~label;
+      add_jump src f ~label
+  | #stmt -> add_fallthrough src vs
+
+let rec add_edges ~label = function
+  | [] -> ()
+  | v :: vs ->
+      add_edge ~label v vs;
+      add_edges ~label vs
+
+let create_cfg stmts =
+  let vs = CFG.indexed stmts in
+  let label = find_label vs in
+  add_edges ~label vs;
+  vs
+
+let live_out stmts =
+  let vs = create_cfg stmts in
+  let cfg = CFG.of_vertices vs in
+  let live = CFG.analyze cfg params in
+  fun i -> (live i).input
+
+let dce stmts =
+  let live = live_out stmts in
+  let f i = function
+    | `Move ((`Temp _ as t), _) -> Set.mem (live i) t
+    | #stmt -> true
+  in
+  List.filteri ~f stmts
+
 (** [corece e] is [e :> expr] *)
 let coerce e = (e :> expr)
 
@@ -218,7 +306,8 @@ and rev_lower_seq ~gensym ~init seq =
 let lower_seq ~gensym =
   Fn.compose List.rev (rev_lower_seq ~gensym ~init:[])
 
-let lower_function ~gensym l b a r = `Func (l, lower_seq ~gensym b, a, r)
+let lower_function ~gensym l b a r =
+  `Func (l, dce (lower_seq ~gensym b), a, r)
 
 let lower_toplevel ~gensym = function
   | `Data _ as d -> d
