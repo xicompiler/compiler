@@ -42,7 +42,7 @@ module type S = sig
     ?precolor:(Key.t -> int option) ->
     t ->
     max:int ->
-    (Key.t -> int, Set.t) result
+    ((Key.t -> int) * int, Set.t) result
   (** [kempe ?precolor g ~max] is a function [Ok f] such that [f k] is
       is the color assigned the vertex with unique key [k] given [max]
       total colors, or [Error spills] where each of the vertices in

@@ -31,6 +31,8 @@ module Bit64 = struct
     Sequence.of_list
       [ `rax; `rcx; `rdx; `rsi; `rdi; `r8; `r9; `r10; `r11 ]
 
+  let num_caller_save = Sequence.length caller_save
+
   module Table = Hashtbl.Make (T)
 
   let reg_array : t array =
@@ -53,6 +55,15 @@ module Bit64 = struct
       `rbp;
       `rip;
     |]
+
+  (** rsp, rbp, rip *)
+  let num_unusable = 3
+
+  let num_usable = Array.length reg_array - num_unusable
+
+  let callee_save used =
+    if used <= num_caller_save then []
+    else Array.to_list (Array.slice reg_array num_caller_save used)
 
   let of_int_exn = Array.get reg_array
 

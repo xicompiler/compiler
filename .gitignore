@@ -30,7 +30,6 @@ bisect*.coverage
 *.parsed
 *.typed
 *.ir
-*.s
 !helloworld.*
 
 # output

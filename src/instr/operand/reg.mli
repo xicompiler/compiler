@@ -26,6 +26,16 @@ module Bit64 : sig
   val caller_save : [> t ] Sequence.t
   (** [caller_save] is the list of registers that are caller-save *)
 
+  val num_usable : int
+  (** [num_usable] is the number of registers available for general use *)
+
+  val num_caller_save : int
+  (** [num_caller_save] is the number of caller-save registers *)
+
+  val callee_save : int -> t list
+  (** [callee_save n] is the list of callee-save registers used,
+      assuming that [n] registers have already been used *)
+
   include Intable with type t := t
 end
 

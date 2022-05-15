@@ -23,7 +23,7 @@ module type S = sig
     ?precolor:(Key.t -> int option) ->
     t ->
     max:int ->
-    (Key.t -> int, Set.t) result
+    ((Key.t -> int) * int, Set.t) result
 
   val of_edges : (Key.t * Key.t) list -> t
 end
@@ -187,12 +187,24 @@ module Make (Key : Key) = struct
   (* The default precoloring: no nodes precolored *)
   let no_precolor (_ : Key.t) = None
 
+  let colors_used m ~max =
+    let f ~key:_ ~data acc =
+      if data >= max then acc
+      else
+        match acc with
+        | None -> Some data
+        | Some color -> Some (Int.max color data)
+    in
+    match Map.fold m ~init:None ~f with
+    | Some max -> succ max
+    | None -> 0
+
   let kempe ?(spills = Set.empty) ?(precolor = no_precolor) g ~max =
     let precolor, w = create_map_worklist g ~spills ~max ~precolor in
     let m, spills = color g w ~max ~precolor in
     if Set.is_empty spills then
       (* No spills, so every node must be assigned a color *)
-      Ok (Map.find_exn m)
+      Ok (Map.find_exn m, colors_used m ~max)
     else Error spills
 
   let of_edges =

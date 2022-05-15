@@ -122,11 +122,38 @@ let map_abstract ~f = function
   | #Ir.Temp.Virtual.t as t -> (f t :> Reg.t)
   | #Reg.Bit64.t as concrete -> concrete
 
-let replace_abstract instrs ~color ~frame =
+let replace_abstract instrs ~color =
   let replace = map_abstract ~f:(color >> Reg.Bit64.of_int_exn) in
-  let size = Int64.of_int (8 * frame) in
-  let concrete = Abstract.map_concrete_list instrs ~f:replace in
-  Enter (size, 0L) :: filter_dead concrete
+  filter_dead (Abstract.map_concrete_list instrs ~f:replace)
+
+let save rs ~init ~loc =
+  List.foldi rs ~init ~f:(fun i acc r -> Mov (loc i, r) :: acc)
+
+let restore rs ~init ~loc =
+  List.foldi rs ~init ~f:(fun i acc r -> Mov (r, loc i) :: acc)
+
+let map_restore rs instrs ~loc =
+  let f acc = function
+    | Leave -> Leave :: restore rs ~init:acc ~loc
+    | instr -> instr :: acc
+  in
+  List.rev (List.fold instrs ~init:[] ~f)
+
+let callee_save rs instrs ~loc =
+  let saves = save rs ~init:instrs ~loc in
+  map_restore rs saves ~loc
+
+let alloc_frame ~count ~used instrs =
+  let loc i =
+    let offset = Int64.of_int (-8 * (i + count + 1)) in
+    `Mem (Mem.create ~offset `rbp)
+  in
+  let rs = (Reg.Bit64.callee_save used :> Operand.t list) in
+  let size = Int64.of_int (8 * (List.length rs + count)) in
+  Enter (size, 0L) :: callee_save rs instrs ~loc
+
+(* Max number of registers usable to be allocated *)
+let max = Reg.Bit64.num_usable
 
 let assign instrs ~gensym =
   let addr = SpillAddress.create () in
@@ -139,8 +166,9 @@ let assign instrs ~gensym =
     | Error spills ->
         let instrs = rewrite instrs ~spills ~addr ~gensym in
         loop instrs (Set.union prev spills)
-    | Ok color ->
-        let frame = SpillAddress.count addr in
-        replace_abstract instrs ~color ~frame
+    | Ok (color, used) ->
+        let count = SpillAddress.count addr in
+        let concrete = replace_abstract instrs ~color in
+        alloc_frame ~count ~used concrete
   in
   loop instrs G.Set.empty
