@@ -19,6 +19,7 @@ clean: bisect-clean
 	find . -name '*.conflicts' -delete
 	find . -name '*.s' -delete
 	find . -name '*.sout' -delete
+	find . -name '*.asm' -delete
 	rm -f xic *.zip *.log
 
 clean-all: clean

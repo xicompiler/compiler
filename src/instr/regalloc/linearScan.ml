@@ -8,7 +8,7 @@ module LiveInterval = struct
     startpoint : int;
     endpoint : int;
   }
-  [@@deriving equal]
+  [@@deriving equal, sexp]
   (** [t] represents a range between [startpoint] and [endpoint] *)
 
   (** [create reg key] is a new [interval] for [reg] [startpoint]
@@ -53,7 +53,7 @@ let intervals_tbl nodes =
       in
       Reg.Abstract.Table.set tbl ~key:reg ~data
     in
-    Set.iter ~f:add regs.input
+    Set.iter ~f:add regs.output
   in
   List.iteri ~f nodes;
   tbl
@@ -64,21 +64,62 @@ let intervals tbl =
   List.sort ~compare:LiveInterval.compare_start
     (Reg.Abstract.Table.data tbl)
 
+(** [update ~concrete ~concrete_inv abstract reg] sets a concretization
+    mapping from [abstract] to [reg] *)
+let update ~concrete ~concrete_inv abstract reg =
+  Reg.Abstract.Table.set concrete ~key:abstract ~data:reg;
+  Reg.Table.set concrete_inv ~key:(reg :> Reg.t) ~data:abstract
+
+(** [assign_self ~concrete ~concrete_inv reg] maps the register [reg] to
+    itself *)
+let assign_self ~concrete ~concrete_inv = function
+  | #Reg.Bit64.t as reg -> update ~concrete ~concrete_inv reg reg
+  | #Reg.Abstract.t -> ()
+
 module Pool = struct
-  (** [pool] is the pool of available registers to be allocated *)
-  let pool =
-    Reg.Abstract.Set.of_list
-      [
-        `rax; `rbx; `rcx; `rdx; `rsi; `rdi; `r11; `r12; `r13; `r14; `r15;
-      ]
+  (** [full] is the full pool of available registers to be allocated *)
+  let full =
+    Reg.Bit64.Set.of_list [ `rax; `rcx; `rdx; `rsi; `rdi; `r11 ]
+
+  (** [free pool reg] is [pool] with [reg] added if it was originally in
+      the pool, or [pool] otherwise *)
+  let free pool reg =
+    if Set.mem full reg then Set.add pool reg else pool
+
+  (** [choose pool] is [(reg, pool')] where [reg] is an arbitrary
+      register chosen from [pool], and [pool'] is the updated pool *)
+  let choose pool =
+    let reg = Set.choose_exn pool in
+    (reg, Set.remove pool reg)
+
+  (** [allocate ~pool ~concrete ~concrete_inv reg] is [pool] after
+      allocating [reg] to a concrete register. Modifies [concrete] and
+      [concrete_inv] mappings if [reg] is a concrete register, so that
+      [reg] can map to itself *)
+  let allocate ~pool ~concrete ~concrete_inv = function
+    | #Reg.Bit64.t as reg ->
+        let pool =
+          match Reg.Table.find_and_remove concrete_inv reg with
+          | Some abstract ->
+              let reg', pool = choose pool in
+              update ~concrete ~concrete_inv abstract reg';
+              pool
+          | None -> Set.remove pool reg
+        in
+        assign_self ~concrete ~concrete_inv reg;
+        pool
+    | #Reg.Abstract.t as reg ->
+        let reg', pool = choose pool in
+        update ~concrete ~concrete_inv reg reg';
+        pool
 end
 
-(** [free ~pool concrete interval] deallocates all the concretized
+(** [free ~pool ~concrete interval] deallocates all the concretized
     registers for [intervals] *)
-let free ~pool concrete intervals =
-  let f acc { LiveInterval.reg } =
-    let freed = Reg.Abstract.Table.find_and_remove concrete reg in
-    Option.value_map ~default:acc ~f:(fun x -> Set.add acc x) freed
+let free ~pool ~concrete intervals =
+  let f pool { LiveInterval.reg } =
+    let freed = Reg.Abstract.Table.find concrete reg in
+    Option.value_map ~default:pool ~f:(fun x -> Pool.free pool x) freed
   in
   List.fold ~f ~init:pool intervals
 
@@ -86,7 +127,7 @@ let free ~pool concrete intervals =
     [intervals] and removes [key] from [active], and returns the updated
     [(active, pool)] *)
 let expire_interval ~concrete (active, pool) (key, intervals) =
-  (Map.remove active key, free ~pool concrete intervals)
+  (Map.remove active key, free ~pool ~concrete intervals)
 
 (** [expire ~pool ~concrete ~active interval] finds and expires the
     intervals that are no longer live when the startpoint of [interval]
@@ -97,32 +138,39 @@ let expire ~pool ~concrete ~active { LiveInterval.startpoint } =
   in
   List.fold ~f:(expire_interval ~concrete) ~init:(active, pool) remove
 
-(** [allocate ~pool ~concrete ~active interval] allocates a new
-    concretized register for [interval] *)
-let allocate ~pool ~concrete ~active (interval : LiveInterval.t) =
-  let data = Set.choose_exn pool in
-  let pool = Set.remove pool data in
-  Reg.Abstract.Table.add_exn concrete ~key:interval.reg ~data;
+(** [allocate ~pool ~concrete ~concrete_inv ~active interval] allocates
+    a new concretized register for [interval] *)
+let allocate
+    ~pool
+    ~concrete
+    ~concrete_inv
+    ~active
+    (interval : LiveInterval.t) =
+  let pool = Pool.allocate ~pool ~concrete ~concrete_inv interval.reg in
   (Map.add_multi active ~key:interval.endpoint ~data:interval, pool)
 
-(** [spill_interval ~concrete interval spill] allocates the concretized
-    register for [spill] for the abstract register of [interval] *)
+(** [spill_interval ~concrete ~concrete_inv interval spill] allocates
+    the concretized register for [spill] for the abstract register of
+    [interval] *)
 let spill_interval
     ~concrete
-    { LiveInterval.reg = key }
-    { LiveInterval.reg = data_key } =
-  let data = Reg.Abstract.Table.find_exn concrete data_key in
-  Reg.Abstract.Table.add_exn concrete ~key ~data
+    ~concrete_inv
+    { LiveInterval.reg = interval }
+    { LiveInterval.reg = spill } =
+  let reg = Reg.Abstract.Table.find_exn concrete spill in
+  Reg.Abstract.Table.remove concrete spill;
+  update ~concrete ~concrete_inv interval reg;
+  assign_self ~concrete ~concrete_inv spill
 
-(** [spill ~concrete ~active interval] spills [interval] or the interval
-    with the last endpoint in [active] *)
-let spill ~concrete ~active (interval : LiveInterval.t) =
+(** [spill ~concrete ~concrete_inv ~active interval] spills [interval]
+    or the interval with the last endpoint in [active] *)
+let spill ~concrete ~concrete_inv ~active (interval : LiveInterval.t) =
   let key, intervals = Map.max_elt_exn active in
   let last =
     Util.List.max_elt_exn ~compare:LiveInterval.compare_end intervals
   in
   if last.endpoint > interval.endpoint then begin
-    spill_interval concrete interval last;
+    spill_interval ~concrete ~concrete_inv interval last;
     let data =
       List.filter intervals ~f:(fun x ->
           not (LiveInterval.equal last x))
@@ -133,75 +181,64 @@ let spill ~concrete ~active (interval : LiveInterval.t) =
     in
     Map.add_multi active ~key:interval.endpoint ~data:interval
   end
-  else active
+  else begin
+    assign_self ~concrete ~concrete_inv interval.reg;
+    active
+  end
 
 (** [concrete_tbl nodes] is a table mapping abstract registers to
     concrete registers *)
 let concrete_tbl nodes =
   let tbl = intervals_tbl nodes in
   let concrete = Reg.Abstract.Table.create () in
-  let f (active, pool) interval =
+  let concrete_inv = Reg.Table.create () in
+  let f (active, pool) (interval : LiveInterval.t) =
     let active, pool = expire ~pool ~concrete ~active interval in
-    if Set.is_empty pool then (spill ~concrete ~active interval, pool)
-    else allocate ~pool ~concrete ~active interval
+    if Set.is_empty pool then
+      (spill ~concrete ~concrete_inv ~active interval, pool)
+    else allocate ~pool ~concrete ~concrete_inv ~active interval
   in
-  ignore (List.fold ~f ~init:(Int.Map.empty, Pool.pool) (intervals tbl));
+  ignore (List.fold ~f ~init:(Int.Map.empty, Pool.full) (intervals tbl));
   concrete
 
-let concretize ~concrete instrs =
+(** [concretize ~concrete instr] is [instr] concretized as much as
+    possible using the [concrete] mapping *)
+let concretize ~concrete =
   let f abstract =
     match Reg.Abstract.Table.find concrete abstract with
-    | Some reg -> reg
+    | Some reg -> (reg :> Reg.Abstract.t)
     | None -> abstract
   in
-  Abstract.map_list ~f instrs
+  Abstract.map ~f
 
-(** REFACTOR *)
-let rec rev_allocate_load ~offset ~shuttle ~init spills instr :
-    Concrete.t list * Shuttle.t =
-  let f (init, shuttle) src =
-    let dst, shuttle =
-      if Generic.is_setcc instr then Shuttle.set_bit8 shuttle src
-      else Shuttle.set shuttle src
-    in
-    (load ~offset ~src dst :: init, shuttle)
-  in
-  List.fold ~init:(init, shuttle) ~f spills
-
-(** REFACTOR *)
-let rev_allocate_store ~offset ~shuttle ~init spill = function
-  | Some dst when spill dst ->
-      let src = Concretize.concretize_reg ~shuttle dst in
-      store ~offset ~dst src :: init
-  | Some _ | None -> init
-
+(** [rev_allocate_instr ~offset ~concrete ~init instr] is a set of
+    reversed instructions concretizing [instr]'s abstract registers *)
 let rev_allocate_instr ~offset ~concrete ~init instr =
-  let def =
-    if Generic.is_call instr then None
-    else Reg.Abstract.Set.choose (Abstract.def instr)
-  in
+  let defs = Abstract.def instr in
   let f acc reg =
     match Reg.Abstract.Table.find concrete reg with
     | Some _ -> acc
     | None -> reg :: acc
   in
-  let regs = instr |> Abstract.regs |> Set.to_list in
-  let spills = List.fold ~f ~init:[] regs in
-  let spill op = List.exists ~f:(Reg.Abstract.equal op) spills in
+  let spills = Set.fold ~f ~init:[] (Abstract.regs instr) in
+  let spill op = List.mem ~equal:Reg.Abstract.equal spills op in
   let shuttle = Shuttle.empty in
   let loaded, shuttle =
-    rev_allocate_load ~offset ~shuttle ~init spills instr
+    rev_allocate_load ~offset ~shuttle ~init spills defs instr
   in
   let concretized =
-    Concretize.concretize_instr ~shuttle ~spill instr :: loaded
+    Concretize.concretize_instr ~shuttle ~spill
+      (concretize ~concrete instr)
+    :: loaded
   in
-  rev_allocate_store ~offset ~shuttle ~init:concretized spill def
+  rev_allocate_store ~offset ~shuttle ~init:concretized spill defs
 
-let allocate_fn ~offset instrs =
+let allocate_instrs ~offset instrs =
   let nodes = create_cfg instrs in
   let concrete = concrete_tbl nodes in
-  let concretized = concretize ~concrete instrs in
+  let f acc reg = store ~offset ~dst:reg reg :: acc in
+  let init = List.fold ~f ~init:[] Shuttle.shuttle in
   let f acc instr =
     rev_allocate_instr ~offset ~concrete ~init:acc instr
   in
-  List.rev (List.fold ~f ~init:[] concretized)
+  List.rev (List.fold ~f ~init instrs)

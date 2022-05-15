@@ -57,65 +57,22 @@ module Spill = struct
         spill2 e2 e1
 end
 
-(** [rev_allocate_load ~offset ~shuttle ~init ?def instr] loads the
-    values of all temporaries used by [instr] into the appropriate
-    shuttling registers *)
-let rec rev_allocate_load ~offset ~shuttle ~init ?def instr :
-    Concrete.t list * Shuttle.t =
-  let abstract = Spill.spills instr in
-  let init =
-    if Generic.is_call instr then
-      let f acc reg = load ~offset ~src:reg reg :: acc in
-      List.fold ~f ~init Shuttle.shuttle
-    else init
-  in
-  let f (init, shuttle) = function
-    | #Spill.t as t
-      when match def with
-           | Some (#Spill.t as t') ->
-               Spill.equal t t' && Generic.skip_load instr
-           | _ -> false ->
-        let _, shuttle =
-          if Generic.is_setcc instr then Shuttle.set_bit8 shuttle t
-          else Shuttle.set shuttle t
-        in
-        (init, shuttle)
-    | #Spill.t as src ->
-        let dst, shuttle =
-          if Generic.is_setcc instr then Shuttle.set_bit8 shuttle src
-          else Shuttle.set shuttle src
-        in
-        (load ~offset ~src dst :: init, shuttle)
-  in
-  List.fold ~init:(init, shuttle) ~f abstract
-
-(** [rev_allocate_store ~offset ~shuttle ~init operand] stores the value
-    of the shuttling register of [operand] into the memory address of
-    [operand], if [operand] is a spill *)
-let rev_allocate_store ~offset ~shuttle ~init = function
-  | Some (#Spill.t as dst) ->
-      let src = Concretize.concretize_reg ~shuttle dst in
-      store ~offset ~dst src :: init
-  | Some #Operand.Abstract.t | None -> init
-
+(** [rev_allocate_instr ~offset ~init instr] is a set of reversed
+    instructions concretizing [instr]'s abstract registers *)
 let rev_allocate_instr ~offset ~init instr =
-  let def =
-    if Generic.is_call instr then None
-    else Reg.Abstract.Set.choose (Abstract.def instr)
-  in
-  let spill op =
-    not (List.is_empty (Spill.spill (op :> Operand.Abstract.t)))
-  in
+  let defs = Abstract.def instr in
+  let spills = (Spill.spills instr :> Reg.Abstract.t list) in
+  let spill op = List.mem ~equal:Reg.Abstract.equal spills op in
   let shuttle = Shuttle.empty in
   let loaded, shuttle =
-    rev_allocate_load ~offset ~shuttle ~init ?def instr
+    rev_allocate_load ~offset ~shuttle ~init spills defs instr
   in
   let concretized =
     Concretize.concretize_instr ~shuttle ~spill instr :: loaded
   in
-  rev_allocate_store ~offset ~shuttle ~init:concretized def
+  rev_allocate_store ~offset ~shuttle ~init:concretized spill defs
 
-let allocate_fn ~(offset : int Reg.Abstract.Table.t) instrs =
+let allocate_instrs ~(offset : int Reg.Abstract.Table.t) instrs =
   let f acc reg = store ~offset ~dst:reg reg :: acc in
   let init = List.fold ~f ~init:[] Shuttle.shuttle in
   let f acc instr = rev_allocate_instr ~offset ~init:acc instr in

@@ -34,6 +34,7 @@ module Bit64 = struct
   let num_caller_save = Sequence.length caller_save
 
   module Table = Hashtbl.Make (T)
+  include Comparable.Make (T)
 
   let reg_array : t array =
     [|
@@ -138,11 +139,16 @@ module Bit8 = struct
     | `rip -> `ip
 end
 
-type t =
-  [ Bit64.t
-  | Bit8.t
-  ]
-[@@deriving equal, sexp, compare, hash]
+module Args = struct
+  type t =
+    [ Bit64.t
+    | Bit8.t
+    ]
+  [@@deriving equal, sexp, compare, hash]
+end
+
+include Args
+include Hashable.Make (Args)
 
 let to_64_bit = function
   | #Bit64.t as r -> r
@@ -166,6 +172,8 @@ module Abstract = struct
   end
 
   include Args
+
+  let is_concrete = function #Bit64.t -> true | _ -> false
 
   let to_string : [< t ] -> string = function
     | #Bit64.t as r -> Bit64.to_string r

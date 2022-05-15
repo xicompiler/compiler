@@ -37,6 +37,9 @@ module Bit64 : sig
       assuming that [n] registers have already been used *)
 
   include Intable with type t := t
+
+  module Set : Set.S with type Elt.t = t
+  (** [Set] is a set of temporaries *)
 end
 
 module Bit8 : sig
@@ -91,6 +94,9 @@ module Abstract : sig
   [@@deriving equal, sexp, compare, hash]
   (** [t] is the type of an abstract register *)
 
+  val is_concrete : [> Bit64.t ] -> bool
+  (** [is_concrete reg] is whether [reg] is concrete *)
+
   val iter_temp : [< t ] -> f:(Ir.Temp.Virtual.t -> unit) -> unit
   (** [iter_temp r ~f] is [f t] if [r] is temporary [t] and [()]
       otherwise *)
@@ -109,3 +115,6 @@ module Abstract : sig
   module Table : Hashtbl.S with type key = t
   (** [Table] is a hashtable with key type [t] *)
 end
+
+module Table : Hashtbl.S with type key = t
+(** [Table] is a hashtable with key type [t] *)

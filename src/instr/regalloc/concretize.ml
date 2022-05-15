@@ -24,7 +24,7 @@ let concretize_operand ~shuttle ~spill :
     [< Operand.Abstract.t ] -> Operand.t = function
   | #Reg.Abstract.t as reg when spill reg ->
       (concretize_reg ~shuttle reg :> Operand.t)
-  | (#Reg.Bit64.t | `Name _ | `Imm _) as concrete -> concrete
+  | (#Reg.t | `Name _ | `Imm _) as concrete -> concrete
   | `Mem mem -> `Mem (concretize_mem ~shuttle mem :> Reg.t Mem.generic)
   | #Reg.Abstract.t -> failwith "abstract reg should not be concretized"
 
@@ -53,12 +53,13 @@ let concretize_mul ~shuttle ~spill = function
       let f x y = imul (`RMI (x, y, imm)) in
       concretize2_map ~shuttle ~spill ~f op1 op2
 
-(** [concretize_bit8 ~shuttle ~f bit8] is [f e] where [e] is the
+(** [concretize_bit8 ~shuttle ~spill ~f bit8] is [f e] where [e] is the
     concretized abstract bit8 register [bit8] *)
-let concretize_bit8 ~shuttle ~f = function
-  | #Reg.Abstract.t as op ->
+let concretize_bit8 ~shuttle ~spill ~f = function
+  | #Reg.Abstract.t as op when spill op ->
       let reg8 = Shuttle.find_bit8_exn shuttle op in
       f reg8
+  | #Reg.t as reg -> f (Reg.to_8_bit reg)
   | #Operand.Abstract.t ->
       failwith "unexpected operand for 8bit instruction"
 
@@ -66,13 +67,13 @@ let concretize_bit8 ~shuttle ~f = function
     movzx instruction with operands [op1] and [op2] *)
 let concretize_movzx ~shuttle ~spill op1 op2 =
   let op = concretize_operand ~shuttle ~spill op1 in
-  concretize_bit8 ~shuttle ~f:(movzx op) op2
+  concretize_bit8 ~shuttle ~spill ~f:(movzx op) op2
 
 let concretize_instr ~shuttle ~spill : Abstract.t -> Concrete.t =
   function
   | (Label _ | Enter _ | Jcc _ | Leave | Ret _) as instr -> instr
   | Jmp op -> concretize_map ~shuttle ~spill ~f:jmp op
-  | Setcc (cc, op) -> concretize_bit8 ~shuttle ~f:(setcc cc) op
+  | Setcc (cc, op) -> concretize_bit8 ~shuttle ~spill ~f:(setcc cc) op
   | Cmp (op1, op2) -> concretize2_map ~shuttle ~spill ~f:cmp op1 op2
   | Test (op1, op2) -> concretize2_map ~shuttle ~spill ~f:test op1 op2
   | Push op -> concretize_map ~shuttle ~spill ~f:push op

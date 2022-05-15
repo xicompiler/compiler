@@ -37,6 +37,7 @@ output
 *.output
 *.sout
 *.s
+*.asm
 
 # executable
 /xic

@@ -21,24 +21,28 @@ let store ~offset ~dst = function
       Mov (mem, (src :> Operand.t))
   | _ -> failwith "cannot store from abstract src"
 
-(** [rev_allocate_load ~offset ~shuttle ~init ~spills instr] loads
-    [spills instr] into the appropriate shuttling registers *)
-let rec rev_allocate_load ~offset ~shuttle ~init ~spills instr :
-    Concrete.t list * Shuttle.t =
+let rev_allocate_load ~offset ~shuttle ~init spills defs instr =
+  let init =
+    if Generic.is_call instr then
+      let f acc reg = load ~offset ~src:reg reg :: acc in
+      List.fold ~f ~init Shuttle.shuttle
+    else init
+  in
   let f (init, shuttle) src =
     let dst, shuttle =
       if Generic.is_setcc instr then Shuttle.set_bit8 shuttle src
       else Shuttle.set shuttle src
     in
-    (load ~offset ~src dst :: init, shuttle)
+    if Set.mem defs src && Generic.skip_load instr then (init, shuttle)
+    else (load ~offset ~src dst :: init, shuttle)
   in
-  List.fold ~init:(init, shuttle) ~f (spills instr)
+  List.fold ~init:(init, shuttle) ~f spills
 
-(** [rev_allocate_store ~offset ~shuttle ~init ~spill dst] stores the
-    value of the shuttling register of [dst] into the memory address of
-    [dst], if [dst] is a spill *)
-let rev_allocate_store ~offset ~shuttle ~init ~spill dst =
-  if spill dst then
-    let src = Concretize.concretize_reg ~shuttle dst in
-    store ~offset ~dst src :: init
-  else init
+let rev_allocate_store ~offset ~shuttle ~init spill defs =
+  let f acc = function
+    | dst when spill dst ->
+        let src = Concretize.concretize_reg ~shuttle dst in
+        store ~offset ~dst src :: acc
+    | _ -> acc
+  in
+  Set.fold ~f ~init defs

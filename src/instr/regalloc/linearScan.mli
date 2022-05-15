@@ -1,4 +1,4 @@
-val allocate_fn :
+val allocate_instrs :
   offset:int Reg.Abstract.Table.t ->
   Operand.Abstract.t Generic.t list ->
   Operand.t Generic.t list

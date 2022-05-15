@@ -10,7 +10,7 @@ let output_file ?(ext = "output") src =
     [file] has an extension in [exts] *)
 let make_test ~exts file f ref_ext dir =
   let ext = Caml.Filename.extension file in
-  if List.exists ~f:(String.equal ext) exts then
+  if List.mem ~equal:String.equal exts ext then
     let name =
       file |> Filename.chop_extension |> Printf.sprintf "%s/%s" dir
     in
