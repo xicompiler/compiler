@@ -15,4 +15,8 @@ module IntDigraph : sig
 
   val unused_key : ('v, 'e) t -> Key.t
   (** No vertex in [g] has a key equal to [unused_key g] *)
+
+  val indexed : 'v list -> ('v, 'e) vertex list
+  (** [indexed vs] is a list of vertices with the values in [vs] and
+      their keys their indices *)
 end

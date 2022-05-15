@@ -1,5 +1,6 @@
 open Core
 open Subtype
+open Util.Fn
 open Util.Option
 open Graph.Directed.IntDigraph
 
@@ -91,9 +92,7 @@ let rec add_edges ~labels = function
 
 (** [cfg_nodes prog] is the list of cfg nodes wrapping maximally-sized
     basic blocks corresponding to [prog] *)
-let cfg_nodes =
-  let f key value = Vertex.create ~key ~value in
-  Fn.compose (List.mapi ~f) BasicBlock.of_lir
+let cfg_nodes = BasicBlock.of_lir >> indexed
 
 (** [create_cfg prog] is list of nodes representing the control flow
     graph of lowered ir program [prog] *)
