@@ -92,28 +92,30 @@ let sexp_of_t ~compunit (top : Reorder.t) : Sexp.t =
     (Sexp.Atom "COMPUNIT" :: Sexp.Atom compunit
     :: List.map ~f:sexp_of_toplevel top)
 
-let translate ~optimize ?(gensym = IrGensym.create ()) ast =
+type opt = { cf : bool }
+
+let translate ~opt ?(gensym = IrGensym.create ()) ast =
   let stmts =
     ast |> Mir.translate ~gensym |> Lir.lower ~gensym
     |> Reorder.reorder ~gensym:(IrGensym.Label.generator gensym)
   in
-  if optimize then ConstFold.const_fold stmts else stmts
+  if opt.cf then ConstFold.const_fold stmts else stmts
 
 module Output = struct
   let iter_source ~src ~ok ?err =
     let ok = Ast.iter_source ~f:ok in
     Check.Diagnostic.iter_file ~src ~ok ?err
 
-  (** [print_source ~out ~compunit ~optimize source] prints [source] to
-      [out] as an s-expression *)
-  let print_source ~out ~compunit ~optimize source =
-    source |> translate ~optimize |> sexp_of_t ~compunit
+  (** [print_source ~out ~compunit ~opt source] prints [source] to [out]
+      as an s-expression *)
+  let print_source ~out ~compunit ~opt source =
+    source |> translate ~opt |> sexp_of_t ~compunit
     |> Sexp.to_string_hum |> Util.File.println ~out
 
-  let file_to_file ?cache ~src ~out ~deps ~optimize () =
+  let file_to_file ?cache ~src ~out ~deps ~opt () =
     let compunit = Util.File.base src in
     iter_source ?cache
-      ~ok:(print_source ~out ~compunit ~optimize)
+      ~ok:(print_source ~out ~compunit ~opt)
       ~src ~deps ()
 end
 

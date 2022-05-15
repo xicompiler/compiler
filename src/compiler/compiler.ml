@@ -7,6 +7,7 @@ module Args = Args
 type nonrec result = (unit, string list) result
 
 open Args
+open Opt
 
 (** [lex_out ~dir src] writes the lexing diagnostic file of [src] *)
 let lex_out ~dir ~src =
@@ -34,10 +35,10 @@ let ir_run ir =
     path [src] writing the results to a file in directory [dir] *)
 let ir_out ?cache ~args ~dir ~src ~deps () =
   let out = Util.File.diagnostic ~dir ~src ".ir" in
-  let optimize = not args.disable_optimize in
+  let { cf } = args.opt in
   if Util.File.is_xi src then
     let open Ir.Output in
-    let res = file_to_file ?cache ~src ~out ~deps ~optimize () in
+    let res = file_to_file ?cache ~src ~out ~deps ~opt:{ cf } () in
     match res with
     | Ok (Ok _) -> if args.irrun then ir_run out
     | _ -> ()
@@ -47,10 +48,10 @@ let ir_out ?cache ~args ~dir ~src ~deps () =
     [dir] *)
 let abstract_asm_out ?cache ~args ~dir ~src ~deps () =
   let out = Util.File.diagnostic ~dir ~src ".asm" in
-  let optimize = not args.disable_optimize in
+  let { cf } = args.opt in
   if Util.File.is_xi src then
     let open Instr.Output.Abstract in
-    ignore (file_to_file ?cache ~src ~out ~deps ~optimize ())
+    ignore (file_to_file ?cache ~src ~out ~deps ~opt:{ cf } ())
 
 (** [asm_run asm] interprets and executes the asm file at path [asm] *)
 let asm_run asm =
@@ -62,9 +63,9 @@ let asm_run asm =
     path [src] writing the results to a file in directory [dir] *)
 let asm_out ?cache ~args ~dir ~src ~deps () =
   let out = Util.File.diagnostic ~dir ~src ".s" in
-  let optimize = not args.disable_optimize in
+  let { cf } = args.opt in
   let open Instr.Output in
-  let res = file_to_file ?cache ~src ~out ~deps ~optimize () in
+  let res = file_to_file ?cache ~src ~out ~deps ~opt:{ cf } () in
   match res with
   | Ok (Ok _) ->
       if args.asmrun then asm_run out;

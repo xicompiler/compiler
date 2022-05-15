@@ -8,6 +8,9 @@ let deps : Frontend.Check.dependencies =
     lib_dir = "./test/typecheck/interfaces";
   }
 
+let enabled_opt : Ir.opt = { cf = true }
+let disabled_opt : Ir.opt = { cf = false }
+
 (** [asm_file_test name ~src ~reference] tests asm generation for [src],
     comparing the resulting files with [reference] *)
 let asm_file_test name ~src ~reference =
@@ -18,11 +21,11 @@ let asm_file_test name ~src ~reference =
   let asm_out_optimized = output_file ~ext:"o.s" src in
   print_endline asm_out;
   ignore
-    (Instr.Output.file_to_file ~src ~out:asm_out ~deps ~optimize:false
+    (Instr.Output.file_to_file ~src ~out:asm_out ~deps ~opt:disabled_opt
        ());
   ignore
     (Instr.Output.file_to_file ~src ~out:asm_out_optimized ~deps
-       ~optimize:true ());
+       ~opt:enabled_opt ());
   let out = output_file src in
   let out_optimized = output_file ~ext:"o.output" src in
   let command =

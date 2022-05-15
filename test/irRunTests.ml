@@ -8,6 +8,9 @@ let deps : Frontend.Check.dependencies =
     lib_dir = "./test/typecheck/interfaces";
   }
 
+let enabled_opt : Ir.opt = { cf = true }
+let disabled_opt : Ir.opt = { cf = false }
+
 (** [ir_file_test name ~src ~reference] tests ir generation for [src],
     comparing the resulting files with [reference] *)
 let ir_file_test name ~src ~reference =
@@ -15,10 +18,10 @@ let ir_file_test name ~src ~reference =
   let ir_out = output_file ~ext:"ir.output" src in
   let ir_out_optimized = output_file ~ext:"ir.o.output" src in
   ignore
-    (Ir.Output.file_to_file ~src ~out:ir_out ~deps ~optimize:false ());
+    (Ir.Output.file_to_file ~src ~out:ir_out ~deps ~opt:disabled_opt ());
   ignore
     (Ir.Output.file_to_file ~src ~out:ir_out_optimized ~deps
-       ~optimize:true ());
+       ~opt:enabled_opt ());
   let out = output_file src in
   let out_optimized = output_file ~ext:"o.output" src in
   let command =

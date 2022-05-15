@@ -33,7 +33,7 @@ module Output : sig
     src:string ->
     out:string ->
     deps:Frontend.Check.dependencies ->
-    optimize:bool ->
+    opt:Ir.opt ->
     unit ->
     Frontend.Check.result File.Xi.result
   (** [file_to_file ~start lexbuf out] parses and typechecks the
@@ -45,7 +45,7 @@ module Output : sig
       src:string ->
       out:string ->
       deps:Frontend.Check.dependencies ->
-      optimize:bool ->
+      opt:Ir.opt ->
       unit ->
       Frontend.Check.result File.Xi.result
     (** [file_to_file ~start lexbuf out] parses and typechecks the

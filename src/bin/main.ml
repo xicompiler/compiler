@@ -60,13 +60,41 @@ let command =
           ~doc:" Generate abstract assembly code."
       and asmrun =
         flag "--asmrun" no_arg ~doc:" Run generated assembly code."
-      and disable_optimize =
-        flag "-O" no_arg ~doc:" Disable optimizations."
       and target =
         flag "-target"
           (optional_with_default "linux" string)
           ~doc:
             " Specify the operating system for which to generate code."
+      and disable_opt = flag "-O" no_arg ~doc:" Disable optimizations."
+      and optir =
+        flag "-optir" (listed string)
+          ~doc:
+            " Report the intermediate code at the specified phase of \
+             optimization."
+      and optcfg =
+        flag "-optcfg" (listed string)
+          ~doc:
+            " Report the control-flow graph at the specified phase of \
+             optimization."
+      and cf = flag "-Ocf" no_arg ~doc:" Constant folding."
+      and reg = flag "-Oreg" no_arg ~doc:" Register allocation."
+      and copy = flag "-Ocopy" no_arg ~doc:" Move coalescing."
+      and dce = flag "-Odce" no_arg ~doc:" Dead code elimination."
+      and cp = flag "-Ocp" no_arg ~doc:" Constant propagation."
+      and vn = flag "-Ovn" no_arg ~doc:" Local value numbering." in
+      let opt =
+        Opt.config disable_opt
+          Opt.
+            {
+              optir = phases_of_list optir;
+              optcfg = phases_of_list optcfg;
+              cf;
+              reg;
+              copy;
+              dce;
+              cp;
+              vn;
+            }
       in
       let args =
         {
@@ -83,7 +111,7 @@ let command =
           irrun;
           abstract_asm;
           asmrun;
-          disable_optimize;
+          opt;
           target;
         }
       in
