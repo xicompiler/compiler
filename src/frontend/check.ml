@@ -31,31 +31,42 @@ type dependencies = {
   std_dir : string;
 }
 
-let get_path { lib_dir; std_dir } intf =
-  let lib_path = Util.File.ixi_of_dir ~dir:lib_dir intf in
+let get_path ~file { lib_dir; std_dir } intf =
+  let f1, f2 =
+    if Util.File.is_xi file then
+      (Util.File.ixi_of_dir, Util.File.ri_of_dir)
+    else (Util.File.ri_of_dir, Util.File.ixi_of_dir)
+  in
+  let lib_path = f1 ~dir:lib_dir intf in
   if Util.File.accessible lib_path then lib_path
-  else Util.File.ixi_of_dir ~dir:std_dir intf
+  else
+    let lib_path2 = f1 ~dir:std_dir intf in
+    if Util.File.accessible lib_path2 then lib_path2
+    else
+      let lib_path3 = f2 ~dir:lib_dir intf in
+      if Util.File.accessible lib_path3 then lib_path3
+      else f2 ~dir:std_dir intf
 
 (** [parse_intf ~deps intf] is [Ok (Some ast)] if [ast] is the interface
     ast parsed from file [intf], [Ok None] if file [intf] does not exist
     and [Error exn] on syntax error. *)
-let parse_intf ~deps intf =
-  match Parse.File.parse_intf (get_path deps intf) with
+let parse_intf ~file ~deps intf =
+  match Parse.File.parse_intf (get_path deps ~file intf) with
   | Ok (Ok sigs) -> Ok (Some sigs)
   | Ok (Error e) -> Error (Parse.Exn e)
   | Error _ -> Ok None
 
 (** [find_intf ~cache ~deps intf] is [parse_intf ~deps intf], caching
     the result in [cache] if provided *)
-let find_intf ?cache ~deps intf =
-  let default = parse_intf ~deps in
+let find_intf ?cache ~file ~deps intf =
+  let default = parse_intf ~file ~deps in
   match cache with
   | Some cache -> Hashtbl.findi_or_add cache intf ~default
   | None -> default intf
 
 (** Same as [find_intf], but raises [exn] on [Error exn] *)
-let find_intf_exn ?cache ~deps =
-  Fn.compose Result.ok_exn (find_intf ?cache ~deps)
+let find_intf_exn ?cache ~file ~deps =
+  Fn.compose Result.ok_exn (find_intf ?cache ~file ~deps)
 
 let coerce e = (e :> error)
 
@@ -75,15 +86,17 @@ let parse_intf lb =
 let map ~f = File.Xi.map ~source:(f parse_source) ~intf:(f parse_intf)
 let semantic_error e = `SemanticError e
 
-let type_check ?cache ~deps ast =
+let type_check ~file ?cache ~deps ast =
   try
     ast
-    |> Undecorated.type_check ~find_intf:(find_intf_exn ?cache ~deps)
+    |> Undecorated.type_check ~file:(Util.File.base file)
+         ~find_intf:(find_intf_exn ?cache ~file ~deps)
     |> Result.map_error ~f:semantic_error
   with Parse.Exn e -> Error (coerce e)
 
 let type_check_file ?cache ~deps file =
-  Parse.File.map_ast ~f:(type_check ?cache ~deps) file >>| function
+  Parse.File.map_ast ~f:(type_check ~file ?cache ~deps) file
+  >>| function
   | Ok ok -> ok
   | Error err -> Error (coerce err)
 

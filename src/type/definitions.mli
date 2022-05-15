@@ -25,6 +25,9 @@ type stmt = Stmt.t [@@deriving sexp_of]
 module FnType : module type of FnType
 (** [FnType] represents a function type in [Xi] *)
 
+module RecordType : module type of RecordType
+(** [RecordType] represents a record type in [Xi] *)
+
 module Bound : module type of Bound
 (** [Bound] represents the type an identifier bound in the context can
     have *)

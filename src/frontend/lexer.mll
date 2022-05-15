@@ -123,8 +123,14 @@ rule read =
     { WHILE }
   | "return"
     { RETURN }
+  | "break"
+    { BREAK }
+  | "record"
+    { RECORD }
   | "length"
     { LENGTH }
+  | "null"
+    { NULL }
   | "("
     { LPAREN }
   | ")"
@@ -139,6 +145,8 @@ rule read =
     { RBRACE }
   | "="
     { GETS }
+  | "."
+    { DOT }
   | "*"
     { MULT }
   | "*>>"

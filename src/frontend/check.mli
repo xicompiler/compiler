@@ -33,7 +33,11 @@ type dependencies = {
     dependencies for a file *)
 
 val type_check :
-  ?cache:cache -> deps:dependencies -> Ast.Undecorated.t -> result
+  file:string ->
+  ?cache:cache ->
+  deps:dependencies ->
+  Ast.Undecorated.t ->
+  result
 (** [type_check ~cache { lib_dir; std_dir } lb] returns [Ok ast] where
     [ast] is the decorated ast of [lb], or [Error err] where [err] is a
     parsing error or type error. If [cache] is [Some tbl], AST nodes are

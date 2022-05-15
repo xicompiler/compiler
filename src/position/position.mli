@@ -4,6 +4,8 @@ type t = {
 }
 (** [t] is the type of position, consisting of the line and column *)
 
+val dummy : t
+
 val format : t -> string -> string
 (** [format pos s] is a function that formats a string [s] with [pos] *)
 

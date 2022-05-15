@@ -6,11 +6,23 @@ val xi : string -> string
 val ixi : string -> string
 (** [ixi s] concats ".ixi" to [s] *)
 
+val rh : string -> string
+(** [rh s] concats ".rh" to [s] *)
+
+val ri : string -> string
+(** [ri s] concats ".ri" to [s] *)
+
 val is_xi : string -> bool
 (** [is_xi s] is [true] iff [s] ends with [.xi] *)
 
+val is_rh : string -> bool
+(** [is_rh s] is [true] iff [s] ends with [.rh] *)
+
 val ixi_of_dir : dir:string -> string -> string
 (** [ixi_of_dir ~dir file] is the string [dir/file.ixi] *)
+
+val ri_of_dir : dir:string -> string -> string
+(** [ri_of_dir ~dir file] is the string [dir/file.ri] *)
 
 val accessible : string -> bool
 (** [accessible file] is [true] iff [Sys.file_exists file] is [`Yes] and

@@ -12,5 +12,7 @@ let bound = carries_string ~f:(fun s -> Bound s)
 let unbound = carries_string ~f:(fun s -> Unbound s)
 let expected_tau = Position.Entry.error ~cause:ExpectedTau
 let expected_fn = Position.Entry.error ~cause:ExpectedFn
+let expected_record = Position.Entry.error ~cause:ExpectedRecord
 let fn_mismatch = carries_string ~f:(fun s -> FnMismatch s)
+let record_mismatch = carries_string ~f:(fun s -> RecordMismatch s)
 let unbound_intf = carries_string ~f:(fun s -> UnboundIntf s)

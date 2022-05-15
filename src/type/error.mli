@@ -8,15 +8,20 @@ type t =
   | ExpectedTau
   | ExpectedArray
   | ExpectedFn
+  | ExpectedRecord
   | ExpectedUnit
   | ExpectedVoid
   | FnMismatch of string
+  | RecordMismatch of string
   | OpMismatch
   | ExprMismatch of expr * expr
   | StmtMismatch of stmt * stmt
   | CountMismatch
   | IllegalArrayDecl
   | UnboundIntf of string
+  | IllegalBreak
+  | UnboundField of string
+  | RepeatField of string
 
 include Util.Stringable.S with type t := t
 
@@ -47,6 +52,15 @@ module Positioned : sig
 
   val expected_array : Position.t -> t
   (** [expected_array pos] is [make ~pos ExpectedArray] *)
+
+  val illegal_break : Position.t -> t
+  (** [illegal_break pos] is [make ~pos IllegalBreak] *)
+
+  val unbound_field : Position.t -> string -> t
+  (** [unbound_field pos] is [make ~pos UnboundField] *)
+
+  val repeat_field : Position.t -> string -> t
+  (** [repeat_field id] is [make ~pos RepeatField] *)
 end
 
 type nonrec 'a result = ('a, t) result

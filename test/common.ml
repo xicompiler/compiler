@@ -20,15 +20,17 @@ let make_test ~exts file f ref_ext dir =
   else None
 
 let map_file_tests ~f ref_ext dir =
-  let f file = make_test ~exts:[ ".xi"; ".ixi" ] file f ref_ext dir in
+  let f file =
+    make_test ~exts:[ ".xi"; ".ixi"; ".rh"; ".ri" ] file f ref_ext dir
+  in
   Sys_unix.readdir dir |> Array.to_list |> Stdlib.List.filter_map f
 
 let map_file_tests_xi ~f ref_ext dir =
-  let f file = make_test ~exts:[ ".xi" ] file f ref_ext dir in
+  let f file = make_test ~exts:[ ".xi"; ".rh" ] file f ref_ext dir in
   Sys_unix.readdir dir |> Array.to_list |> Stdlib.List.filter_map f
 
 let map2_file_tests_xi ~f ref_ext dir =
-  let f file = make_test ~exts:[ ".xi" ] file f ref_ext dir in
+  let f file = make_test ~exts:[ ".xi"; ".rh" ] file f ref_ext dir in
   Sys_unix.readdir dir |> Array.to_list
   |> Stdlib.List.filter_map f
   |> List.fold_left

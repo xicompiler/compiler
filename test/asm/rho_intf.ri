@@ -1,0 +1,10 @@
+use rho_intf2
+
+record Point {}
+
+createPoint(x:int, y:int):Point
+
+pointX(p:Point): int
+pointY(p:Point): int
+
+testPoint(p:Point):Test

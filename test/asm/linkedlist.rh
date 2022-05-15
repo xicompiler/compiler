@@ -1,0 +1,31 @@
+use io 
+use conv 
+
+record Node {
+    data: int
+    next: Node
+}
+
+main(args:int[][]) {
+    n:Node;
+    node1:Node = Node(1, n)
+    node2:Node = Node(2, node1)
+    node3:Node = Node(3, node2)
+    
+    if(node1 != node2) { // testing inequality
+        println("correct")
+    }
+    else {
+        println("incorrect")
+    }
+    
+    node4:Node = node1 
+    if(node1 == node4) { // testing equality 
+        println("correct")
+    }
+    else {
+        println("incorrect")
+    }
+    
+    println(unparseInt(node3.next.next.data)) // testing linkedlist
+}

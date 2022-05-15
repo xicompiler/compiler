@@ -54,6 +54,9 @@
 %token WHILE
 %token RETURN
 %token LENGTH
+%token BREAK
+%token NULL
+%token RECORD
 
 (* Literals *)
 %token <Uchar.t> CHAR
@@ -71,6 +74,9 @@
 
 (* Assignment operator, [=] *)
 %token GETS
+
+(* Record field access operator, [.] *)
+%token DOT
 
 (* Binary operators *)
 %token MULT
@@ -208,8 +214,22 @@ source:
 
 (** An [intf] derives an intf file in Xi, followed by EOF  *)
 intf:
-  | signatures = node(signature)+; EOF
-    { signatures }
+  | sigs = node(intf_sig)+; EOF
+    { {uses=[]; sigs} }
+  | uses = node(use)+; sigs = node(intf_sig)+; EOF
+    { {uses; sigs} }
+  ;
+
+intf_sig:
+  | defn = signature
+    { FnSig defn }
+  | defn = record_sig
+    { defn }
+  ;
+
+record_sig:
+  | RECORD; name = id; LBRACE; vars = list(decl) RBRACE
+    { RecordSig (name, vars) }
   ;
 
 (** A [source_file] derives a source file in  Xi *)
@@ -236,11 +256,15 @@ definitions:
     { global :: definitions }
   | fn_defn = node(fn_defn); definitions = node(definition)*
     { fn_defn :: definitions }
+  | record_defn = node(record_defn); definitions = node(definition)*
+    { record_defn :: definitions }
   ;
 
 definition:
   | defn = global_semi
   | defn = fn_defn
+    { defn }
+  | defn = record_defn
     { defn }
   ;
 
@@ -251,21 +275,24 @@ global_semi:
 
 fn_defn:
   | fn = fn
-    { FnDefn fn }
+    {  FnDefn fn }
+  ;
+
+record_defn:
+  | RECORD; name = id; LBRACE; vars = list(decl) RBRACE
+    { RecordDefn (name, vars) }
   ;
 
 global:
   | decl = decl
     { GlobalDecl decl }
-  | decl = decl; GETS; v = primitive
+  | id = id; COLON; typ = typ; GETS; v = primitive
     { 
-      let (id, typ) = decl in
       let v = primitive_of_unsafe ~pos:$startpos(v) v in
       GlobalInit (id, typ, v)
     }
-  | decl = decl; GETS; neg = MINUS; i = INT
+  | id = id; COLON; typ = typ; GETS; neg = MINUS; i = INT
     {
-      let (id, typ) = decl in 
       let pos = $startpos(neg) in
       let i = parse_int ~pos ~neg:true i in
       let v = `Int (int_of_unsafe ~pos i) in
@@ -274,8 +301,10 @@ global:
   ;
 
 decl:
-  | id = id; COLON; typ = typ
-    { (id, typ) }
+  | ids = separated_nonempty_list(COMMA, id); COLON; typ = typ
+    { (ids, typ) }
+  | id = id; COLON; typ = typ 
+    { ([id], typ)}
   ;
 
 typ:
@@ -283,6 +312,8 @@ typ:
     { typ :> Type.tau }
   | typ = typ; LBRACKET; RBRACKET
     { `Array typ }
+  | typ = ID
+    { `Record typ }
   ;
 
 array_init:
@@ -297,6 +328,10 @@ index(lhs):
   | e1 = lhs; e2 = bracketed(enode)
     { (enode_of_unsafe ~pos:$startpos e1, e2) }
   ;
+
+field(lhs):
+  | e1 = lhs; DOT; id = id
+    { (enode_of_unsafe ~pos:$startpos e1, id) }
 
 expr:
   | e = bop_expr
@@ -332,6 +367,8 @@ uop_expr:
 call_expr:
   | index = index(call_expr)
     { let (e1, e2) = index in SafeExpr (Index (e1, e2)) }
+  | field = field(call_expr)
+    { let (e1, id) = field in SafeExpr (Field (e1, id)) }
   | e = parens(expr)
     { SafeExpr e }
   | v = primitive
@@ -340,9 +377,11 @@ call_expr:
     { SafeExpr (Array array) }
   | s = STRING
     { SafeExpr (String s) }
+  | NULL
+    { SafeExpr (Null) }
   | LENGTH; e = parens(enode)
     { SafeExpr (Length e) }
-  | e = array_assign_expr
+  | e = assign_expr
     { SafeExpr e }
   ;
 
@@ -379,9 +418,9 @@ call:
     { (id, args) }
   ;
 
-(** [array_assign_expr] is any non-array-index expression [e1] that can appear 
+(** [assign_expr] is any non-array-index expression [e1] that can appear 
     in the statement [e1[e2] = e3] *)
-array_assign_expr:
+assign_expr:
   | call = call
     { FnCall call }
   | id = id
@@ -393,7 +432,13 @@ array_assign_expr:
 array_assign_lhs:
   | index = index(array_assign_lhs)
     { let (e1, e2) = index in SafeExpr (Index (e1, e2)) }
-  | e = array_assign_expr
+  | e = assign_expr
+    { SafeExpr e }
+
+field_assign_lhs:
+  | field = field(field_assign_lhs)
+    { let (e1, id) = field in SafeExpr (Field (e1, id)) }
+  | e = assign_expr
     { SafeExpr e }
 
 fn:
@@ -407,9 +452,13 @@ signature:
   ;
 
 params:
-  | params = separated_list(COMMA, decl)
+  | params = separated_list(COMMA, param)
     { params }
   ;
+
+param:
+  | id = id; COLON; typ = typ 
+    { (id, typ) }
 
 types:
   | COLON; types = separated_nonempty_list(COMMA, typ)
@@ -430,9 +479,14 @@ stmt:
   | stmt = if_stmt
   | stmt = if_else
   | stmt = while_stmt
+  | stmt = break
   | stmt = semi(semicolon_terminated)
     { stmt }
   ;
+
+break:
+  | BREAK;
+    { Break }
 
 if_stmt:
   | IF; e = enode; s = snode
@@ -456,14 +510,16 @@ separated_multiple_list(sep, X):
 semicolon_terminated:
   | decl = decl
     { VarDecl decl }
-  | decl = decl; GETS; e = enode
-    { let (id, typ) = decl in VarInit (id, typ, e) }
+  | id = id; COLON; typ = typ; GETS; e = enode
+    { VarInit (id, typ, e) }
   | id = id; COLON; init = array_init
     { let (typ, es) = init in ArrayDecl (id, typ, es) }
   | id = id; GETS; e = enode
     { Assign (id, e) }
   | index = index(array_assign_lhs); GETS; e3 = enode
     { let (e1, e2) = index in ArrAssign (e1, e2, e3) }
+  | field = field(field_assign_lhs); GETS; e3 = enode
+    { let (e1, id) = field in FieldAssign (e1, id, e3) }
   | ds = separated_multiple_list(COMMA, d); GETS; rhs = call
     { let (id, args) = rhs in MultiAssign (ds, id, args) }
   | WILDCARD; GETS; rhs = call
@@ -475,8 +531,8 @@ semicolon_terminated:
   ;
 
 d:
-  | decl = decl
-    { Some decl }
+  | id = id; COLON; typ = typ
+    { Some (id, typ) }
   | WILDCARD
     { None }
   ;

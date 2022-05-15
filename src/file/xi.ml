@@ -25,8 +25,8 @@ type 'a map = Lexing.lexbuf -> 'a
 
 let map ~source ~intf file =
   match Caml.Filename.extension file with
-  | ".xi" -> map_nsf ~f:source file >>| Either.first
-  | ".ixi" -> map_nsf ~f:intf file >>| Either.second
+  | ".xi" | ".rh" -> map_nsf ~f:source file >>| Either.first
+  | ".ixi" | ".ri" -> map_nsf ~f:intf file >>| Either.second
   | _ -> Error (`NotXiFile file)
 
 let map_same ~source ~intf file =

@@ -54,7 +54,10 @@ module Diagnostic = struct
     | ELSE -> "else"
     | WHILE -> "while"
     | RETURN -> "return"
+    | BREAK -> "break"
+    | RECORD -> "record"
     | LENGTH -> "length"
+    | NULL -> "null"
     | CHAR u -> string_of_char_token u
     | STRING s -> string_of_string_token s
     | INT i -> string_of_int_token i
@@ -66,6 +69,7 @@ module Diagnostic = struct
     | LBRACE -> "{"
     | RBRACE -> "}"
     | GETS -> "="
+    | DOT -> "."
     | MULT -> "*"
     | HIGHMULT -> "*>>"
     | DIV -> "/"

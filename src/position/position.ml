@@ -7,6 +7,7 @@ type t = {
   column : int;
 }
 
+let dummy = { line = 0; column = 0 }
 let format { line; column } = Printf.sprintf "%d:%d %s" line column
 
 type position = t

@@ -36,6 +36,14 @@ let type_check_id ~ctx ~pos id =
   let%map typ = Context.find_var ~id ctx in
   (Id id, Data.Expr.create ~ctx ~typ ~pos)
 
+(** [assert_type_exists ctx pos typ] is [Error Unbound] if [typ] is a
+    record not bound in [ctx], [Ok ()] otherwise *)
+let assert_type_exists ~ctx ~pos = function
+  | `Record r ->
+      let%bind _ = Context.find_record ~id:(r, pos) ctx in
+      Ok ()
+  | _ -> Ok ()
+
 (** [decorate_concat t1 t2 ~ctx ~pos] is [Ok dec], where [dec] is a ast
     decoration wrapping context [ctx], and position [pos] if [t1 = t2],
     and [Error] if [t1 =/= t2] *)
@@ -90,6 +98,20 @@ let decorate_index ~ctx ~pos d1 d2 =
   | `Array typ, `Int -> Ok (create ~ctx ~typ ~pos)
   | _, _ -> Error (Type.Error.Positioned.op_mismatch pos)
 
+let decorate_field ~ctx ~pos d1 field =
+  let open Data.Expr in
+  match typ d1 with
+  | `Record id ->
+      let field = fst field in
+      let id = (id, pos) in
+      let%bind record_fields = Context.find_record ~id ctx in
+      let equal = String.equal in
+      let field_type = List.Assoc.find ~equal record_fields field in
+      let error = Type.Error.Positioned.unbound_field pos field in
+      let%bind typ = Result.of_option field_type ~error in
+      Ok (create ~ctx ~typ ~pos)
+  | _ -> Error (Type.Error.Positioned.op_mismatch pos)
+
 (** [decorate_term ~f ~ctx node] is a pair [(decoration, node')] where
     [decoration] is the type-checking decoration of [node] and [node']
     is the type checked node, as produced by [f ~ctx node] *)
@@ -108,6 +130,8 @@ let rec type_check_expr ~ctx (e, pos) =
   | FnCall (id, es) -> type_check_fn_call ~ctx ~pos id es
   | Length node -> type_check_length ~ctx ~pos node
   | Index (e1, e2) -> type_check_index ~ctx ~pos e1 e2
+  | Field (e1, id) -> type_check_field ~ctx ~pos e1 id
+  | Null -> type_check_null ~ctx ~pos
 
 (** [decorate_expr ~ctx node] is a pair [(decoration, node')] where
     [decoration] is the type-checking decoration of [node] and [node']
@@ -176,10 +200,16 @@ and type_check_uop ~ctx ~pos op e =
     [id], or [Error type_error] where [type_error] describes the type
     error otherwise *)
 and type_check_call ~ctx ~pos id es =
-  let%bind t1, t2 = Context.find_fn ~id ctx in
-  let types = Type.Term.to_tau_list t1 in
-  let%map es = type_check_exprs ~ctx ~pos ~types es in
-  (es, t2)
+  match Context.find_fn ~id ctx with
+  | Ok (t1, t2) ->
+      let types = Type.Term.to_tau_list t1 in
+      let%map es = type_check_exprs ~ctx ~pos ~types es in
+      (es, t2)
+  | Error _ ->
+      let%bind decls = Context.find_record ~id ctx in
+      let types = List.map ~f:snd decls in
+      let%map es = type_check_exprs ~ctx ~pos ~types es in
+      (es, `Record (fst id))
 
 (** [type_check_fn_call ~ctx ~pos id es] is [Ok fn] where [fn] is FnCall
     ([id], [es]) decorated, or [Error type_error] where [type_error]
@@ -207,6 +237,14 @@ and type_check_index ~ctx ~pos e1 e2 =
   let%map data = decorate_index ~ctx ~pos d1 d2 in
   (Index (e1, e2), data)
 
+and type_check_field ~ctx ~pos e1 id =
+  let%bind e1, d1 = decorate_expr ctx e1 in
+  let%map data = decorate_field ~ctx ~pos d1 id in
+  (Field (e1, id), data)
+
+and type_check_null ~ctx ~pos =
+  Ok (Null, Data.Expr.create ~ctx ~typ:`Null ~pos)
+
 (** [bool_or_error_stmt ctx e] is [Ok e] if [e] is [Ok e] and [e] has
     bool type in function context [ctx] and [Error ExprMismatch]
     otherwise *)
@@ -215,12 +253,14 @@ let bool_or_error ~ctx e =
   let%map () = Data.Expr.assert_bool data in
   e
 
-(** [type_check_var_decl ~ctx ~pos id typ] is [Ok vd] where [vd] is
-    VarDecl ([id], [typ]) decorated, or [Error type_error] where
+(** [type_check_var_decl ~ctx ~pos ids typ] is [Ok vd] where [vd] is
+    VarDecl ([ids], [typ]) decorated, or [Error type_error] where
     [type_error] describes the type error otherwise *)
-let type_check_var_decl ~ctx ~pos id typ =
-  let%map ctx = Context.add_var ~id ~typ ctx in
-  (VarDecl (id, typ), Data.Stmt.create_unit ~ctx ~pos)
+let type_check_var_decl ~ctx ~pos ids typ =
+  let%bind () = assert_type_exists ~ctx ~pos typ in
+  let f ctx id = Context.add_var ~id ~typ ctx in
+  let%map ctx = List.fold_result ~init:ctx ~f ids in
+  (VarDecl (ids, typ), Data.Stmt.create_unit ~ctx ~pos)
 
 (** [type_check_empty es] is [Ok \[\]] if each of [es] is [None], or
     [Error err] if any of [es] are [Some _]*)
@@ -245,6 +285,7 @@ let rec type_check_sizes ~ctx = function
     ArrayDecl ([id], [typ], [es]) decorated, or [Error type_error] where
     [type_error] describes the type error otherwise *)
 let type_check_array_decl ~ctx ~pos id typ es =
+  let%bind () = assert_type_exists ~ctx ~pos typ in
   let%bind ctx = Context.add_var ~id ~typ ctx in
   let%map es = type_check_sizes ~ctx es in
   let es = List.map ~f:Option.some es in
@@ -270,6 +311,7 @@ let type_check_expr_stmt ~ctx ~pos id es =
     VarInit ([id], [typ], [e]) decorated, or [Error type_error] where
     [type_error] describes the type error otherwise *)
 let type_check_var_init ~ctx ~pos id typ e =
+  let%bind () = assert_type_exists ~ctx ~pos typ in
   let%bind ctx = Context.add_var ~id ~typ ctx in
   let%bind n, data = decorate_expr ~ctx e in
   let%map () = Data.Expr.assert_eq ~expect:typ data in
@@ -294,11 +336,22 @@ let type_check_arr_assign ~ctx ~pos e1 e2 e3 =
       let pos2 = Data.Expr.position d2 in
       Error (Type.Error.Positioned.expr_mismatch pos2 ~expect:`Int ~got)
 
+let type_check_field_assign ~ctx ~pos e1 id e2 =
+  let%bind record, record_type = decorate_expr ~ctx e1 in
+  let%bind field, field_type =
+    decorate_expr ~ctx (Field (e1, id), pos)
+  in
+  let%bind e3, d3 = decorate_expr ~ctx e2 in
+  let expect = Data.Expr.typ field_type in
+  let%map () = Data.Expr.assert_eq ~expect d3 in
+  (FieldAssign (record, id, e3), Data.Stmt.create_unit ~ctx ~pos)
+
 (** [check_decls ~ctx ~pos ds ts] is [Ok ctx'] where [ctx'] is [ctx]
     updated with variables [ds] and types [ts], or [Error type_error]
     where [type_error] describes the type error otherwise *)
 let check_decls ~ctx ~pos =
   let f ctx d typ =
+    let%bind () = assert_type_exists ~ctx ~pos typ in
     match d with
     | None -> Ok ctx
     | Some (id, tau) ->
@@ -328,6 +381,10 @@ let type_check_return ~ctx ~pos es =
   let%map es = type_check_exprs ~ctx ~pos ~types es in
   (Return es, Data.Stmt.create_void ~ctx ~pos)
 
+let type_check_break ~ctx ~pos =
+  if Context.beta ctx then Ok (Break, Data.Stmt.create_void ~ctx ~pos)
+  else Error (Type.Error.Positioned.illegal_break pos)
+
 (** [term_of_sig signature] is a [Term.t] representing the return type
     of [signature] *)
 let term_of_sig = Sig.ret >> Type.Term.of_tau_list
@@ -337,10 +394,12 @@ let rec type_check_stmt ~ctx (s, pos) =
   | If (e, s) -> type_check_if ~ctx ~pos e s
   | IfElse (e, s1, s2) -> type_check_if_else ~ctx ~pos e s1 s2
   | While (e, s) -> type_check_while ~ctx ~pos e s
-  | VarDecl (id, typ) -> type_check_var_decl ~ctx ~pos id typ
+  | VarDecl (ids, typ) -> type_check_var_decl ~ctx ~pos ids typ
   | ArrayDecl (id, typ, es) -> type_check_array_decl ~ctx ~pos id typ es
   | Assign (id, e) -> type_check_assign ~ctx ~pos id e
   | ArrAssign (e1, e2, e3) -> type_check_arr_assign ~ctx ~pos e1 e2 e3
+  | FieldAssign (e1, id, e2) ->
+      type_check_field_assign ~ctx ~pos e1 id e2
   | ExprStmt (id, es) -> type_check_expr_stmt ~ctx ~pos id es
   | VarInit (id, typ, e) -> type_check_var_init ~ctx ~pos id typ e
   | MultiAssign (ds, id, es) ->
@@ -348,6 +407,7 @@ let rec type_check_stmt ~ctx (s, pos) =
   | PrCall (id, es) -> type_check_pr_call ~ctx ~pos id es
   | Return es -> type_check_return ~ctx ~pos es
   | Block stmts -> type_check_block ~ctx ~pos stmts
+  | Break -> type_check_break ~ctx ~pos
 
 (** [decorate_stmt ~ctx s] is a pair [(decoration, node')] where
     [decoration] is the type-checking decoration of [node] and [node']
@@ -383,6 +443,7 @@ and type_check_if_else ~ctx ~pos e s1 s2 =
     [s]) decorated, or [Error type_error] where [type_error] describes
     the type error otherwise *)
 and type_check_while ~ctx ~pos e s =
+  let ctx = Context.with_beta ~beta:true ctx in
   create_cond ~f:(fun e s -> While (e, s)) ~ctx ~pos e s
 
 (** [type_check_pr_call ~ctx ~pos id es] is [Ok pr] where [pr] is PrCall
@@ -444,11 +505,41 @@ let get_sig_context ~pos ~ctx ~f s =
   let ret = term_of_sig s in
   f ~id:(Sig.name s) ~arg ~ret ctx
 
+let flatten_fields fields =
+  let add_field typ acc (name, pos) =
+    if List.Assoc.mem acc ~equal:String.equal name then
+      Error (Type.Error.Positioned.repeat_field pos name)
+    else Ok ((name, typ) :: acc)
+  in
+  let add_fields acc (ids, typ) =
+    List.fold_result ~f:(add_field typ) ~init:acc ids
+  in
+  fields |> List.fold_result ~f:add_fields ~init:[] >>| List.rev
+
+let get_record_context ~pos ~ctx ~f id fields =
+  let%bind fields = flatten_fields fields in
+  f ~id ~fields ctx
+
+let check_fields_or_params ~ctx ~pos params =
+  let f acc (id, typ) = assert_type_exists ~ctx ~pos typ in
+  List.fold_result ~f ~init:() params
+
+let check_ret ~ctx ~pos ret =
+  let f acc = assert_type_exists ~ctx ~pos in
+  List.fold_result ~f ~init:() ret
+
+let check_sig_types ~ctx ~pos signature =
+  let%bind () =
+    check_fields_or_params ~ctx ~pos (Sig.params signature)
+  in
+  check_ret ~ctx ~pos (Sig.ret signature)
+
 (** [type_check_function ~ctx ~pos signature block] is [Ok fn] where
     [fn] is FnDefn ([signature], [block]) decorated, or
     [Error type_error] where [type_error] describes the type error
     otherwise *)
 let type_check_function ~ctx ~pos signature block =
+  let%bind () = check_sig_types ~ctx ~pos signature in
   let f = Context.add_fn_defn in
   let%bind ctx = get_sig_context ~pos ~ctx ~f signature in
   let%bind fn_ctx = get_fn_context ~ctx ~pos signature in
@@ -460,18 +551,27 @@ let type_check_function ~ctx ~pos signature block =
       let%map () = Type.assert_void typ >>? pos in
       (fn_defn, Data.Toplevel.create ~ctx ~pos)
 
+let type_check_record_defn ~ctx ~pos id decls =
+  let%bind () = check_fields_or_params ~ctx ~pos decls in
+  let f = Context.add_record_defn in
+  let%map ctx = get_record_context ~pos ~ctx ~f id decls in
+  (RecordDefn (id, decls), Data.Toplevel.create ~ctx ~pos)
+
 (** [type_check_global_decl ~ctx ~pos id typ] is [Ok gd] where [gd] is
     GlobalDecl ([id], [typ]) decorated, or [Error type_error] where
     [type_error] describes the type error otherwise *)
-let check_global_decl ~ctx ~pos id typ =
-  let%map ctx = Context.add_var ~id ~typ ctx in
-  (GlobalDecl (id, typ), Data.Toplevel.create ~ctx ~pos)
+let check_global_decl ~ctx ~pos ids typ =
+  let%bind () = assert_type_exists ~ctx ~pos typ in
+  let f ctx id = Context.add_var ~id ~typ ctx in
+  let%map ctx = List.fold_result ~init:ctx ~f ids in
+  (GlobalDecl (ids, typ), Data.Toplevel.create ~ctx ~pos)
 
 (** [type_check_global_init ~ctx ~pos id tau primitive] is [Ok gi] where
     [gi] is GlobalInit ([id], [tau], [primitive]) decorated, or
     [Error type_error] where [type_error] describes the type error
     otherwise *)
 let check_global_init ~ctx ~pos id tau primitive =
+  let%bind () = assert_type_exists ~ctx ~pos tau in
   let%bind ctx = Context.add_var ~id ~typ:tau ctx in
   let expect, got = (tau, Primitive.typeof primitive) in
   let error () = Type.Error.Positioned.expr_mismatch pos ~expect ~got in
@@ -485,7 +585,8 @@ let check_global_init ~ctx ~pos id tau primitive =
 let check_defn ~ctx (def, pos) =
   match def with
   | FnDefn (proto, block) -> type_check_function ~ctx ~pos proto block
-  | GlobalDecl (id, typ) -> check_global_decl ~ctx ~pos id typ
+  | RecordDefn (id, decls) -> type_check_record_defn ~ctx ~pos id decls
+  | GlobalDecl (ids, typ) -> check_global_decl ~ctx ~pos ids typ
   | GlobalInit (id, typ, e) -> check_global_init ~ctx ~pos id typ e
 
 (** [fold_context ~f ~ctx nodes] folds [f] over each node of [nodes],
@@ -506,11 +607,23 @@ let check_defs ~ctx defs = fold_context ~f:check_defn ~ctx defs >>| snd
 (** [type_check_signature_no_params ~ctx signode] is [Ok sign] where
     [sign] is the [signode] decorated, or [Error type_error] where
     [type_error] describes the type error otherwise *)
-let type_check_signature ~ctx (signature, pos) =
+let type_check_fn_signature ~ctx (signature, pos) =
+  let%bind () = check_sig_types ~ctx ~pos signature in
   let f = Context.add_fn_decl in
   let%bind ctx = get_sig_context ~pos ~ctx ~f signature in
   let%map _ = fold_decls ~ctx ~pos @@ Sig.params signature in
-  (signature, Data.Toplevel.create ~ctx ~pos)
+  (FnSig signature, Data.Toplevel.create ~ctx ~pos)
+
+let type_check_record_signature ~ctx (id, decls) pos =
+  let%bind () = check_fields_or_params ~ctx ~pos decls in
+  let f = Context.add_record_decl in
+  let%map ctx = get_record_context ~pos ~ctx ~f id decls in
+  (RecordSig (id, decls), Data.Toplevel.create ~ctx ~pos)
+
+let type_check_signature ~ctx = function
+  | FnSig fn, pos -> type_check_fn_signature ~ctx (fn, pos)
+  | RecordSig (id, decls), pos ->
+      type_check_record_signature ~ctx (id, decls) pos
 
 (** [fold_intf_map ~f ~ctx sigs] is [Ok res] where [res] is the result
     of applying [f] to a call of [fold_intf ~ctx sigs], or
@@ -519,35 +632,47 @@ let type_check_signature ~ctx (signature, pos) =
 let fold_intf_map ~f ~ctx sigs =
   fold_context ~f:type_check_signature ~ctx sigs >>| f
 
+(** [fold_fn_sig ctx signode] is [Ok ctx'] where [ctx'] is the result of
+    adding the function declaration of [signode] to [ctx], or
+    [Error type_error] where [type_error] describes the type error
+    otherwise *)
+let fold_fn_sig ctx (signature, pos) =
+  get_sig_context ~pos ~ctx ~f:Context.add_fn_decl signature
+
+let fold_record_sig ctx (id, decls) pos =
+  get_record_context ~pos ~ctx ~f:Context.add_record_decl id decls
+
 (** [fold_sig ctx signode] is [Ok ctx'] where [ctx'] is the result of
     adding the function declaration of [signode] to [ctx], or
     [Error type_error] where [type_error] describes the type error
     otherwise *)
-let fold_sig ctx (signature, pos) =
-  get_sig_context ~pos ~ctx ~f:Context.add_fn_decl signature
+let fold_sig ctx = function
+  | FnSig fn, pos -> fold_fn_sig ctx (fn, pos)
+  | RecordSig (id, decls), pos -> fold_record_sig ctx (id, decls) pos
 
 (** [check_intf ~ctx sigs] is [Ok ctx'] where [ctx'] is [ctx] updated
     with the signature in [sigs], or [Error type_error] where
     [type_error] describes the type error, otherwise. *)
-let check_intf ~ctx intf =
-  let%bind ctx = List.fold_result ~init:ctx ~f:fold_sig intf in
-  fold_intf_map ~f:fst ~ctx intf
+let rec check_intf ~find_intf ~ctx { uses; sigs } =
+  let%bind ctx, uses = check_uses ~find_intf ~ctx uses in
+  let%bind ctx = List.fold_result ~init:ctx ~f:fold_sig sigs in
+  fold_intf_map ~f:fst ~ctx sigs
 
 (** [check_use ~find_intf ~ctx use] is [Ok use'] where [use'] is the
     decorated node of [use], or [Error type_error] where [type_error]
     describes the type error otherwise *)
-let check_use ~find_intf ~ctx (((name, pos) as id), _) =
+and check_use ~find_intf ~ctx (((name, pos) as id), _) =
   let error () = Context.Error.unbound_intf id in
   let intf = find_intf name in
   let%bind intf = Lazy.of_option ~error intf in
-  let%map ctx = check_intf ~ctx intf in
+  let%map ctx = check_intf ~find_intf ~ctx intf in
   (id, Data.Toplevel.create ~ctx ~pos)
 
 (** [check_uses ~find_intf ~ctx uses] is [Ok (uses', ctx')] where
     [uses'] are the decorated nodes of [uses] and [ctx'] is the updated
     context from checking the relevant interface files. Otherwise, it is
     [Error type_error] where [type_error] describes the type error *)
-let check_uses ~find_intf ~ctx uses =
+and check_uses ~find_intf ~ctx uses =
   fold_context ~f:(check_use ~find_intf) ~ctx uses
 
 (** [first_pass_def ctx def] is [Ok ctx'] where [ctx'] is [ctx] updated
@@ -556,6 +681,8 @@ let check_uses ~find_intf ~ctx uses =
 let first_pass_def ctx (glob, pos) =
   match glob with
   | FnDefn (s, _) -> get_sig_context ~ctx ~pos ~f:Context.add_fn_decl s
+  | RecordDefn (id, fields) ->
+      get_record_context ~ctx ~pos ~f:Context.add_record_decl id fields
   | GlobalDecl _ | GlobalInit _ -> Ok ctx
 
 (** [first_pass_defs ~ctx defs] is [Ok ctx'] where [ctx'] is [ctx]
@@ -566,30 +693,30 @@ let first_pass_defs ~ctx = List.fold_result ~init:ctx ~f:first_pass_def
 (** [first_pass_source ~find_intf source] is an updated context with the
     function names signatures in [source], along with the contexts from
     what it uses. *)
-let first_pass_source ~find_intf src =
+let first_pass_source ~file ~find_intf src =
   let ctx = Context.empty in
-  let%bind ctx, uses = check_uses ~find_intf ~ctx @@ Source.uses src in
+  let pos = Position.dummy in
+  (* TODO: get better position *)
+  let uses =
+    match find_intf file with
+    | Some _ -> ((file, pos), pos) :: Source.uses src
+    | None -> Source.uses src
+  in
+  let%bind ctx, uses = check_uses ~find_intf ~ctx uses in
   let%map ctx = first_pass_defs ~ctx @@ Source.defs src in
   (uses, ctx)
 
 (** [find_intf_default _] is [None] *)
 let find_intf_default _ = None
 
-let type_check_source ~find_intf source =
-  let%bind uses, ctx = first_pass_source ~find_intf source in
+let type_check_source ~file ~find_intf source =
+  let%bind uses, ctx = first_pass_source ~file ~find_intf source in
   let%map defs = check_defs ~ctx @@ Source.defs source in
   Source (Source.create ~uses ~defs)
 
-(** [type_check_intf sigs] is [Ok lst] where [lst] is a list of
-    decorated nodes of [sigs], or [Error type_error] where [type_error]
-    describes the type error otherwise *)
-let type_check_intf intf =
-  let%bind ctx = check_intf ~ctx:Context.empty intf in
-  fold_intf_map ~f:snd ~ctx intf >>| Generic.intf
-
-let type_check ?(find_intf = find_intf_default) = function
-  | Source source -> type_check_source ~find_intf source
-  | Intf intf -> type_check_intf intf
+let type_check ~file ?(find_intf = find_intf_default) = function
+  | Source source -> type_check_source ~file ~find_intf source
+  | Intf intf -> failwith "typechecking interface"
 
 type find_intf = string -> Position.t Toplevel.intf option
 

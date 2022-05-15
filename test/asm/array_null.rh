@@ -1,0 +1,32 @@
+use io 
+use conv 
+
+record Point {
+    x,y: int
+}
+
+main(args:int[][]) {
+    a:Point[3][5]
+    if(a[2][4] == null) {
+      println("correct!")
+    }
+    else {
+      println("not correct :(")
+    }
+
+    b:int[5][5]
+    if(b[3][3] == 0) {
+      println("correct!")
+    }
+    else {
+      println("not correct :(")
+    }
+
+    c:bool[3][4][5]
+    if(!c[2][2][2]) {
+      println("correct!")
+    }
+    else {
+      println("not correct :(")
+    }
+}

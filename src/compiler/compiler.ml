@@ -36,7 +36,7 @@ let ir_run ir =
 let ir_out ?cache ~args ~dir ~src ~deps () =
   let out = Util.File.diagnostic ~dir ~src ".ir" in
   let { cf } = args.opt in
-  if Util.File.is_xi src then
+  if Util.File.is_xi src || Util.File.is_rh src then
     let open Ir.Output in
     let res = file_to_file ?cache ~src ~out ~deps ~opt:{ cf } () in
     match res with
@@ -49,7 +49,7 @@ let ir_out ?cache ~args ~dir ~src ~deps () =
 let abstract_asm_out ?cache ~args ~dir ~src ~deps () =
   let out = Util.File.diagnostic ~dir ~src ".asm" in
   let { cf } = args.opt in
-  if Util.File.is_xi src then
+  if Util.File.is_xi src || Util.File.is_rh src then
     let open Instr.Output.Abstract in
     ignore (file_to_file ?cache ~src ~out ~deps ~opt:{ cf } ())
 

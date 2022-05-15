@@ -4,8 +4,12 @@ open Core_unix
 
 let xi s = s ^ ".xi"
 let ixi s = s ^ ".ixi"
+let rh s = s ^ ".rh"
+let ri s = s ^ ".ri"
 let ixi_of_dir ~dir file = Filename.concat dir (ixi file)
+let ri_of_dir ~dir file = Filename.concat dir (ri file)
 let is_xi = Caml.Filename.extension >> String.equal ".xi"
+let is_rh = Caml.Filename.extension >> String.equal ".rh"
 
 let accessible path =
   match Sys_unix.file_exists path with

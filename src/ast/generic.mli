@@ -3,7 +3,7 @@ open Core
 type id = string Position.entry
 (** An [id] is the type of a Xi identifier *)
 
-type decl = id * Type.tau
+type decl = id list * Type.tau
 (** A [decl] is the type of a Xi declaration represented as a pair
     [(id, t)] where [id] is the name of the identifier and [t] is its
     type. *)
@@ -26,6 +26,8 @@ module Expr : sig
     | FnCall of 'e call
     | Length of 'e node
     | Index of 'e node * 'e node
+    | Field of 'e node * id
+    | Null
 
   and 'e node = ('e t, 'e) Entry.t
   (** An ['e node] wraps an ['e t] and data of type ['e] *)
@@ -52,11 +54,13 @@ module Stmt : sig
     | ArrayDecl of id * Type.tau * 'e Expr.node option list
     | Assign of id * 'e Expr.node
     | ArrAssign of 'e Expr.node * 'e Expr.node * 'e Expr.node
+    | FieldAssign of 'e Expr.node * id * 'e Expr.node
     | ExprStmt of 'e Expr.call
     | VarInit of id * Type.tau * 'e Expr.node
-    | MultiAssign of decl option list * id * 'e Expr.nodes
+    | MultiAssign of (id * Type.tau) option list * id * 'e Expr.nodes
     | PrCall of 'e Expr.call
     | Return of 'e Expr.nodes
+    | Break
     | Block of ('e, 's) block
 
   and ('e, 's) node = (('e, 's) t, 's) Entry.t
@@ -76,14 +80,15 @@ module Toplevel : sig
     (** A [t] is a signature or intf for an individual method where
         [types] is the list of (possibly none) return types. *)
 
-    val create : name:id -> params:decl list -> ret:Type.tau list -> t
+    val create :
+      name:id -> params:(id * Type.tau) list -> ret:Type.tau list -> t
     (** [create ~name ~params ~types] is a signature with name [name],
         params [params] and return types [ret] *)
 
     val name : t -> id
     (** [name sg] is the name of signature [sg] *)
 
-    val params : t -> decl list
+    val params : t -> (id * Type.tau) list
     (** [params sg] is the list of parameters of signature [sg] *)
 
     val ret : t -> Type.tau list
@@ -100,6 +105,7 @@ module Toplevel : sig
       a global variable. *)
   type ('e, 's) definition =
     | FnDefn of ('e, 's) fn
+    | RecordDefn of id * decl list
     | GlobalDecl of decl
     | GlobalInit of id * Type.tau * Expr.primitive
 
@@ -131,9 +137,16 @@ module Toplevel : sig
     (** [defs src] is the list of definitions present in [src] *)
   end
 
-  type 't intf = (Sig.t, 't) Entry.t list
+  type signature =
+    | FnSig of Sig.t
+    | RecordSig of id * decl list
+
+  type 't intf = {
+    uses : (id, 't) Entry.t list;
+    sigs : (signature, 't) Entry.t list;
+  }
   (** An [intf] is a Xi intf, represented as a non-empty list of
-      function signatures. *)
+      function signatures or record declarations. *)
 end
 
 (** An expression of type [t] is an expression representing a node of

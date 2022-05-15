@@ -13,6 +13,7 @@ type term = Term.t [@@deriving sexp_of]
 
 module Stmt = Stmt
 module FnType = FnType
+module RecordType = RecordType
 
 type stmt = Stmt.t [@@deriving sexp_of]
 

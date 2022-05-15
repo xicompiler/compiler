@@ -33,6 +33,9 @@ let seq lst = `Seq lst
 (** [empty] is an empty sequence of statements *)
 let empty : stmt = `Seq []
 
+(** [null] is the value representing Rho's null *)
+let null = `Const 0L
+
 (** [exists_expr ~f e] is [true] iff [e] contains a node satisfying
     [f e] *)
 let rec exists_expr ~f : expr -> bool = function
@@ -210,11 +213,21 @@ let check_bounds ~gensym e1 e2 =
     `Label lok;
   ]
 
+(** [encode_name s] is [s] encoded for function mangling *)
+let encode_name = String.substr_replace_all ~pattern:"_" ~with_:"__"
+
+let encode_record r =
+  let len = r |> String.length |> string_of_int in
+  let record_name = encode_name r in
+  len ^ record_name
+
 (** [encode_tau t] is [t] encoded for function mangling *)
 let rec encode_tau = function
   | `Int -> "i"
   | `Bool -> "b"
   | `Array t -> "a" ^ encode_tau t
+  | `Record r -> "r" ^ encode_record r
+  | `Null -> failwith "Unexpected <null>"
   | `Bot -> failwith "Unexpected <poly>"
 
 (** [encode_expr t] is [t] encoded for function mangling *)
@@ -229,9 +242,6 @@ let encode_expr = function
 let encode_term = function
   | `Unit -> "p"
   | #Expr.t as t -> encode_expr t
-
-(** [encode_name s] is [s] encoded for function mangling *)
-let encode_name = String.substr_replace_all ~pattern:"_" ~with_:"__"
 
 (** [encode_args args] is [args] encoded for function mangling *)
 let encode_args args = args |> List.map ~f:encode_expr |> String.concat
@@ -273,6 +283,8 @@ let translate_id ~set id =
   let id = Entry.key id in
   if Set.mem set id then !(`Name id) else `Temp id
 
+let translate_null ~gensym = null
+
 (** [while_seq c s lh lt lf] is a while sequence with control statement
     [c], body [s], header label [lh], true label [lt], and false label
     [lf] *)
@@ -304,9 +316,12 @@ let rec translate_expr ~gensym ~set enode =
   | String s -> translate_string ~gensym ~set s
   | Bop (op, e1, e2) -> translate_bop ~gensym ~set op e1 e2
   | Uop (op, e) -> translate_uop ~gensym ~set op e
-  | FnCall (id, es) -> (translate_call ~gensym ~set ~ctx id es :> expr)
+  | FnCall (id, es) ->
+      translate_constructor_or_call ~gensym ~set ~ctx id es
   | Length e -> translate_length ~gensym ~set e
   | Index (e1, e2) -> translate_index ~gensym ~set e1 e2
+  | Null -> translate_null ~gensym
+  | Field (e1, id) -> translate_field ~gensym ~set ~ctx e1 id
 
 (** [translate_exprs es] is [es], each of which translated to IR *)
 and translate_exprs ~gensym ~set es =
@@ -352,6 +367,23 @@ and translate_call ~gensym ~set ~ctx id es =
   let name = mangle id ~ctx in
   let rets = num_args_returns id ~ctx |> snd in
   `Call (rets, `Name name, translate_exprs ~gensym ~set es)
+
+and translate_constructor ~gensym ~set ~ctx id es =
+  es |> translate_exprs ~gensym ~set |> record ~gensym
+
+and record ~gensym elts =
+  let len = Util.List.length elts in
+  let tm = Temp.fresh gensym in
+  let f i e = index_const tm (Int.succ i) := e in
+  let add_elts = List.mapi ~f elts in
+  let alloc = tm := alloc_array_const len in
+  let set_len = !tm := `Const len in
+  `ESeq (`Seq (alloc :: set_len :: add_elts), tm + eight)
+
+and translate_constructor_or_call ~gensym ~set ~ctx id es =
+  match Context.find_fn id ctx with
+  | Ok _ -> (translate_call ~gensym ~set ~ctx id es :> expr)
+  | Error _ -> (translate_constructor ~gensym ~set ~ctx id es :> expr)
 
 (** [translate_bop bop e1 e2] is the mir representation of binary
     operator expression [bop e1 e2] *)
@@ -441,15 +473,35 @@ and translate_index ~gensym ~set e1 e2 =
   let bounds_check = check_bounds ~gensym ta ti in
   `ESeq (`Seq (get_ptr :: get_idx :: bounds_check), index ta ti)
 
+and find_offset ~id count = function
+  | (name, typ) :: t ->
+      if String.equal name (fst id) then count
+      else find_offset ~id (Int.succ count) t
+  | _ -> failwith "field not found"
+
+and translate_field ~gensym ~set ~ctx e1 id =
+  let pos = snd id in
+  match Ast.Decorated.Data.Expr.to_tau (snd e1) with
+  | Ok (`Record record) ->
+      let record = (record, pos) in
+      let fields = Context.find_record_exn ~id:record ctx in
+      let offset = Int64.of_int (find_offset ~id 0 fields) in
+      let ta, ti = Temp.fresh2 gensym in
+      let get_ptr = ta := translate_expr ~gensym ~set e1 in
+      let get_idx = ti := `Const offset in
+      let bounds_check = check_bounds ~gensym ta ti in
+      `ESeq (`Seq (get_ptr :: get_idx :: bounds_check), index ta ti)
+  | _ -> failwith "non-record field access"
+
 (** [translate_stmt snode] is the mir representation of statement node
     [snode] *)
-and translate_stmt ~gensym ~set snode =
+and translate_stmt ~gensym ~set ?lf snode =
   let ctx = Data.Stmt.context @@ Entry.data snode in
   match Entry.key snode with
-  | If (e, s) -> translate_if ~gensym ~set e s
-  | IfElse (e, s1, s2) -> translate_if_else ~gensym ~set e s1 s2
+  | If (e, s) -> translate_if ~gensym ~set ?lf e s
+  | IfElse (e, s1, s2) -> translate_if_else ~gensym ~set ?lf e s1 s2
   | While (e, s) -> translate_while ~gensym ~set e s
-  | VarDecl _ -> empty
+  | VarDecl (ids, typ) -> translate_var_decl ~set ids typ
   | ArrayDecl (id, _, es) -> translate_array_decl ~gensym ~set id es
   | Assign (id, e) -> translate_assign ~gensym ~set id e
   | ArrAssign (e1, e2, e3) -> translate_arr_assign ~gensym ~set e1 e2 e3
@@ -459,31 +511,34 @@ and translate_stmt ~gensym ~set snode =
   | MultiAssign (ds, id, es) ->
       translate_multi_assign ~gensym ~set ~ctx ds id es
   | Return es -> translate_return ~gensym ~set es
-  | Block stmts -> translate_block ~gensym ~set stmts
+  | Break -> translate_break lf
+  | Block stmts -> translate_block ~gensym ~set ?lf stmts
+  | FieldAssign (e1, id, e2) ->
+      translate_field_assign ~gensym ~set ~ctx e1 id e2
 
 (** [translate_if_stmt e s] is [stmts, f] where [stmts] is the first
     three IR instructions in if and if else statements, reversed, and
     [f] is the false label *)
-and translate_if_stmt ~gensym ~set e s =
+and translate_if_stmt ~gensym ~set ?lf e s =
   let t, f = Label.fresh2 gensym in
-  let s = translate_stmt ~gensym ~set s in
+  let s = translate_stmt ~gensym ~set ?lf s in
   ([ s; `Label t; translate_control ~gensym ~set e t f ], f)
 
 (** [translate_if e s] is the mir representation of an if statement with
     condition [e] and body [s] *)
-and translate_if ~gensym ~set e s =
-  let stmts, f = translate_if_stmt ~gensym ~set e s in
+and translate_if ~gensym ~set ?lf e s =
+  let stmts, f = translate_if_stmt ~gensym ~set ?lf e s in
   stmts |> List.cons (`Label f) |> List.rev |> seq
 
 (** [translate_if_else e s1 s2] is the mir representation of an if-else
     statement with condition [e] and statements [s1] and [s2] *)
-and translate_if_else ~gensym ~set e s1 s2 =
+and translate_if_else ~gensym ~set ?lf e s1 s2 =
   let l_end = Label.fresh gensym in
-  let stmts, f = translate_if_stmt ~gensym ~set e s1 in
+  let stmts, f = translate_if_stmt ~gensym ~set ?lf e s1 in
   stmts
   |> List.cons (`Jump (`Name l_end))
   |> List.cons (`Label f)
-  |> List.cons (translate_stmt ~gensym ~set s2)
+  |> List.cons (translate_stmt ~gensym ~set ?lf s2)
   |> List.cons (`Label l_end)
   |> List.rev |> seq
 
@@ -492,12 +547,22 @@ and translate_if_else ~gensym ~set e s1 s2 =
 and translate_while ~gensym ~set e s =
   let lh, lt, lf = Label.fresh3 gensym in
   let c = translate_control ~gensym ~set e lt lf in
-  let s' = translate_stmt ~gensym ~set s in
+  let s' = translate_stmt ~gensym ~set ?lf:(Some lf) s in
   while_seq c s' lh lt lf
 
-(** [translate_arr_assign_simple ta ti e] is the assignment of [e] to
-    array [ta] at position [ti] *)
-and translate_arr_assign_simple ~gensym ~set ta ti e =
+and translate_decl ~set typ id =
+  match typ with
+  | `Int | `Bool -> translate_id ~set id := `Const 0L
+  | `Array _ | `Record _ -> translate_id ~set id := null
+  | `Null | `Bot -> failwith "cannot declare null/bot type"
+
+and translate_var_decl ~set ids typ =
+  let translated_decls = List.map ~f:(translate_decl ~set typ) ids in
+  `Seq translated_decls
+
+(** [translate_assign_simple ta ti e] is the assignment of [e] to array
+    or record [ta] at position [ti] *)
+and translate_assign_simple ~gensym ~set ta ti e =
   let move = index ta ti := translate_expr ~gensym ~set e in
   `Seq [ `Seq (check_bounds ~gensym ta ti); move ]
 
@@ -531,6 +596,19 @@ and pure_exprs_opt ~gensym ~set es =
 (** [translate_array_decl_helper name es] is the mir representation of
     an array declaration for [name] with lengths [es] *)
 and translate_array_decl_helper ~gensym name = function
+  | [ e ] ->
+      let base, ptr = Temp.fresh2 gensym in
+      let tj = Temp.fresh gensym in
+      let body = index ptr tj := `Const 0L in
+      `Seq
+        [
+          base := alloc_array e;
+          !base := e;
+          ptr := base + eight;
+          name := ptr;
+          while_lt ~gensym tj e body
+          (* if innermost array, assign default values *);
+        ]
   | e :: es ->
       let base, ptr = Temp.fresh2 gensym in
       let ti, nested_name = Temp.fresh2 gensym in
@@ -573,7 +651,25 @@ and translate_arr_assign ~gensym ~set e1 e2 e3 =
     [
       ta := translate_expr ~gensym ~set e1;
       ti := translate_expr ~gensym ~set e2;
-      translate_arr_assign_simple ~gensym ~set ta ti e3;
+      translate_assign_simple ~gensym ~set ta ti e3;
+    ]
+
+and translate_field_assign ~gensym ~set ~ctx e1 id e2 =
+  let ta, ti = Temp.fresh2 gensym in
+  let pos = snd id in
+  let offset =
+    match Ast.Decorated.Data.Expr.to_tau (snd e1) with
+    | Ok (`Record record) ->
+        let record = (record, pos) in
+        let fields = Context.find_record_exn ~id:record ctx in
+        Int64.of_int (find_offset ~id 0 fields)
+    | _ -> failwith "non-record field access"
+  in
+  `Seq
+    [
+      ta := translate_expr ~gensym ~set e1;
+      ti := `Const offset;
+      translate_assign_simple ~gensym ~set ta ti e2;
     ]
 
 (** [translate_multi_assign ctx ds id es] is the mir representation of a
@@ -592,10 +688,14 @@ and translate_multi_assign ~gensym ~set ~ctx ds id es =
 and translate_return ~gensym ~set es =
   `Return (translate_exprs ~gensym ~set es)
 
+and translate_break = function
+  | Some lf -> `Jump (`Name lf)
+  | None -> failwith "break not in while loop, should not typecheck"
+
 (** [translate_block stmts] is the mir representation of a statement
     block with statements [stmts] *)
-and translate_block ~gensym ~set stmts =
-  stmts |> List.map ~f:(translate_stmt ~gensym ~set) |> seq
+and translate_block ~gensym ~set ?lf stmts =
+  stmts |> List.map ~f:(translate_stmt ~gensym ~set ?lf) |> seq
 
 (** [translate_control enode t f] translates booleans to control flow *)
 and translate_control ~gensym ~set enode t f =
@@ -659,6 +759,7 @@ let translate_defn ~gensym ~set def =
           :> toplevel)
   | GlobalDecl _ -> None
   | GlobalInit (id, _, p) -> Some (translate_global_init id p)
+  | RecordDefn (id, decls) -> None
 
 let data_of_string id s =
   let open Util.Int64 in

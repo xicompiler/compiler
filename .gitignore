@@ -49,3 +49,6 @@ output
 
 # runtime
 runtime
+
+# parser conflicts
+*.conflicts

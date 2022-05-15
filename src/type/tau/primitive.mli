@@ -8,6 +8,7 @@ type base =
 
 type t =
   [ base
+  | `Null
   | `Bot
   ]
 [@@deriving sexp_of]

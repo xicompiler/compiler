@@ -1,0 +1,34 @@
+use conv
+use io 
+
+record Point {
+    x, y:int
+}
+
+record Test {
+    point:Point
+}
+
+createPoint(x:int, y:int):Point {
+    return Point(x, y)
+}
+
+pointX(p:Point):int {
+    return p.x
+}
+pointY(p:Point):int {
+    return p.y
+}
+
+testPoint(p:Point):Test {
+    return Test(p)
+}
+
+main(args:int[][]) {
+    p:Point = createPoint(1, 2)
+    println(unparseInt(p.x))
+    println(unparseInt(p.y))
+    test_point:Test = testPoint(p)
+    println(unparseInt(test_point.point.x))
+    println(unparseInt(test_point.point.y))
+}

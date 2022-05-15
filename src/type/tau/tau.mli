@@ -12,6 +12,7 @@ end
 type t =
   [ primitive
   | `Array of t
+  | `Record of string
   ]
 (** A type in Xi is either a primitive type or an array of a type, where
     an Array is represented by a pair (contents, length) *)
