@@ -51,7 +51,7 @@ type t =
   [ Bit64.t
   | Bit8.t
   ]
-[@@deriving equal]
+[@@deriving equal, sexp]
 (** [concrete] is the type of a register in x86 *)
 
 val to_64_bit : [< t ] -> [> t ]

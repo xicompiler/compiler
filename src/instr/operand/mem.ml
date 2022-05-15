@@ -56,6 +56,11 @@ let create ?segment ?(size = Size.Qword) ?index ?offset base =
 let map mem ~f =
   { mem with base = f mem.base; index = mem.index >>| Index.map ~f }
 
+let ops mem =
+  let op1 = Some (base mem) in
+  let op2 = Option.map ~f:Index.index (index mem) in
+  List.filter_opt [ op1; op2 ]
+
 type t = Reg.t generic
 
 let string_of_mem ~f { segment; size; base; index; offset } =

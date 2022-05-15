@@ -75,6 +75,9 @@ val map : 'a generic -> f:('a -> 'b) -> 'b generic
 (** [map mem ~f] is [mem] with [f] applied to its base and index
     registers *)
 
+val ops : 'a generic -> 'a list
+(** [ops mem] is the operands in [mem] *)
+
 val with_registers :
   ?index:'b Index.t -> base:'b -> 'a generic -> 'b generic
 (** [with_registers ~index ~base mem] is [mem] with its index and base

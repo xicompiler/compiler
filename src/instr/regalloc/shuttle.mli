@@ -16,6 +16,7 @@ type t = {
   regs : Reg.t list;
   mapping : Reg.t Reg.Abstract.Map.t;
 }
+[@@deriving sexp]
 (** [t] represents the shuttling registers and mapping from abstract
     register to concrete shuttling register *)
 

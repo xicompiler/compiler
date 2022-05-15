@@ -572,7 +572,8 @@ let arg_regs = [ `rdi; `rsi; `rdx; `rcx; `r8; `r9 ]
 (** [ret_regs] is the return registers used in a call instruction *)
 let ret_regs = [ `rax; `rdx ]
 
-(** [regs_of_ops ?init ops] is a set of abstract registers in [ops] *)
+(** [regs_of_ops ?init ops] is the set of immediate abstract regs in
+    [ops] *)
 let rec regs_of_ops ?(init = Reg.Abstract.Set.empty) = function
   | (#Reg.Abstract.t as h) :: t -> regs_of_ops ~init:(Set.add init h) t
   | _ -> init
@@ -614,37 +615,44 @@ let def : t -> Reg.Abstract.Set.t = function
   | IMul m -> def_of_imul m
   | Call c -> def_of_call c
 
-(** [use_of_mem m] is the used variables in a memory operand *)
-let use_of_mem m =
-  let op1 = Some (Mem.base m) in
-  let op2 = Option.map ~f:Mem.Index.index (Mem.index m) in
-  regs_of_ops (List.filter_opt [ op1; op2 ])
-
-(** [use_of_ops ?init ops] is a set of abstract registers used in [ops],
-    including within memory addresses *)
-let rec use_of_ops ?(init = Reg.Abstract.Set.empty) = function
+(** [regs_of_ops_deep ?init ops] is the set of abstract registers in
+    [ops], including within memory addresses *)
+let rec regs_of_ops_deep ?(init = Reg.Abstract.Set.empty) = function
   | `Mem m :: t ->
-      let mem = use_of_mem m in
-      use_of_ops ~init:(Set.union init mem) t
-  | ops -> regs_of_ops ~init ops
+      let mem = regs_of_ops (Mem.ops m) in
+      regs_of_ops_deep ~init:(Set.union init mem) t
+  | h :: t ->
+      let init = Set.union init (regs_of_ops [ h ]) in
+      regs_of_ops_deep ~init t
+  | [] -> init
 
 (** [use_of_idiv op] is the used variables in an [idiv] instruction *)
-let use_of_idiv op = regs_of_ops [ op; `rax; `rdx ]
+let use_of_idiv op = regs_of_ops_deep [ op; `rax; `rdx ]
 
 (** [use_of_imul m] is the defined variables in an [imul] instruction *)
 let use_of_imul = function
-  | `M op -> regs_of_ops [ op; `rax ]
-  | `RM (op1, op2) -> regs_of_ops [ op1; op2 ]
-  | `RMI (_, op, _) -> regs_of_ops [ op ]
+  | `M op -> regs_of_ops_deep [ op; `rax ]
+  | `RM (op1, op2) -> regs_of_ops_deep [ op1; op2 ]
+  | `RMI (_, op, _) -> regs_of_ops_deep [ op ]
 
 (* [use_of_call c] is the used variables in a [call] instruction *)
 let use_of_call { n; m } =
   Reg.Abstract.Set.of_list
     (Util.List.first_n arg_regs (if m <= 2 then n else succ n))
 
-(* [use_of_ret m] is the used variables in a [ret] instruction *)
+(* [use_of_ret m] is the used variables in a [ret] instruction with [m]
+   number of returns *)
 let use_of_ret m =
   Reg.Abstract.Set.of_list (Util.List.first_n ret_regs m)
+
+(** [use_of_mov op1 op2] is the used variables in a [mov] instruction *)
+let use_of_mov op1 op2 =
+  let init = regs_of_ops_deep [ op2 ] in
+  match op1 with
+  | `Mem m ->
+      let mem = regs_of_ops (Mem.ops m) in
+      Set.union init mem
+  | _ -> init
 
 let use : t -> Reg.Abstract.Set.t = function
   | Label _ | Enter _ | Jcc _ | Setcc _ | Pop _ | Leave ->
@@ -655,10 +663,8 @@ let use : t -> Reg.Abstract.Set.t = function
   | Sar (op, _)
   | Push op
   | Inc op
-  | Dec op
-  | Mov (_, op)
-  | Movzx (_, op) ->
-      use_of_ops [ op ]
+  | Dec op ->
+      regs_of_ops_deep [ op ]
   | Add (op1, op2)
   | Sub (op1, op2)
   | Xor (op1, op2)
@@ -666,9 +672,43 @@ let use : t -> Reg.Abstract.Set.t = function
   | Or (op1, op2)
   | Cmp (op1, op2)
   | Test (op1, op2)
-  | Lea (op1, op2) ->
-      use_of_ops [ op1; op2 ]
+  | Lea (op1, op2)
+  | Movzx (op1, op2) ->
+      regs_of_ops_deep [ op1; op2 ]
   | IDiv d -> use_of_idiv d
   | IMul m -> use_of_imul m
   | Call c -> use_of_call c
   | Ret m -> use_of_ret m
+  | Mov (op1, op2) -> use_of_mov op1 op2
+
+(** [regs_of_imul m] is the set of registers in an [imul] instruction *)
+let regs_of_imul = function
+  | `M op -> regs_of_ops_deep [ op ]
+  | `RM (op1, op2) | `RMI (op1, op2, _) -> regs_of_ops_deep [ op1; op2 ]
+
+let regs : t -> Reg.Abstract.Set.t = function
+  | Label _ | Enter _ | Jcc _ | Leave | Ret _ -> Reg.Abstract.Set.empty
+  | Jmp e
+  | Setcc (_, e)
+  | Push e
+  | Pop e
+  | Inc e
+  | Dec e
+  | Call { name = e }
+  | IDiv e
+  | Shl (e, _)
+  | Shr (e, _)
+  | Sar (e, _) ->
+      regs_of_ops_deep [ e ]
+  | Cmp (e1, e2)
+  | Test (e1, e2)
+  | Add (e1, e2)
+  | Sub (e1, e2)
+  | Xor (e1, e2)
+  | And (e1, e2)
+  | Or (e1, e2)
+  | Lea (e1, e2)
+  | Mov (e1, e2)
+  | Movzx (e1, e2) ->
+      regs_of_ops_deep [ e1; e2 ]
+  | IMul enc -> regs_of_imul enc
