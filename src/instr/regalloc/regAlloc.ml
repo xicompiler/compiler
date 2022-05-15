@@ -4,7 +4,7 @@ open Asm.Directive
 
 let allocate_fn fn =
   let offset = Reg.Abstract.Table.create () in
-  let allocate_instrs = LinearScan.allocate_instrs in
+  let allocate_instrs = Trivial.allocate_instrs in
   let body = allocate_instrs ~offset fn in
   let temps = Int64.of_int (Hashtbl.length offset * 8) in
   Enter (temps, 0L) :: body
