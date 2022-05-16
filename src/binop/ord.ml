@@ -7,6 +7,7 @@ type t =
   | `Geq
   | `Gt
   ]
+[@@deriving hash, compare, sexp]
 
 let eval = function
   | `Lt -> ( < )

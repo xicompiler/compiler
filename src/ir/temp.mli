@@ -28,5 +28,8 @@ module Virtual : sig
   (** [Set] is a set of virtual temporaries *)
 
   module Table : Hashtbl.S with type key = t
-  (** [Table] is a hastable whose keys are virtual registers *)
+  (** [Table] is a table with key type [t] *)
+
+  module Map : Map.S with type Key.t = t
+  (** [Map] is a map with key type [t] *)
 end

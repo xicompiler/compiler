@@ -94,9 +94,11 @@ let sexp_of_t ~compunit (top : Reorder.t) : Sexp.t =
     :: List.map ~f:sexp_of_toplevel top)
 
 let translate ~opt ?(gensym = IrGensym.create ()) ast =
+  let lir = ast |> Mir.translate ~gensym |> Lir.lower ~opt ~gensym in
+  let lir = if opt.cp then CopyProp.propagate lir else lir in
+  let lir = if opt.dce then DeadCode.dce lir else lir in
   let stmts =
-    ast |> Mir.translate ~gensym |> Lir.lower ~gensym
-    |> Reorder.reorder ~gensym:(IrGensym.Label.generator gensym)
+    Reorder.reorder ~gensym:(IrGensym.Label.generator gensym) lir
   in
   if opt.cf then ConstFold.const_fold stmts else stmts
 
@@ -127,3 +129,4 @@ module Op = Op
 module Gensym = IrGensym
 module Temp = Temp
 module ConstFold = ConstFold
+module CopyProp = CopyProp

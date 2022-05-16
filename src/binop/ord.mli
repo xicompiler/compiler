@@ -6,6 +6,7 @@ type t =
   | `Geq
   | `Gt
   ]
+[@@deriving hash, compare, sexp]
 (** A [t] is a binary operator representing a partial order on integers *)
 
 val eval : t -> int64 -> int64 -> bool

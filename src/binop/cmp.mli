@@ -4,6 +4,7 @@ type t =
   [ Ord.t
   | Eq.t
   ]
+[@@deriving hash, compare, sexp]
 (** [t] represents a comparison operation on ints *)
 
 val eval : [< t ] -> int64 -> int64 -> bool

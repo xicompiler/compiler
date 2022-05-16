@@ -14,6 +14,7 @@ let suite =
          AssemblyTests.suite;
          BitSetTests.suite;
          ColoringTests.suite;
+         CopyPropTests.suite;
        ]
 
 let _ = run_test_tt_main suite

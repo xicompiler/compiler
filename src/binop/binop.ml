@@ -1,23 +1,23 @@
 open Core
 open Option.Monad_infix
 
-type arith = Arith.t
+type arith = Arith.t [@@deriving hash, compare, sexp]
 
 module Arith = Arith
 
-type eq = Eq.t
+type eq = Eq.t [@@deriving hash, compare, sexp]
 
 module Eq = Eq
 
-type log = Log.t
+type log = Log.t [@@deriving hash, compare, sexp]
 
 module Log = Log
 
-type ord = Ord.t
+type ord = Ord.t [@@deriving hash, compare, sexp]
 
 module Ord = Ord
 
-type cmp = Cmp.t
+type cmp = Cmp.t [@@deriving hash, compare, sexp]
 
 module Cmp = Cmp
 
@@ -26,6 +26,7 @@ type t =
   | cmp
   | log
   ]
+[@@deriving hash, compare, sexp]
 
 let to_string = function
   | `Mul -> "*"

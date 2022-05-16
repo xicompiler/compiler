@@ -22,7 +22,8 @@ val ret : t -> term
     ctx, or [`Unit] if no return type is needed *)
 
 val beta : t -> bool
-(** [beta ctx] is [true if [ctx] is within a while loop, false otherwise *)
+(** [beta ctx] is [true] if [ctx] is within a while loop and [false]
+    otherwise *)
 
 val find : id:id -> t -> bound Positioned.result
 (** [find ~id ctx] is [Ok typ] if [id] is bound to [typ] in [ctx], or

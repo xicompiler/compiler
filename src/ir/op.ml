@@ -3,13 +3,45 @@ open Option.Let_syntax
 open Int64
 open Binop
 
-type bitwise = [ `Xor ]
+type base =
+  [ `Add
+  | `Sub
+  | `Div
+  | `Mul
+  ]
+[@@deriving hash, compare, sexp]
+
+type arith =
+  [ base
+  | `HMul
+  | `Mod
+  ]
+[@@deriving hash, compare, sexp]
+
+type comp =
+  [ `Lt
+  | `Leq
+  | `Geq
+  | `Gt
+  | `Eq
+  | `Neq
+  ]
+[@@deriving hash, compare, sexp]
+
+type log =
+  [ `And
+  | `Or
+  ]
+[@@deriving hash, compare, sexp]
+
+type bitwise = [ `Xor ] [@@deriving hash, compare, sexp]
 
 type shift =
   [ `LShift
   | `RShift
   | `ARShift
   ]
+[@@deriving hash, compare, sexp]
 
 type unsigned =
   [ `ULt
@@ -17,12 +49,16 @@ type unsigned =
   | `UGt
   | `UGeq
   ]
+[@@deriving hash, compare, sexp]
 
 type t =
   [ bitwise
   | unsigned
-  | Binop.t
+  | arith
+  | comp
+  | log
   ]
+[@@deriving hash, compare, sexp]
 
 type negatable =
   [ `Lt
@@ -32,6 +68,7 @@ type negatable =
   | `Eq
   | `Neq
   ]
+[@@deriving hash, compare, sexp]
 
 let coerce bop = (bop :> t)
 
@@ -110,5 +147,6 @@ let eval (op : t) i1 i2 =
 
 type cmp =
   [ unsigned
-  | Binop.Cmp.t
+  | comp
   ]
+[@@deriving hash, compare, sexp]

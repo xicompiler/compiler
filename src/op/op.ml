@@ -1,4 +1,4 @@
-type binop = Binop.t
+type binop = Binop.t [@@deriving hash, compare, sexp]
 
 module Binop = Binop
 

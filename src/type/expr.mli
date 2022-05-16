@@ -1,5 +1,3 @@
-open Core
-
 type t =
   [ Tau.t
   | `Tuple of Tau.t list

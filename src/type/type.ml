@@ -3,8 +3,8 @@ include Definitions
 
 let assert_unit = function
   | `Unit -> Ok ()
-  | `Bot | `Int | `Bool | `Null | `Array _ | `Record _ 
-  | `Tuple _ -> Error ExpectedUnit
+  | `Bot | `Int | `Bool | `Null | `Array _ | `Record _ | `Tuple _ ->
+      Error ExpectedUnit
 
 let assert_void = function
   | `Void -> Ok ()

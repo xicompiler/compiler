@@ -9,8 +9,7 @@ open Int64
 let const_fold_test ~name ~expect prog =
   name >:: fun _ -> assert_equal expect (ConstFold.const_fold prog)
 
-(** [const_fold_same ~name prog] tests that no constant folding occurs
-    on [prog] *)
+(** [const_fold_tests tests] tests constant folding on [tests] *)
 let const_fold_tests tests =
   let f (name, prog, expect) = const_fold_test ~name ~expect prog in
   List.map tests ~f

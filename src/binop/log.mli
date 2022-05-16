@@ -2,6 +2,7 @@ type t =
   [ `And
   | `Or
   ]
+[@@deriving hash, compare, sexp]
 (** A [t] represents a logical binary operator *)
 
 val eval : t -> bool -> bool -> bool

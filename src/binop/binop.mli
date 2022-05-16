@@ -1,6 +1,6 @@
 open Core
 
-type arith = Arith.t
+type arith = Arith.t [@@deriving hash, compare, sexp]
 (** [arith] is an alias for [Arith.t] *)
 
 (** [Arith] represents an arithmetic binary operator *)
@@ -8,7 +8,7 @@ module Arith : module type of struct
   include Arith
 end
 
-type eq = Eq.t
+type eq = Eq.t [@@deriving hash, compare, sexp]
 (** [eq] is an alias for [Eq.t] *)
 
 (** [Eq] represents the type of an equality binary operator *)
@@ -16,7 +16,7 @@ module Eq : module type of struct
   include Eq
 end
 
-type log = Log.t
+type log = Log.t [@@deriving hash, compare, sexp]
 (** [log] is an alias for [Log.t]*)
 
 (** [Log] represents a logical binary operator on [bool]s *)
@@ -24,7 +24,7 @@ module Log : module type of struct
   include Log
 end
 
-type ord = Ord.t
+type ord = Ord.t [@@deriving hash, compare, sexp]
 (** [ord] is an alias for [Ord.t] *)
 
 (** [Ord] represents a partial order on ints *)
@@ -32,7 +32,7 @@ module Ord : module type of struct
   include Ord
 end
 
-type cmp = Cmp.t
+type cmp = Cmp.t [@@deriving hash, compare, sexp]
 (** [cmp] is an alias for [Cmp.t] *)
 
 (** [Cmp] represents a comparison operator on ints *)
@@ -45,6 +45,7 @@ type t =
   | cmp
   | log
   ]
+[@@deriving hash, compare, sexp]
 (** A [t] represents a binary operator *)
 
 val to_string : [< t ] -> string

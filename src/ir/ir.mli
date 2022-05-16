@@ -74,3 +74,8 @@ end
 module ConstFold : module type of struct
   include ConstFold
 end
+
+(** [CopyProp] contains functions for copy propagation in IR *)
+module CopyProp : module type of struct
+  include CopyProp
+end

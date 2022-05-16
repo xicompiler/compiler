@@ -1,12 +1,42 @@
-type bitwise = [ `Xor ]
-(** [bitwise] is the type of a bitwise operator in IR *)
+type base =
+  [ `Add
+  | `Sub
+  | `Div
+  | `Mul
+  ]
+[@@deriving hash, compare, sexp]
+
+type arith =
+  [ base
+  | `HMul
+  | `Mod
+  ]
+[@@deriving hash, compare, sexp]
+
+type comp =
+  [ `Lt
+  | `Leq
+  | `Geq
+  | `Gt
+  | `Eq
+  | `Neq
+  ]
+[@@deriving hash, compare, sexp]
+
+type log =
+  [ `And
+  | `Or
+  ]
+[@@deriving hash, compare, sexp]
+
+type bitwise = [ `Xor ] [@@deriving hash, compare, sexp]
 
 type shift =
   [ `LShift
   | `RShift
   | `ARShift
   ]
-(** [shift] is the type of a logical shift operator *)
+[@@deriving hash, compare, sexp]
 
 type unsigned =
   [ `ULt
@@ -14,19 +44,17 @@ type unsigned =
   | `UGt
   | `UGeq
   ]
-(** [unsigned] is the type of an unsigned comparison operator *)
-
-type cmp =
-  [ unsigned
-  | Binop.Cmp.t
-  ]
-(** [cmp] is the type of an IR comparison operator *)
+[@@deriving hash, compare, sexp]
 
 type t =
   [ bitwise
   | unsigned
-  | Binop.t
+  | arith
+  | comp
+  | log
   ]
+[@@deriving hash, compare, sexp]
+
 (** [t] is the type of an operator in IR *)
 
 type negatable =
@@ -37,7 +65,14 @@ type negatable =
   | `Eq
   | `Neq
   ]
+[@@deriving hash, compare, sexp]
 (** [negatable] is a negatable operator in IR *)
+
+type cmp =
+  [ unsigned
+  | comp
+  ]
+[@@deriving hash, compare, sexp]
 
 val coerce : [< t ] -> t
 (** [coerce bop] coerces [bop] to a [t] *)

@@ -7,12 +7,14 @@ type base =
   | `Div
   | `Mul
   ]
+[@@deriving hash, compare, sexp]
 
 type t =
   [ base
   | `HMul
   | `Mod
   ]
+[@@deriving hash, compare, sexp]
 
 let high_mult i1 i2 =
   let i1 = Big_int.big_int_of_int64 i1 in

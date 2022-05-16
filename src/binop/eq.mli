@@ -2,6 +2,7 @@ type t =
   [ `Eq
   | `Neq
   ]
+[@@deriving hash, compare, sexp]
 (** A [t] represents an equality operator *)
 
 val eval : equal:('a -> 'a -> bool) -> t -> 'a -> 'a -> bool

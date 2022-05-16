@@ -1,4 +1,4 @@
-type binop = Binop.t
+type binop = Binop.t [@@deriving hash, compare, sexp]
 (** [binop] is the type of a binary operator *)
 
 (** [Binop] represents a binary operator*)

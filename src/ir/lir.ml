@@ -15,15 +15,43 @@ let log_neg = Subtype.log_neg
 
 type t = toplevel list
 
+(** [string_of_expr expr] is the string representation of [expr] *)
+let rec string_of_expr = function
+  | `Name s -> "Name " ^ s
+  | `Const i -> Int64.to_string i
+  | `Bop (op, e1, e2) ->
+      Printf.sprintf "(%s) %s (%s)" (string_of_expr e1)
+        (Op.to_string op) (string_of_expr e2)
+  | `Temp t -> t
+  | `Rv i -> "RV" ^ string_of_int i
+  | `Arg i -> "ARG" ^ string_of_int i
+  | `Mem e -> Printf.sprintf "[%s]" (string_of_expr e)
+
+(** [string_of_exprs exprs] is the string representation of [exprs] *)
+let string_of_exprs es =
+  String.concat ~sep:", " (List.map ~f:string_of_expr es)
+
+let to_string : stmt -> string = function
+  | `Call (_, e, es) ->
+      Printf.sprintf "Call(%s)" (string_of_exprs (e :: es))
+  | `Move (e1, e2) ->
+      Printf.sprintf "%s <- %s"
+        (string_of_expr (e1 :> expr))
+        (string_of_expr e2)
+  | `Return es -> Printf.sprintf "Return %s" (string_of_exprs es)
+  | `Label l -> "Label " ^ l
+  | `CJump (e, t, f) ->
+      Printf.sprintf "CJump(%s, %s, %s)" (string_of_expr e) t f
+  | `Jump e -> Printf.sprintf "Jump %s" (string_of_expr e)
+
 open Temp
 
-let def = function
-  | `Move ((`Temp _ as t), _) -> Virtual.Set.singleton t
+let def ?(init = Virtual.Set.empty) = function
+  | `Move ((`Temp _ as t), _) -> Set.add init t
   | `Call (m, _, _) ->
       let range = List.range ~start:`inclusive ~stop:`inclusive 1 m in
-      let init = Virtual.Set.empty in
       List.fold range ~init ~f:(fun acc i -> Set.add acc (`Rv i))
-  | #stmt -> Virtual.Set.empty
+  | #stmt -> init
 
 let rec use_expr ~init : expr -> Virtual.Set.t = function
   | `Name _ | `Const _ -> init
@@ -44,11 +72,7 @@ let use_stmt ~init : stmt -> Virtual.Set.t = function
   | `Label _ -> init
   | `CJump (e, _, _) | `Jump e -> use_expr ~init e
 
-let use = use_stmt ~init:Virtual.Set.empty
-
-module Liveness = Dataflow.Liveness.Make (Virtual.Set)
-
-let params = Liveness.params ~use ~def
+let use ?(init = Virtual.Set.empty) = use_stmt ~init
 
 module CFG = Graph.Directed.IntDigraph
 
@@ -88,20 +112,6 @@ let create_cfg stmts =
   let label = find_label vs in
   add_edges ~label vs;
   vs
-
-let live_out stmts =
-  let vs = create_cfg stmts in
-  let cfg = CFG.of_vertices vs in
-  let live = CFG.analyze cfg params in
-  fun i -> (live i).input
-
-let dce stmts =
-  let live = live_out stmts in
-  let f i = function
-    | `Move ((`Temp _ as t), _) -> Set.mem (live i) t
-    | #stmt -> true
-  in
-  List.filteri ~f stmts
 
 (** [corece e] is [e :> expr] *)
 let coerce e = (e :> expr)
@@ -306,11 +316,11 @@ and rev_lower_seq ~gensym ~init seq =
 let lower_seq ~gensym =
   Fn.compose List.rev (rev_lower_seq ~gensym ~init:[])
 
-let lower_function ~gensym l b a r =
-  `Func (l, dce (lower_seq ~gensym b), a, r)
+let lower_function ~(opt : Opt.t) ~gensym l b a r =
+  `Func (l, lower_seq ~gensym b, a, r)
 
-let lower_toplevel ~gensym = function
+let lower_toplevel ~opt ~gensym = function
   | `Data _ as d -> d
-  | `Func (l, b, a, r) -> lower_function ~gensym l b a r
+  | `Func (l, b, a, r) -> lower_function ~opt ~gensym l b a r
 
-let lower ~gensym = List.map ~f:(lower_toplevel ~gensym)
+let lower ~opt ~gensym = List.map ~f:(lower_toplevel ~opt ~gensym)

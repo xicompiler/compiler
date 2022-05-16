@@ -21,8 +21,14 @@ type t = toplevel list
 (** [t] is the representation of a program in lowered IR, a list of
     statement s*)
 
-val lower : gensym:IrGensym.t -> Mir.toplevel list -> t
-(** [lower stmt] is the lowered form of mir statement [stmt] *)
+val def : ?init:Temp.Virtual.Set.t -> stmt -> Temp.Virtual.Set.t
+(** [def ?init stmt] is the set of defined variables in stmt *)
+
+val use : ?init:Temp.Virtual.Set.t -> stmt -> Temp.Virtual.Set.t
+(** [use ?init stmt] is the set of used variables in stmt *)
+
+val lower : opt:Opt.t -> gensym:IrGensym.t -> Mir.toplevel list -> t
+(** [lower ~opt stmt] is the lowered form of mir statement [stmt] *)
 
 module CFG : Graph.Directed.S with type Key.t = int
 (** [CFG] is the type of a CFG in IR *)
@@ -31,9 +37,5 @@ val create_cfg : stmt list -> (stmt, unit) CFG.vertex list
 (** [create_cfg stmts] is the control flow graph corresponding to the IR
     program [stmts] *)
 
-val live_out : stmt list -> int -> Temp.Virtual.Set.t
-(** [live_out stmts i] is the set of variables that are live out of the
-    [i]th statement of [stmts] *)
-
-val dce : stmt list -> stmt list
-(** [dce stmts] is [stmts] with dead definitions removed *)
+val to_string : stmt -> string
+(** [to_string stmt] is the string representation of [stmt] *)

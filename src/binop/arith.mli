@@ -6,6 +6,7 @@ type base =
   | `Div
   | `Mul
   ]
+[@@deriving hash, compare, sexp]
 (** [base] represents basic arithmetic operations *)
 
 type t =
@@ -13,6 +14,7 @@ type t =
   | `HMul
   | `Mod
   ]
+[@@deriving hash, compare, sexp]
 (** A [t] is the type of an arithmetic binop *)
 
 val high_mult : int64 -> int64 -> int64
