@@ -25,6 +25,13 @@ module InterferenceGraph = struct
     Set.fold across ~init ~f:(fun g u ->
         G.add_edges g u Reg.Bit64.caller_save)
 
+  (** Add affinity edge between dst and src of a move *)
+  let add_affinity g dst src =
+    match (dst, src) with
+    | (#Reg.Abstract.t as dst), (#Reg.Abstract.t as src) ->
+        G.add_affinity g dst src
+    | _, _ -> g
+
   (** [create cfg ~live] is the interference graph of control flow graph
       [cfg], where liveness information for variables is looked up using
       [live] *)
@@ -44,11 +51,12 @@ module InterferenceGraph = struct
              The set of vars live across the call is those that are live
              in and live out. *)
           add_call_edges g (Set.inter entry exit)
-      | Mov (_, src) as v ->
+      | Mov (dst, src) as v ->
           (* For move instruction x <- y, we create interference edges
              (x, z) where z is live out, except for edge (x, y) *)
           let intf = Set.to_sequence (remove exit src) in
-          add_def_edges g v intf
+          let g' = add_def_edges g v intf in
+          add_affinity g' dst src
       | v -> add_def_edges g v exit_seq
     in
     List.foldi cfg ~init:G.empty ~f

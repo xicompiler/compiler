@@ -1,6 +1,6 @@
 open Core
 
-module type Key = Map.Key
+module type Key = Hashtbl.Key
 (** [Key] is the unique key of a vertex in a graph *)
 
 (** [S] is the type of an unwweighted, undirected graph *)
@@ -30,6 +30,9 @@ module type S = sig
   val add_edges : t -> Key.t -> Key.t Sequence.t -> t
   (** [add_edges g u \[v1; ...; vn\]] is [g] with additionally every
       edge [(u, v1) ... (u, vn)] *)
+
+  val add_affinity : t -> Key.t -> Key.t -> t
+  (** Add an edge connecting move related nodes *)
 
   val add_clique : t -> Key.t Sequence.t -> t
   (** [add_clique  g \[u1; ...; un\]] is [g] with every edge [(u, v)]

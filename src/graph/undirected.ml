@@ -2,7 +2,7 @@ open Core
 open Result.Monad_infix
 open Result.Let_syntax
 
-module type Key = Map.Key
+module type Key = Hashtbl.Key
 
 module type S = sig
   module Key : Key
@@ -14,6 +14,7 @@ module type S = sig
   val add_vertices : t -> Key.t Sequence.t -> t
   val add_edge : t -> Key.t -> Key.t -> t
   val add_edges : t -> Key.t -> Key.t Sequence.t -> t
+  val add_affinity : t -> Key.t -> Key.t -> t
   val add_clique : t -> Key.t Sequence.t -> t
 
   module Set : Set.S with type Elt.t = Key.t
@@ -37,6 +38,7 @@ module Make (Key : Key) = struct
   module Vertex = struct
     type t = {
       key : Key.t;
+      affinity : Set.t;
       adjacent : Set.t;
     }
     [@@deriving fields]
@@ -44,8 +46,18 @@ module Make (Key : Key) = struct
     let map_adjacent v k ~f = { v with adjacent = f v.adjacent k }
     let add_adjacent = map_adjacent ~f:Set.add
     let remove_adjacent = map_adjacent ~f:Set.remove
+    let map_affinity v k ~f = { v with affinity = f v.affinity k }
+    let add_affinity = map_affinity ~f:Set.add
+    let remove_affinity = map_affinity ~f:Set.remove
     let degree { adjacent } = Set.length adjacent
-    let create key = { key; adjacent = Set.empty }
+
+    let create_with_adjacent key adjacent =
+      { key; adjacent; affinity = Set.empty }
+
+    let create key = create_with_adjacent key Set.empty
+
+    let create_with_affinity key affinity =
+      { key; adjacent = Set.empty; affinity }
   end
 
   type t = Vertex.t Map.t
@@ -67,17 +79,24 @@ module Make (Key : Key) = struct
   let add_adjacent g u v =
     Map.update g u ~f:(function
       | Some u -> Vertex.add_adjacent u v
-      | None -> Vertex.{ key = u; adjacent = Set.singleton v })
+      | None -> Vertex.create_with_adjacent u (Set.singleton v))
 
   let remove_adjacent g u v =
     update_exn g u ~f:(fun vertex -> Vertex.remove_adjacent vertex v)
 
-  let add_edge g u v =
-    if Key.compare u v = 0 then g
-    else
-      let g' = add_adjacent g u v in
-      add_adjacent g' v u
+  let add_affinity g u v =
+    Map.update g u ~f:(function
+      | Some u -> Vertex.add_affinity u v
+      | None -> Vertex.create_with_affinity u (Set.singleton v))
 
+  let remove_adjacent g u v =
+    update_exn g u ~f:(fun vertex -> Vertex.remove_adjacent vertex v)
+
+  let add_if_distinct ~f g u v =
+    if Key.compare u v = 0 then g else f (f g u v) v u
+
+  let add_edge = add_if_distinct ~f:add_adjacent
+  let add_affinity = add_if_distinct ~f:add_affinity
   let add_edges init u = Sequence.fold ~init ~f:(fun g -> add_edge g u)
 
   let add_clique init keys =
