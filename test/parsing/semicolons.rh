@@ -1,0 +1,13 @@
+use conv
+use io
+
+record Point {
+  x:int;
+  y:int;
+  a,b:int
+  d,e,f:Point
+}
+
+main(a:int[][]) {
+  println("here")
+}
