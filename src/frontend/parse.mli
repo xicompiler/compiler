@@ -36,12 +36,6 @@ val parse : is_rho:bool -> start:'a start -> Lexing.lexbuf -> 'a result
     [Error SyntaxError] if [start lexbuf] raises a syntax error, and
     [Error LexicalError] if [start lexbuf] raises a lexical error. *)
 
-val parse_prog :
-  is_rho:bool -> Lexing.lexbuf -> Ast.Undecorated.t result
-(** [parse_prog lexbuf] is [Ok ast] if [start lexbuf] [ast],
-    [Error SyntaxError] if [start lexbuf] raises a syntax error, and
-    [Error LexicalError] if [start lexbuf] raises a lexical error. *)
-
 val parse_source :
   is_rho:bool -> Lexing.lexbuf -> Ast.Undecorated.source result
 (** [parse_source lexbuf] is [Ok ast] if [start lexbuf] [ast],

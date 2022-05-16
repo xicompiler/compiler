@@ -43,10 +43,6 @@ let parse ~is_rho ~start lexbuf =
       Error (`SyntaxError (Position.Error.create ~pos cause))
   | Exception.InvalidIntLiteral err -> Error (`SyntaxError err)
 
-let parse_prog ~is_rho =
-  let start = if is_rho then Parser.rho_prog else Parser.xi_prog in
-  parse ~is_rho ~start
-
 let parse_source ~is_rho =
   let start = if is_rho then Parser.rho_source else Parser.xi_source in
   parse ~is_rho ~start

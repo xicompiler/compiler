@@ -112,10 +112,8 @@
 (* A primitive type *)
 %token <Type.Tau.primitive> TYPE
 
-%start <Undecorated.t> rho_prog
 %start <Undecorated.source> rho_source
 %start <Undecorated.intf> rho_intf
-%start <Undecorated.t> xi_prog
 %start <Undecorated.source> xi_source
 %start <Undecorated.intf> xi_intf
 
@@ -218,16 +216,6 @@ bracketed(X):
   | NOT { `LogNeg }
   ;
 
-(** A prog is either a source or intf *)
-rho_prog:
-  | s = rho_source { Source s }
-  | i = rho_intf { Intf i }
-  ;
-
-xi_prog:
-  | s = xi_source {Source s}
-  | i = xi_intf {Intf i}
-
 (** A [source] derives a source file in  Xi, followed by EOF *)
 rho_source:
   | s = rho_source_file; EOF
@@ -241,9 +229,9 @@ xi_source:
 
 (** An [intf] derives an intf file in Xi, followed by EOF  *)
 rho_intf:
-  | sigs = node(rho_intf_sig)+; EOF
+  | sigs = node(semi(rho_intf_sig))+; EOF
     { {uses=[]; sigs} }
-  | uses = node(use)+; sigs = node(rho_intf_sig)+; EOF
+  | uses = node(use)+; sigs = node(semi(rho_intf_sig))+; EOF
     { {uses; sigs} }
   ;
 
@@ -259,14 +247,14 @@ rho_intf_sig:
     { let (name, vars) = record in RecordSig (name, vars) }
   ;
 
+record:
+  | RECORD; name = id; LBRACE; vars = list(semi(rho_decl)) RBRACE
+    { (name, vars) }
+
 xi_intf_sig:
   | defn = xi_signature
     { FnSig defn }
   ;
-
-record:
-  | RECORD; name = id; LBRACE; vars = list(rho_decl) RBRACE
-    { (name, vars) }
 
 (** A [source_file] derives a source file in  Xi *)
 rho_source_file:
@@ -381,8 +369,8 @@ global_rhs:
   ;
 
 rho_decl:
-  | ids = separated_nonempty_list(COMMA, id); COLON; typ = rho_typ
-    { (ids, typ) }
+  | id = id; COMMA; ids = separated_list(COMMA, id); COLON; typ = rho_typ
+    { (id :: ids, typ) }
   | id = id; COLON; typ = rho_typ
     { ([id], typ) }
   ;

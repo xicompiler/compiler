@@ -76,9 +76,6 @@ let coerce e = (e :> error)
 
 type nonrec result = (Ast.Decorated.t, error) result
 
-let parse_prog ~is_rho =
-  Fn.compose (Result.map_error ~f:coerce) (Parse.parse_prog ~is_rho)
-
 let parse_source ~is_rho lb =
   Fn.compose
     (Result.map_error ~f:coerce)
