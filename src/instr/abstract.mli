@@ -10,6 +10,10 @@ module Asm : sig
   include Util.Stringable.S with type t := t
 end
 
+val to_string : t -> string
+(** [to_string instr] is the string representation of abstract
+    instruction [instr] *)
+
 val munch : gensym:(unit -> string) -> Ir.Reorder.toplevel list -> Asm.t
 (** [munch ~gensym top] is the global data and abstract assembly
     instructions having the same effect as [top] *)

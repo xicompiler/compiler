@@ -298,8 +298,11 @@ module Make (Key : Key) = struct
         |> List.map ~f:(fun e ->
                let v2 = stringify_vertex e.dst in
                let w = stringify_weight e.weight in
-               Printf.sprintf "\"%s\" -> \"%s\" [label = \"%s\"];" v1 v2
-                 w)
+               let label =
+                 if String.is_empty w then ""
+                 else Printf.sprintf " [label = \"%s\"]" w
+               in
+               Printf.sprintf "\"%s\" -> \"%s\"%s;" v1 v2 label)
         |> String.concat ~sep:"\n"
     in
     let viz = nodes |> List.map ~f |> String.concat ~sep:"\n" in

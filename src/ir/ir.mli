@@ -1,14 +1,11 @@
 open Core
 
-type opt = { cf : bool }
-(** [opt] specifies the possible IR-level optimizations *)
-
 val sexp_of_t : compunit:string -> Reorder.t -> Sexp.t
 (** [sexp_of_t ~compunit tlist] is the s-expression representation of
     the reordered toplevel list with COMPUNIT name [compunit] *)
 
 val translate :
-  opt:opt -> ?gensym:IrGensym.t -> Ast.Decorated.source -> Reorder.t
+  opt:Opt.t -> ?gensym:IrGensym.t -> Ast.Decorated.source -> Reorder.t
 (** [translate ~opt ?gensym ast] is decorated ast [ast] translated to
     lowered (canonical) IR, with optimizations [opt] *)
 
@@ -32,7 +29,7 @@ module Output : sig
     src:string ->
     out:string ->
     deps:Frontend.Check.dependencies ->
-    opt:opt ->
+    opt:Opt.t ->
     unit ->
     Frontend.Check.result File.Xi.result
   (** [file_to_file ~start lexbuf out] parses and typechecks the

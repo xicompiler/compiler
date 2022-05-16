@@ -1,6 +1,7 @@
 open Core
 open Frontend
 open Subtype
+open Opt
 
 (** [sexp_of_const i] is the sexp representation of [`Const i] *)
 let sexp_of_const i = Sexp.List [ Sexp.Atom "CONST"; Int64.sexp_of_t i ]
@@ -91,8 +92,6 @@ let sexp_of_t ~compunit (top : Reorder.t) : Sexp.t =
   Sexp.List
     (Sexp.Atom "COMPUNIT" :: Sexp.Atom compunit
     :: List.map ~f:sexp_of_toplevel top)
-
-type opt = { cf : bool }
 
 let translate ~opt ?(gensym = IrGensym.create ()) ast =
   let stmts =

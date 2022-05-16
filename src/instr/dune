@@ -1,6 +1,6 @@
 (library
  (name instr)
- (libraries core dataflow graph ir util)
+ (libraries core opt dataflow graph ir util)
  (preprocess
   (pps ppx_jane -allow-unannotated-ignores)))
 

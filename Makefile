@@ -20,6 +20,7 @@ clean: bisect-clean
 	find . -name '*.s' -delete
 	find . -name '*.sout' -delete
 	find . -name '*.asm' -delete
+	find . -name '*.dot' -delete
 	rm -f xic *.zip *.log
 
 clean-all: clean

@@ -38,6 +38,7 @@ output
 *.sout
 *.s
 *.asm
+*.dot
 
 # executable
 /xic

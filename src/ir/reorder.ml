@@ -35,15 +35,6 @@ type weight =
   | Labeled
   | Fallthrough
 
-(** [string_of_weight weight] is the string representaiton of [weight] *)
-let string_of_weight = function
-  | Labeled -> "labeled"
-  | Fallthrough -> "fallthrough"
-
-(** [string_of_vertex vertex] is the string representation of the value
-    of [vertex] *)
-let string_of_vertex v = v |> Vertex.value |> BasicBlock.to_string
-
 (** [is_labeled Labeled] is [true], [is_labeled Fallthrough] is [false] *)
 let is_labeled = function Labeled -> true | Fallthrough -> false
 
@@ -317,12 +308,6 @@ let remove_false_label = function
 let concatenated_traces nodes =
   nodes |> List.hd_exn |> create_deque |> rev_traces
   |> Util.List.rev_concat
-
-(** [print_cfg ~label cfg] prints [label], along with the graphviz code
-    for displaying [cfg] *)
-let print_cfg ~label cfg =
-  print_endline label;
-  cfg |> graphviz ~string_of_vertex ~string_of_weight |> print_endline
 
 let reorder_stmts ~gensym stmts =
   let start = `Label (gensym ()) in

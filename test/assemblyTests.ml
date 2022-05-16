@@ -8,8 +8,8 @@ let deps : Frontend.Check.dependencies =
     lib_dir = "./test/typecheck/interfaces";
   }
 
-let enabled_opt : Ir.opt = { cf = true }
-let disabled_opt : Ir.opt = { cf = false }
+let enabled_opt = Opt.enabled Opt.disabled
+let disabled_opt = Opt.disabled
 
 (** [asm_file_test name ~src ~reference] tests asm generation for [src],
     comparing the resulting files with [reference] *)

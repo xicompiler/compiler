@@ -7,3 +7,5 @@ module Asm = struct
 
   let to_string = Generic.Asm.to_string ~f:Operand.to_string
 end
+
+let to_string = Generic.to_string ~f:Operand.to_string

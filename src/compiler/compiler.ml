@@ -35,10 +35,9 @@ let ir_run ir =
     path [src] writing the results to a file in directory [dir] *)
 let ir_out ?cache ~args ~dir ~src ~deps () =
   let out = Util.File.diagnostic ~dir ~src ".ir" in
-  let { cf } = args.opt in
   if Util.File.is_xi src || Util.File.is_rh src then
     let open Ir.Output in
-    let res = file_to_file ?cache ~src ~out ~deps ~opt:{ cf } () in
+    let res = file_to_file ?cache ~src ~out ~deps ~opt:args.opt () in
     match res with
     | Ok (Ok _) -> if args.irrun then ir_run out
     | _ -> ()
@@ -48,10 +47,9 @@ let ir_out ?cache ~args ~dir ~src ~deps () =
     [dir] *)
 let abstract_asm_out ?cache ~args ~dir ~src ~deps () =
   let out = Util.File.diagnostic ~dir ~src ".asm" in
-  let { cf } = args.opt in
   if Util.File.is_xi src || Util.File.is_rh src then
     let open Instr.Output.Abstract in
-    ignore (file_to_file ?cache ~src ~out ~deps ~opt:{ cf } ())
+    ignore (file_to_file ?cache ~src ~out ~deps ~opt:args.opt ())
 
 (** [asm_run asm] interprets and executes the asm file at path [asm] *)
 let asm_run asm =
@@ -63,9 +61,8 @@ let asm_run asm =
     path [src] writing the results to a file in directory [dir] *)
 let asm_out ?cache ~args ~dir ~src ~deps () =
   let out = Util.File.diagnostic ~dir ~src ".s" in
-  let { cf } = args.opt in
   let open Instr.Output in
-  let res = file_to_file ?cache ~src ~out ~deps ~opt:{ cf } () in
+  let res = file_to_file ?cache ~src ~out ~deps ~opt:args.opt () in
   match res with
   | Ok (Ok _) ->
       if args.asmrun then asm_run out;

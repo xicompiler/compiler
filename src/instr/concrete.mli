@@ -6,3 +6,7 @@ module Asm : sig
 
   include Util.Stringable.S with type t := t
 end
+
+val to_string : t -> string
+(** [to_string instr] is the string representation of concrete
+    instruction [instr] *)

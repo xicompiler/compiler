@@ -1,6 +1,6 @@
 (library
  (name ir)
- (libraries ast binop frontend core graph gensym)
+ (libraries core opt ast binop frontend graph gensym)
  (preprocess
   (pps ppx_jane))
  (instrumentation

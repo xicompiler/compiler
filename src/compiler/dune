@@ -1,5 +1,5 @@
 (library
  (name compiler)
- (libraries core frontend ir instr util)
+ (libraries core opt frontend ir instr util)
  (preprocess
   (pps ppx_jane -allow-unannotated-ignores)))

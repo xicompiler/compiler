@@ -83,18 +83,17 @@ let command =
       and cp = flag "-Ocp" no_arg ~doc:" Constant propagation."
       and vn = flag "-Ovn" no_arg ~doc:" Local value numbering." in
       let opt =
-        Opt.config disable_opt
-          Opt.
-            {
-              optir = phases_of_list optir;
-              optcfg = phases_of_list optcfg;
-              cf;
-              reg;
-              copy;
-              dce;
-              cp;
-              vn;
-            }
+        config disable_opt
+          {
+            optir = phases_of_list optir;
+            optcfg = phases_of_list optcfg;
+            cf;
+            reg;
+            copy;
+            dce;
+            cp;
+            vn;
+          }
       in
       let args =
         {
