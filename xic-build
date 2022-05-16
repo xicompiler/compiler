@@ -1,4 +1,2 @@
-opam switch 4.12.0
-eval $(opam env)
 make build
 ln -sf _build/default/src/bin/main.exe xic

@@ -15,15 +15,7 @@ type t = {
 }
 
 let enabled opt =
-  {
-    opt with
-    cf = true;
-    reg = true;
-    copy = true;
-    dce = true;
-    cp = true;
-    vn = true;
-  }
+  { opt with cf = true; reg = true; copy = true; dce = true; cp = true }
 
 let disabled =
   {

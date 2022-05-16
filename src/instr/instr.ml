@@ -46,6 +46,7 @@ module Output = struct
       |> Ir.translate ~opt:Opt.disabled ~gensym
       |> Abstract.munch ~gensym:(Ir.Gensym.Temp.generator gensym)
       |> RegAlloc.allocate ~opt:Opt.disabled
+           ~gensym:(Ir.Gensym.Temp.generator gensym)
     in
     print_cfgs ~out ~f:Concrete.to_string unoptimized ~phase:"initial"
 
@@ -64,6 +65,7 @@ module Output = struct
       ir
       |> Abstract.munch ~gensym:(Ir.Gensym.Temp.generator gensym)
       |> RegAlloc.allocate ~opt
+           ~gensym:(Ir.Gensym.Temp.generator gensym)
     in
     if opt.optcfg.final then
       print_cfgs ~out ~f:Concrete.to_string asm ~phase:"final";

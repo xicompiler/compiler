@@ -13,7 +13,7 @@
   type
   util)
  (preprocess
-  (pps ppx_jane -allow-unannotated-ignores))
+  (pps ppx_jane))
  (instrumentation
   (backend bisect_ppx)))
 

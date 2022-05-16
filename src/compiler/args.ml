@@ -18,7 +18,7 @@ let config disable opt =
     let { cf; reg; copy; dce; cp; vn } = opt in
     if cf || reg || copy || dce || cp || vn then opt else enabled opt
 
-let opts = [ "cf"; "reg"; "copy"; "dce"; "cp"; "vn" ]
+let opts = [ "cf"; "reg"; "copy"; "dce"; "cp" ]
 
 type t = {
   files : string list;
