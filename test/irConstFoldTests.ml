@@ -18,7 +18,7 @@ let const_fold_tests tests =
     [name] and [stmts] *)
 let func name stmts = `Func (name, stmts, 0, 0)
 
-let arith_tests : (string * Reorder.t * Reorder.t) list =
+let arith_tests : (string * Ir.t * Ir.t) list =
   [
     ( "mult",
       [
@@ -97,7 +97,7 @@ let arith_tests : (string * Reorder.t * Reorder.t) list =
       [ func "nested" [ `Move (`Temp "x", `Const 9L) ] ] );
   ]
 
-let cmp_tests : (string * Reorder.t * Reorder.t) list =
+let cmp_tests : (string * Ir.t * Ir.t) list =
   [
     ( "lt",
       [
@@ -138,7 +138,7 @@ let cmp_tests : (string * Reorder.t * Reorder.t) list =
       [ func "nested" [ `Move (`Temp "x", `Const one) ] ] );
   ]
 
-let log_tests : (string * Reorder.t * Reorder.t) list =
+let log_tests : (string * Ir.t * Ir.t) list =
   [
     ( "and",
       [
@@ -167,7 +167,7 @@ let log_tests : (string * Reorder.t * Reorder.t) list =
       [ func "nested" [ `Move (`Temp "x", `Const one) ] ] );
   ]
 
-let bitwise_tests : (string * Reorder.t * Reorder.t) list =
+let bitwise_tests : (string * Ir.t * Ir.t) list =
   [
     ( "xor 00",
       [
@@ -220,7 +220,7 @@ let bitwise_tests : (string * Reorder.t * Reorder.t) list =
       ] );
   ]
 
-let unsigned_tests : (string * Reorder.t * Reorder.t) list =
+let unsigned_tests : (string * Ir.t * Ir.t) list =
   [
     ( "ult -1 0",
       [

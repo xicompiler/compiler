@@ -37,7 +37,7 @@ module Output = struct
   let print_cfgs ~out ~f ~phase =
     List.iter ~f:(print_cfg ~out ~f ~phase)
 
-  (** [print_initial_cfgs out source] prints unoptimized concrete
+  (** [print_initial_cfgs ~out source] prints unoptimized concrete
       assembly cfgs for each function in [source] *)
   let print_initial_cfgs ~out source =
     let gensym = Ir.Gensym.create () in
@@ -53,11 +53,15 @@ module Output = struct
       concrete assembly *)
   let print_source ~src ~out ~opt source =
     let open Opt in
+    if opt.optir.initial then
+      Ir.Output.print_initial ~out ~compunit:(Util.File.base src) source;
     if opt.optcfg.initial then print_initial_cfgs ~out source;
     let gensym = Ir.Gensym.create () in
+    let ir = Ir.translate ~opt ~gensym source in
+    if opt.optir.final then
+      Ir.Output.print_final ~out ~compunit:(Util.File.base src) ~opt ir;
     let asm =
-      source
-      |> Ir.translate ~opt ~gensym
+      ir
       |> Abstract.munch ~gensym:(Ir.Gensym.Temp.generator gensym)
       |> RegAlloc.allocate ~opt
     in

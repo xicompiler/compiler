@@ -5,6 +5,9 @@ val config : bool -> Opt.t -> Opt.t
 (** [config disable opt] is the configured optimization-related
     arguments *)
 
+val opts : string list
+(** [opts] is the list of supported optimizations *)
+
 type t = {
   files : string list;
   src_dir : string;

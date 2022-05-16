@@ -3,6 +3,8 @@ open Frontend
 open Subtype
 open Opt
 
+type t = Reorder.t
+
 (** [sexp_of_const i] is the sexp representation of [`Const i] *)
 let sexp_of_const i = Sexp.List [ Sexp.Atom "CONST"; Int64.sexp_of_t i ]
 
@@ -88,7 +90,7 @@ let sexp_of_toplevel = function
   | `Data (l, i) -> sexp_of_data l i
   | `Func (l, b, _, _) -> sexp_of_function l b
 
-let sexp_of_t ~compunit (top : Reorder.t) : Sexp.t =
+let sexp_of_t ~compunit top =
   Sexp.List
     (Sexp.Atom "COMPUNIT" :: Sexp.Atom compunit
     :: List.map ~f:sexp_of_toplevel top)
@@ -107,6 +109,22 @@ module Output = struct
     let ok = Ast.iter_source ~f:ok in
     Check.Diagnostic.iter_file ~src ~ok ?err
 
+  let print_initial ~out ~compunit source =
+    let out =
+      Printf.sprintf "%s_initial.ir" (Filename.chop_extension out)
+    in
+    source
+    |> translate ~opt:Opt.disabled
+    |> sexp_of_t ~compunit |> Sexp.to_string_hum
+    |> Util.File.println ~out
+
+  let print_final ~out ~compunit ~opt ir =
+    let out =
+      Printf.sprintf "%s_final.ir" (Filename.chop_extension out)
+    in
+    ir |> sexp_of_t ~compunit |> Sexp.to_string_hum
+    |> Util.File.println ~out
+
   (** [print_source ~out ~compunit ~opt source] prints [source] to [out]
       as an s-expression *)
   let print_source ~out ~compunit ~opt source =
@@ -114,9 +132,8 @@ module Output = struct
     |> Sexp.to_string_hum |> Util.File.println ~out
 
   let file_to_file ?cache ~src ~out ~deps ~opt () =
-    let compunit = Util.File.base src in
     iter_source ?cache
-      ~ok:(print_source ~out ~compunit ~opt)
+      ~ok:(print_source ~out ~compunit:(Util.File.base src) ~opt)
       ~src ~deps ()
 end
 

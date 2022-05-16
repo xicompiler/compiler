@@ -41,6 +41,11 @@ let command =
           (optional_with_default "." string)
           ~doc:
             " Specify where to place generated assembly output files."
+      and target =
+        flag "-target"
+          (optional_with_default "linux" string)
+          ~doc:
+            " Specify the operating system for which to generate code."
       and lex =
         flag "--lex" no_arg
           ~doc:" Generate output from lexical analysis."
@@ -60,22 +65,21 @@ let command =
           ~doc:" Generate abstract assembly code."
       and asmrun =
         flag "--asmrun" no_arg ~doc:" Run generated assembly code."
-      and target =
-        flag "-target"
-          (optional_with_default "linux" string)
+      and report_opts =
+        flag "--report-opts" no_arg
           ~doc:
-            " Specify the operating system for which to generate code."
-      and disable_opt = flag "-O" no_arg ~doc:" Disable optimizations."
+            " Output a list of optimizations supported by the compiler."
       and optir =
-        flag "-optir" (listed string)
+        flag "--optir" (listed string)
           ~doc:
             " Report the intermediate code at the specified phase of \
              optimization."
       and optcfg =
-        flag "-optcfg" (listed string)
+        flag "--optcfg" (listed string)
           ~doc:
             " Report the control-flow graph at the specified phase of \
              optimization."
+      and disable_opt = flag "-O" no_arg ~doc:" Disable optimizations."
       and cf = flag "-Ocf" no_arg ~doc:" Constant folding."
       and reg = flag "-Oreg" no_arg ~doc:" Register allocation."
       and copy = flag "-Ocopy" no_arg ~doc:" Move coalescing."
@@ -103,6 +107,7 @@ let command =
           std_dir = Util.File.stdlib;
           diag_out_dir;
           asm_out_dir;
+          target;
           lex;
           parse;
           typecheck;
@@ -111,10 +116,11 @@ let command =
           abstract_asm;
           asmrun;
           opt;
-          target;
         }
       in
-      fun () -> try_compile args)
+      fun () ->
+        if report_opts then List.iter ~f:print_endline opts
+        else try_compile args)
 
 let () =
   Command_unix.run ~version:"1.0" ~build_info:"bfs45_dc854_vmj5_zak33"

@@ -1,11 +1,13 @@
 open Core
 
-val sexp_of_t : compunit:string -> Reorder.t -> Sexp.t
+type t = Reorder.t
+
+val sexp_of_t : compunit:string -> t -> Sexp.t
 (** [sexp_of_t ~compunit tlist] is the s-expression representation of
     the reordered toplevel list with COMPUNIT name [compunit] *)
 
 val translate :
-  opt:Opt.t -> ?gensym:IrGensym.t -> Ast.Decorated.source -> Reorder.t
+  opt:Opt.t -> ?gensym:IrGensym.t -> Ast.Decorated.source -> t
 (** [translate ~opt ?gensym ast] is decorated ast [ast] translated to
     lowered (canonical) IR, with optimizations [opt] *)
 
@@ -23,6 +25,15 @@ module Output : sig
       AST source constructed from the file at [src] if possible
       resolving dependentcies from [deps], or is [()] if this is not
       possible. *)
+
+  val print_initial :
+    out:string -> compunit:string -> Ast.Decorated.source -> unit
+  (** [print_initial ~out ~compunit source] prints unoptimized ir for
+      [source] *)
+
+  val print_final :
+    out:string -> compunit:string -> opt:Opt.t -> t -> unit
+  (** [print_final ~out ~compunit ~opt ir] prints [ir] *)
 
   val file_to_file :
     ?cache:Frontend.Check.cache ->
