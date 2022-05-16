@@ -6,7 +6,7 @@ type defined =
   | Bottom
 [@@deriving hash, compare, sexp, equal]
 
-module ConstProp : sig
+module Analysis : sig
   val params :
     gen:
       (defined Temp.Virtual.Map.t ->

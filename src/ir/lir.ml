@@ -74,6 +74,21 @@ let use_stmt ~init : stmt -> Virtual.Set.t = function
 
 let use ?(init = Virtual.Set.empty) = use_stmt ~init
 
+let rec map_expr ~f = function
+  | #Temp.Virtual.t as t -> (f t :> expr)
+  | `Bop (op, e1, e2) -> `Bop (op, map_expr ~f e1, map_expr ~f e2)
+  | #expr as e -> e
+
+let map_exprs ~f = List.map ~f:(map_expr ~f)
+
+let map_stmt ~f = function
+  | `Call (n, e, es) -> `Call (n, map_expr ~f e, map_exprs ~f es)
+  | `CJump (e, l1, l2) -> `CJump (map_expr ~f e, l1, l2)
+  | `Jump e -> `Jump (map_expr ~f e)
+  | `Return es -> `Return (map_exprs ~f es)
+  | `Move ((`Temp _ as t), e) -> `Move (t, map_expr ~f e)
+  | #stmt as s -> s
+
 module CFG = Graph.Directed.IntDigraph
 
 let find_label vs =

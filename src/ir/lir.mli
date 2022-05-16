@@ -21,6 +21,9 @@ type t = toplevel list
 (** [t] is the representation of a program in lowered IR, a list of
     statement s*)
 
+val map_stmt : f:(Temp.Virtual.t -> [< expr ]) -> stmt -> stmt
+(** [map_temp ~f stmt] is [stmt] with [f] applied to all temps *)
+
 val def : ?init:Temp.Virtual.Set.t -> stmt -> Temp.Virtual.Set.t
 (** [def ?init stmt] is the set of defined variables in stmt *)
 

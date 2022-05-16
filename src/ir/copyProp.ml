@@ -69,25 +69,9 @@ let find_temp ~map temp =
   | Some set -> choose_temp ~set temp
   | None -> temp
 
-let rec sub_expr ~map = function
-  | #Temp.Virtual.t as t -> (find_temp ~map t :> Lir.expr)
-  | `Bop (op, e1, e2) -> `Bop (op, sub_expr ~map e1, sub_expr ~map e2)
-  | #Lir.expr as e -> e
-
-let sub_exprs ~map = List.map ~f:(sub_expr ~map)
-
 let propagate_stmts stmts =
   let copies = copies_in stmts in
-  let f i =
-    let map = copies i in
-    function
-    | `Call (n, e, es) -> `Call (n, sub_expr ~map e, sub_exprs ~map es)
-    | `CJump (e, l1, l2) -> `CJump (sub_expr ~map e, l1, l2)
-    | `Jump e -> `Jump (sub_expr ~map e)
-    | `Return es -> `Return (sub_exprs ~map es)
-    | `Move ((`Temp _ as t), e) -> `Move (t, sub_expr ~map e)
-    | #Lir.stmt as s -> s
-  in
+  let f i = Lir.map_stmt ~f:(find_temp ~map:(copies i)) in
   List.mapi ~f stmts
 
 let propagate_toplevel : Lir.toplevel -> Lir.toplevel = function

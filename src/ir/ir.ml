@@ -97,8 +97,9 @@ let sexp_of_t ~compunit top =
 
 let translate ~opt ?(gensym = IrGensym.create ()) ast =
   let lir = ast |> Mir.translate ~gensym |> Lir.lower ~opt ~gensym in
-  let lir = if opt.cp then CopyProp.propagate lir else lir in
-  let lir = if opt.dce then DeadCode.dce lir else lir in
+  let lir = if opt.copy then CopyProp.propagate lir else lir in
+  let lir = if opt.dce then DeadCode.eliminate lir else lir in
+  let lir = if opt.cp then ConstProp.propagate lir else lir in
   let stmts =
     Reorder.reorder ~gensym:(IrGensym.Label.generator gensym) lir
   in

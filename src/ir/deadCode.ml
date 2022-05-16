@@ -9,8 +9,8 @@ let live_out stmts =
   let live = Lir.CFG.analyze cfg params in
   fun i -> (live i).input
 
-(** [dce_stmts stmts] is [stmts] with dead definitions removed *)
-let dce_stmts stmts =
+(** [eliminate_stmts stmts] is [stmts] with dead definitions removed *)
+let eliminate_stmts stmts =
   let live = live_out stmts in
   let f i = function
     | `Move ((`Temp _ as t), _) -> Set.mem (live i) t
@@ -18,8 +18,8 @@ let dce_stmts stmts =
   in
   List.filteri ~f stmts
 
-let dce_toplevel : Lir.toplevel -> Lir.toplevel = function
+let eliminate_toplevel : Lir.toplevel -> Lir.toplevel = function
   | `Data _ as d -> d
-  | `Func (l, b, a, r) -> `Func (l, dce_stmts b, a, r)
+  | `Func (l, b, a, r) -> `Func (l, eliminate_stmts b, a, r)
 
-let dce = List.map ~f:dce_toplevel
+let eliminate = List.map ~f:eliminate_toplevel
