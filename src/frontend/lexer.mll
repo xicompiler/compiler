@@ -102,17 +102,17 @@ let codepoint = hex hex? hex? hex? hex? hex?
 let unicode =  "\\x{" codepoint '}'
 let any_char = _ | newline
 
-rule read =
+rule read_rho =
   parse
   | newline
     { 
       Lexing.new_line lexbuf;
-      read lexbuf
+      read_rho lexbuf
     }
   | white
-    { read lexbuf }
+    { read_rho lexbuf }
   | "//"
-    { read_comment lexbuf }
+    { read_comment_rho lexbuf }
   | "use"
     { USE }
   | "if" 
@@ -147,6 +147,102 @@ rule read =
     { GETS }
   | "."
     { DOT }
+  | "*"
+    { MULT }
+  | "*>>"
+    { HIGHMULT }
+  | "/"
+    { DIV }
+  | "%"
+    { MOD }
+  | "+"
+    { PLUS }
+  | "-"
+    { MINUS }
+  | "<"
+    { LT }
+  | "<="
+    { LEQ }
+  | ">="
+    { GEQ }
+  | ">"
+    { GT }
+  | "=="
+    { EQ }
+  | "!="
+    { NEQ }
+  | "!"
+    { NOT }
+  | "&"
+    { AND }
+  | "|"
+    { OR }
+  | ":"
+    { COLON }
+  | ";"
+    { SEMICOLON }
+  | ","
+    { COMMA }
+  | "int"
+    { TYPE `Int }
+  | "bool"
+    { TYPE `Bool }
+  | "true"
+    { BOOL true }
+  | "false"
+    { BOOL false }
+  | int as i
+    { INT i }
+  | id as ident
+    { ID ident }
+  | "_"
+    { WILDCARD }
+  | "'"
+    { lex_char_literal read_char lexbuf }
+  | '"'
+    { lex_string_literal read_string lexbuf }
+  | eof
+    { EOF }
+  | any_char
+    { raise (make_error InvalidSource lexbuf) }
+
+and read_xi =
+  parse
+  | newline
+    { 
+      Lexing.new_line lexbuf;
+      read_xi lexbuf
+    }
+  | white
+    { read_xi lexbuf }
+  | "//"
+    { read_comment_xi lexbuf }
+  | "use"
+    { USE }
+  | "if" 
+    { IF }
+  | "else" 
+    { ELSE }
+  | "while"
+    { WHILE }
+  | "return"
+    { RETURN }
+  | "length"
+    { LENGTH }
+  | "("
+    { LPAREN }
+  | ")"
+    { RPAREN }
+  | "["
+    { LBRACKET }
+  | "]"
+    { RBRACKET }
+  | "{"
+    { LBRACE }
+  | "}"
+    { RBRACE }
+  | "="
+    { GETS }
   | "*"
     { MULT }
   | "*>>"
@@ -243,14 +339,26 @@ and read_string buf =
   | eof | any_char
     { None }
 
-and read_comment =
+and read_comment_rho =
   parse
   | newline
     { 
       Lexing.new_line lexbuf;
-      read lexbuf 
+      read_rho lexbuf 
     }
   | eof 
     { EOF }
   | any_char
-    { read_comment lexbuf }
+    { read_comment_rho lexbuf }
+
+and read_comment_xi =
+  parse
+  | newline
+    { 
+      Lexing.new_line lexbuf;
+      read_xi lexbuf 
+    }
+  | eof 
+    { EOF }
+  | any_char
+    { read_comment_xi lexbuf }

@@ -7,23 +7,23 @@ main(args:int[][]) {
         print("Usage: kmp_test <file> <string>\n")
         return
     }
-
+    
     p: int[] = args[2]
-
+    
     in: FileInput = readFile(args[1])
-
+    
     if (in == null) {
         println("Couldn't open " + args[1])
         return
     }
-
+    
     s:int[] = ""
     while (!in.feof()) {
         s = s + in.gets()
     }
-
+    
     precomputed:int[] = begin(s, p)
-
+    
     i:int = 0
     j:int = 0
     while (i != -1) {
@@ -34,6 +34,6 @@ main(args:int[][]) {
             j = j + 1
         }
     }
-
+    
     println(unparseInt(j) + " matches found.")
 }

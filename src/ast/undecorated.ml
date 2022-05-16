@@ -423,6 +423,12 @@ and create_cond ~f ~ctx ~pos e s =
   let%map s = type_check_stmt ~ctx s in
   (f e s, Data.Stmt.create_unit ~ctx ~pos)
 
+and create_cond_while ~f ~ctx ~pos e s =
+  let%bind e = bool_or_error ~ctx e in
+  let stmt_ctx = Context.with_beta ~beta:true ctx in
+  let%map s = type_check_stmt ~ctx:stmt_ctx s in
+  (f e s, Data.Stmt.create_unit ~ctx ~pos)
+
 (** [type_check_if ~ctx ~pos e s] is [Ok if] where [if] is If ([e], [s])
     decorated, or [Error type_error] where [type_error] describes the
     type error otherwise *)
@@ -443,8 +449,7 @@ and type_check_if_else ~ctx ~pos e s1 s2 =
     [s]) decorated, or [Error type_error] where [type_error] describes
     the type error otherwise *)
 and type_check_while ~ctx ~pos e s =
-  let ctx = Context.with_beta ~beta:true ctx in
-  create_cond ~f:(fun e s -> While (e, s)) ~ctx ~pos e s
+  create_cond_while ~f:(fun e s -> While (e, s)) ~ctx ~pos e s
 
 (** [type_check_pr_call ~ctx ~pos id es] is [Ok pr] where [pr] is PrCall
     ([id], [es]) decorated, or [Error type_error] where [type_error]
@@ -697,10 +702,14 @@ let first_pass_source ~file ~find_intf src =
   let ctx = Context.empty in
   let pos = Position.dummy in
   (* TODO: get better position *)
+  let is_rho = Util.File.is_rh file in
+  let file = Util.File.base file in
   let uses =
-    match find_intf file with
-    | Some _ -> ((file, pos), pos) :: Source.uses src
-    | None -> Source.uses src
+    if is_rho then
+      match find_intf file with
+      | Some _ -> ((file, pos), pos) :: Source.uses src
+      | None -> Source.uses src
+    else Source.uses src
   in
   let%bind ctx, uses = check_uses ~find_intf ~ctx uses in
   let%map ctx = first_pass_defs ~ctx @@ Source.defs src in

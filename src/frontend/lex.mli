@@ -23,11 +23,11 @@ module Diagnostic : sig
   module Error : Util.Stringable.S with type t := error
   (** [Error] represents a lexical error *)
 
-  val lex : Lexing.lexbuf -> result list
+  val lex : is_rho:bool -> Lexing.lexbuf -> result list
   (** [lex_tok buf] consumes all tokens in [buf] and returns them as a
       list. *)
 
-  val lex_string : string -> result list
+  val lex_string : is_rho:bool -> string -> result list
   (** [lex_string s] consumes all tokens in [s] and returns them as a
       list. *)
 end

@@ -31,27 +31,35 @@ type nonrec 'a result = ('a, error) result
 (** [parse_result] is [Ok ast] or [Error error] and represents the
     result of a parse. *)
 
-val parse : start:'a start -> Lexing.lexbuf -> 'a result
+val parse : is_rho:bool -> start:'a start -> Lexing.lexbuf -> 'a result
 (** [parse lexbuf] is [Ok ast] if [start lexbuf] [ast],
     [Error SyntaxError] if [start lexbuf] raises a syntax error, and
     [Error LexicalError] if [start lexbuf] raises a lexical error. *)
 
-val parse_prog : Lexing.lexbuf -> Ast.Undecorated.t result
+val parse_prog :
+  is_rho:bool -> Lexing.lexbuf -> Ast.Undecorated.t result
 (** [parse_prog lexbuf] is [Ok ast] if [start lexbuf] [ast],
     [Error SyntaxError] if [start lexbuf] raises a syntax error, and
     [Error LexicalError] if [start lexbuf] raises a lexical error. *)
 
-val parse_source : Lexing.lexbuf -> Ast.Undecorated.source result
+val parse_source :
+  is_rho:bool -> Lexing.lexbuf -> Ast.Undecorated.source result
 (** [parse_source lexbuf] is [Ok ast] if [start lexbuf] [ast],
     [Error SyntaxError] if [start lexbuf] raises a syntax error, and
     [Error LexicalError] if [start lexbuf] raises a lexical error. *)
 
-val parse_intf : Lexing.lexbuf -> Ast.Undecorated.intf result
+val parse_intf :
+  is_rho:bool -> Lexing.lexbuf -> Ast.Undecorated.intf result
 (** [parse_intf lexbuf] is [Ok ast] if [start lexbuf] [ast],
     [Error SyntaxError] if [start lexbuf] raises a syntax error, and
     [Error LexicalError] if [start lexbuf] raises a lexical error. *)
 
-val map : start:'a start -> f:('a -> 'b) -> Lexing.lexbuf -> 'b result
+val map :
+  is_rho:bool ->
+  start:'a start ->
+  f:('a -> 'b) ->
+  Lexing.lexbuf ->
+  'b result
 (** [map ~start ~f buf] is applies [f] to the AST parsed from [buf]
     using start symbol [start] *)
 

@@ -96,14 +96,15 @@ module Diagnostic = struct
   (** [read_result lexbuf] consumes the next lexeme in [lexbuf] and
       returns the corresponding token [Ok tok] on success or
       [LexicalError e] on error. *)
-  let read_result lexbuf =
-    try Ok (read lexbuf) with Error e -> Result.Error e
+  let read_result ~is_rho lexbuf =
+    let f = if is_rho then read_rho else read_xi in
+    try Ok (f lexbuf) with Error e -> Result.Error e
 
   (** [lex_pos_rev lexbuf] is a reversed list of [(result, position)]
       pairs of all tokens lexed from lexbuf *)
-  let lex_pos_rev lexbuf =
+  let lex_pos_rev ~is_rho lexbuf =
     let rec help acc =
-      let res = read_result lexbuf in
+      let res = read_result ~is_rho lexbuf in
       let pos = Position.of_lexbuf lexbuf in
       match res with
       | Ok EOF -> acc
@@ -114,10 +115,12 @@ module Diagnostic = struct
 
   (** [lex_tok_pos buf] consumes all tokens in [buf] and returns them as
       a list with their positions. *)
-  let lex_pos lexbuf = lexbuf |> lex_pos_rev |> List.rev
+  let lex_pos ~is_rho lexbuf = lexbuf |> lex_pos_rev ~is_rho |> List.rev
 
-  let lex lexbuf = lexbuf |> lex_pos_rev |> List.rev_map ~f:fst
-  let lex_string s = s |> Lexing.from_string |> lex
+  let lex ~is_rho lexbuf =
+    lexbuf |> lex_pos_rev ~is_rho |> List.rev_map ~f:fst
+
+  let lex_string ~is_rho s = s |> Lexing.from_string |> lex ~is_rho
 
   (** [print_result out] prints the valid token or an error message into
       the [out] out channel. *)
@@ -131,14 +134,15 @@ module Diagnostic = struct
 
   (** [to_channel lexbuf out] lexes [lexbuf] and writes the results to
       [out] *)
-  let to_channel lexbuf out =
-    lexbuf |> lex_pos |> List.iter ~f:(print_result out)
+  let to_channel ~is_rho lexbuf out =
+    lexbuf |> lex_pos ~is_rho |> List.iter ~f:(print_result out)
 
   (** [to_file lexbuf out] lexes [lexbuf] and writes the results to file
       at path [out] *)
-  let to_file lexbuf out =
-    Out_channel.with_file ~f:(to_channel lexbuf) out
+  let to_file ~is_rho lexbuf out =
+    Out_channel.with_file ~f:(to_channel ~is_rho lexbuf) out
 
   let file_to_file ~src ~out =
-    File.Xi.map_same_fn ~f:(fun buf -> to_file buf out) src
+    let is_rho = Util.File.is_rh src in
+    File.Xi.map_same_fn ~f:(fun buf -> to_file ~is_rho buf out) src
 end

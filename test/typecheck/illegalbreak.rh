@@ -1,0 +1,10 @@
+use io
+use conv 
+
+main(args:int[][]) {
+  i:int = 2
+  while(i > 0) {
+    i = i - 1
+  }
+  break
+}

@@ -17,7 +17,7 @@ let char_token_of_char c = CHAR (Uchar.of_char c)
     [e] are equal. *)
 let lexing_test test_name input expected =
   test_name >:: fun _ ->
-  assert_equal (Lex.Diagnostic.lex_string input) expected
+  assert_equal (Lex.Diagnostic.lex_string ~is_rho:false input) expected
 
 (** [lexing_test_ok n i e] calls [lexing_test] with [n], [i], and [e]
     mapped as valid tokens. *)

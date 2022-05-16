@@ -33,8 +33,9 @@ exception Exn of error
 type 'a start = (Lexing.lexbuf -> Parser.token) -> Lexing.lexbuf -> 'a
 type nonrec 'a result = ('a, error) result
 
-let parse ~start lexbuf =
-  try Ok (start Lex.read lexbuf) with
+let parse ~is_rho ~start lexbuf =
+  let read = if is_rho then Lex.read_rho else Lex.read_xi in
+  try Ok (start read lexbuf) with
   | Lex.Error err -> Error (`LexicalError err)
   | Parser.Error ->
       let pos = Position.of_lexbuf lexbuf in
@@ -42,19 +43,31 @@ let parse ~start lexbuf =
       Error (`SyntaxError (Position.Error.create ~pos cause))
   | Exception.InvalidIntLiteral err -> Error (`SyntaxError err)
 
-let parse_prog = parse ~start:Parser.prog
-let parse_source = parse ~start:Parser.source
-let parse_intf = parse ~start:Parser.intf
+let parse_prog ~is_rho =
+  let start = if is_rho then Parser.rho_prog else Parser.xi_prog in
+  parse ~is_rho ~start
+
+let parse_source ~is_rho =
+  let start = if is_rho then Parser.rho_source else Parser.xi_source in
+  parse ~is_rho ~start
+
+let parse_intf ~is_rho =
+  let start = if is_rho then Parser.rho_intf else Parser.xi_intf in
+  parse ~is_rho ~start
 
 (** [ast_of_source read lexbuf] wraps [Parser.source read lexbuf] up as
     [Ast.Undecorated.t]*)
-let ast_of_source read lexbuf = Ast.Source (Parser.source read lexbuf)
+let ast_of_source ~is_rho read lexbuf =
+  let source = if is_rho then Parser.rho_source else Parser.xi_source in
+  Ast.Source (source read lexbuf)
 
 (** [ast_of_intf read lexbuf] wraps [Parser.intf read lexbuf] up as
     [Ast.Undecorated.t]*)
-let ast_of_intf read lexbuf = Ast.Intf (Parser.intf read lexbuf)
+let ast_of_intf ~is_rho read lexbuf =
+  let intf = if is_rho then Parser.rho_intf else Parser.xi_intf in
+  Ast.Intf (intf read lexbuf)
 
-let map ~start ~f buf = parse ~start buf >>| f
+let map ~is_rho ~start ~f buf = parse ~is_rho ~start buf >>| f
 
 module Diagnostic = struct
   (** [print_ast out ast] prints the S-expression of [ast] into the
@@ -79,18 +92,23 @@ module Diagnostic = struct
 
   (** [to_channel ~start lexbuf out] parses lexer buffer [lexbuf] from
       start symbol [start] and writes the diagnostic output to [out] *)
-  let to_channel ~start lexbuf out =
-    lexbuf |> parse ~start |> print_result ~out
+  let to_channel ~is_rho ~start lexbuf out =
+    lexbuf |> parse ~is_rho ~start |> print_result ~out
 
   (** [to_file ~start lexbuf out] parses lexer buffer [lexbuf] from
       start symbol [start] and writes the diagnostic output to file at
       path [out] *)
-  let to_file ~start lexbuf out =
-    Out_channel.with_file ~f:(to_channel ~start lexbuf) out
+  let to_file ~is_rho ~start lexbuf out =
+    Out_channel.with_file ~f:(to_channel ~is_rho ~start lexbuf) out
 
   let file_to_file ~src ~out =
-    let source lexbuf = to_file ~start:ast_of_source lexbuf out in
-    let intf lexbuf = to_file ~start:ast_of_intf lexbuf out in
+    let is_rho = Util.File.is_rh src in
+    let source lexbuf =
+      to_file ~is_rho ~start:(ast_of_source ~is_rho) lexbuf out
+    in
+    let intf lexbuf =
+      to_file ~is_rho ~start:(ast_of_intf ~is_rho) lexbuf out
+    in
     File.Xi.map_same ~source ~intf src
 end
 
@@ -99,17 +117,20 @@ module File = struct
   type 'a intf = Ast.Undecorated.intf -> 'a
 
   (** Same as [map] but both [source] and [intf] return the same type *)
-  let map_same ~source ~intf file : 'a result File.Xi.result =
-    let source buf = parse_source buf >>| source in
-    let intf buf = parse_intf buf >>| intf in
+  let map_same ~is_rho ~source ~intf file : 'a result File.Xi.result =
+    let source buf = parse_source ~is_rho buf >>| source in
+    let intf buf = parse_intf ~is_rho buf >>| intf in
     File.Xi.map_same ~source ~intf file
 
   let map_ast ~f file =
     let source = Fn.compose f Ast.source in
     let intf = Fn.compose f Ast.intf in
-    map_same ~source ~intf file
+    let is_rho = Util.File.is_rh file in
+    map_same ~is_rho ~source ~intf file
 
-  let parse_intf = File.map ~f:parse_intf
+  let parse_intf file =
+    let is_rho = Util.File.is_rh file in
+    File.map ~f:(parse_intf ~is_rho) file
 end
 
 include Parser

@@ -31,21 +31,25 @@ type dependencies = {
   std_dir : string;
 }
 
-let get_path ~file { lib_dir; std_dir } intf =
-  let f1, f2 =
-    if Util.File.is_xi file then
-      (Util.File.ixi_of_dir, Util.File.ri_of_dir)
-    else (Util.File.ri_of_dir, Util.File.ixi_of_dir)
-  in
-  let lib_path = f1 ~dir:lib_dir intf in
+let get_rho_path ~file lib_dir std_dir intf =
+  let lib_path = Util.File.ri_of_dir ~dir:lib_dir intf in
   if Util.File.accessible lib_path then lib_path
   else
-    let lib_path2 = f1 ~dir:std_dir intf in
+    let lib_path2 = Util.File.ri_of_dir ~dir:std_dir intf in
     if Util.File.accessible lib_path2 then lib_path2
     else
-      let lib_path3 = f2 ~dir:lib_dir intf in
+      let lib_path3 = Util.File.ixi_of_dir ~dir:lib_dir intf in
       if Util.File.accessible lib_path3 then lib_path3
-      else f2 ~dir:std_dir intf
+      else Util.File.ixi_of_dir ~dir:std_dir intf
+
+let get_xi_path ~file lib_dir std_dir intf =
+  let lib_path = Util.File.ixi_of_dir ~dir:lib_dir intf in
+  if Util.File.accessible lib_path then lib_path
+  else Util.File.ixi_of_dir ~dir:std_dir intf
+
+let get_path ~file { lib_dir; std_dir } intf =
+  if Util.File.is_xi file then get_xi_path ~file lib_dir std_dir intf
+  else get_rho_path ~file lib_dir std_dir intf
 
 (** [parse_intf ~deps intf] is [Ok (Some ast)] if [ast] is the interface
     ast parsed from file [intf], [Ok None] if file [intf] does not exist
@@ -72,24 +76,31 @@ let coerce e = (e :> error)
 
 type nonrec result = (Ast.Decorated.t, error) result
 
-let parse_prog =
-  Fn.compose (Result.map_error ~f:coerce) Parse.parse_prog
+let parse_prog ~is_rho =
+  Fn.compose (Result.map_error ~f:coerce) (Parse.parse_prog ~is_rho)
 
-let parse_source lb =
-  Fn.compose (Result.map_error ~f:coerce) Parse.parse_source lb
+let parse_source ~is_rho lb =
+  Fn.compose
+    (Result.map_error ~f:coerce)
+    (Parse.parse_source ~is_rho)
+    lb
   >>| Ast.source
 
-let parse_intf lb =
-  Fn.compose (Result.map_error ~f:coerce) Parse.parse_intf lb
+let parse_intf ~is_rho lb =
+  Fn.compose (Result.map_error ~f:coerce) (Parse.parse_intf ~is_rho) lb
   >>| Ast.intf
 
-let map ~f = File.Xi.map ~source:(f parse_source) ~intf:(f parse_intf)
+let map ~is_rho ~f =
+  File.Xi.map
+    ~source:(f parse_source ~is_rho)
+    ~intf:(f parse_intf ~is_rho)
+
 let semantic_error e = `SemanticError e
 
 let type_check ~file ?cache ~deps ast =
   try
     ast
-    |> Undecorated.type_check ~file:(Util.File.base file)
+    |> Undecorated.type_check ~file
          ~find_intf:(find_intf_exn ?cache ~file ~deps)
     |> Result.map_error ~f:semantic_error
   with Parse.Exn e -> Error (coerce e)

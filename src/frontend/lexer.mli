@@ -19,7 +19,12 @@ exception Error of error
 (** An [Error] is a lexical error with an associated position where the
     error ocurred in the buffer *)
 
-val read : Lexing.lexbuf -> Parser.token
-(** [read lexbuf] consumes the next lexeme in [lexbuf] and returns the
-    corresponding token. Raises: [Error] if, on reading [lexbuf], a
-    lexical error occurs. *)
+val read_rho : Lexing.lexbuf -> Parser.token
+(** [read_rho lexbuf] consumes the next lexeme in [lexbuf] and returns
+    the corresponding token for the Rho language. Raises: [Error] if, on
+    reading [lexbuf], a lexical error occurs. *)
+
+val read_xi : Lexing.lexbuf -> Parser.token
+(** [read_xi lexbuf] consumes the next lexeme in [lexbuf] and returns
+    the corresponding token for the Xi language. Raises: [Error] if, on
+    reading [lexbuf], a lexical error occurs. *)

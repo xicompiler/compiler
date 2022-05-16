@@ -112,9 +112,12 @@
 (* A primitive type *)
 %token <Type.Tau.primitive> TYPE
 
-%start <Undecorated.t> prog
-%start <Undecorated.source> source
-%start <Undecorated.intf> intf
+%start <Undecorated.t> rho_prog
+%start <Undecorated.source> rho_source
+%start <Undecorated.intf> rho_intf
+%start <Undecorated.t> xi_prog
+%start <Undecorated.source> xi_source
+%start <Undecorated.intf> xi_intf
 
 %left OR
 %left AND
@@ -136,20 +139,35 @@ node(TERM):
   ;
 
 (** [enode] produces a node wrapping an [expr] *)
-enode:
-  | node = node(expr)
+rho_enode:
+  | node = node(rho_expr)
+    { node }
+  ;
+
+xi_enode:
+  | node = node(xi_expr)
     { node }
   ;
 
 (** [enodes] produces a comma-separated list of [enode]s *)
-enodes:
-  | nodes = separated_list(COMMA, enode)
+rho_enodes:
+  | nodes = separated_list(COMMA, rho_enode)
+    { nodes }
+  ;
+
+xi_enodes:
+  | nodes = separated_list(COMMA, xi_enode)
     { nodes }
   ;
 
 (** [snode] produces a node wrapping a statement *)
-snode:
-  | node = node(stmt)
+rho_snode:
+  | node = node(rho_stmt)
+    { node }
+  ;
+
+xi_snode:
+  | node = node(xi_stmt)
     { node }
   ;
 
@@ -201,42 +219,67 @@ bracketed(X):
   ;
 
 (** A prog is either a source or intf *)
-prog:
-  | s = source { Source s }
-  | i = intf { Intf i }
+rho_prog:
+  | s = rho_source { Source s }
+  | i = rho_intf { Intf i }
   ;
 
+xi_prog:
+  | s = xi_source {Source s}
+  | i = xi_intf {Intf i}
+
 (** A [source] derives a source file in  Xi, followed by EOF *)
-source:
-  | s = source_file; EOF
+rho_source:
+  | s = rho_source_file; EOF
+    { s }
+  ;
+
+xi_source:
+  | s = xi_source_file; EOF 
     { s }
   ;
 
 (** An [intf] derives an intf file in Xi, followed by EOF  *)
-intf:
-  | sigs = node(intf_sig)+; EOF
+rho_intf:
+  | sigs = node(rho_intf_sig)+; EOF
     { {uses=[]; sigs} }
-  | uses = node(use)+; sigs = node(intf_sig)+; EOF
+  | uses = node(use)+; sigs = node(rho_intf_sig)+; EOF
     { {uses; sigs} }
   ;
 
-intf_sig:
-  | defn = signature
-    { FnSig defn }
-  | defn = record_sig
-    { defn }
+xi_intf:
+  | sigs = node(xi_intf_sig)+; EOF
+    { {uses=[]; sigs} }
   ;
 
-record_sig:
-  | RECORD; name = id; LBRACE; vars = list(decl) RBRACE
-    { RecordSig (name, vars) }
+rho_intf_sig:
+  | defn = rho_signature
+    { FnSig defn }
+  | record = record
+    { let (name, vars) = record in RecordSig (name, vars) }
   ;
+
+xi_intf_sig:
+  | defn = xi_signature
+    { FnSig defn }
+  ;
+
+record:
+  | RECORD; name = id; LBRACE; vars = list(rho_decl) RBRACE
+    { (name, vars) }
 
 (** A [source_file] derives a source file in  Xi *)
-source_file:
-  | defs = definitions
+rho_source_file:
+  | defs = rho_definitions
     { Source.create ~uses:[] ~defs }
-  | uses = node(use)+; defs = definitions
+  | uses = node(use)+; defs = rho_definitions
+    { Source.create ~uses ~defs  }
+  ;
+
+xi_source_file:
+  | defs = xi_definitions
+    { Source.create ~uses:[] ~defs }
+  | uses = node(use)+; defs = xi_definitions
     { Source.create ~uses ~defs  }
   ;
 
@@ -251,81 +294,143 @@ use:
     { id }
   ;
 
-definitions:
-  | global = node(global_semi); definitions = definitions
+rho_definitions:
+  | global = node(rho_global_semi); definitions = rho_definitions
     { global :: definitions }
-  | fn_defn = node(fn_defn); definitions = node(definition)*
+  | fn_defn = node(rho_fn_defn); definitions = node(rho_definition)*
     { fn_defn :: definitions }
-  | record_defn = node(record_defn); definitions = node(definition)*
+  | record_defn = node(record_defn); definitions = node(rho_definition)*
     { record_defn :: definitions }
   ;
 
-definition:
-  | defn = global_semi
-  | defn = fn_defn
+xi_definitions:
+  | global = node(xi_global_semi); definitions = xi_definitions
+    { global :: definitions }
+  | fn_defn = node(xi_fn_defn); definitions = node(xi_definition)*
+    { fn_defn :: definitions }
+  ;
+
+rho_definition:
+  | defn = rho_global_semi
+  | defn = rho_fn_defn
     { defn }
   | defn = record_defn
     { defn }
   ;
 
-global_semi:
-  | global = semi(global)
+xi_definition:
+  | defn = xi_global_semi
+  | defn = xi_fn_defn
+    { defn }
+  ;
+
+rho_global_semi:
+  | global = semi(rho_global)
     { global }
   ;
 
-fn_defn:
-  | fn = fn
+xi_global_semi:
+  | global = semi(xi_global)
+    { global }
+  ;
+
+rho_fn_defn:
+  | fn = rho_fn
+    {  FnDefn fn }
+  ;
+
+xi_fn_defn:
+  | fn = xi_fn
     {  FnDefn fn }
   ;
 
 record_defn:
-  | RECORD; name = id; LBRACE; vars = list(decl) RBRACE
-    { RecordDefn (name, vars) }
+  | record = record
+    { let (name, vars) = record in RecordDefn (name, vars) }
   ;
 
-global:
-  | decl = decl
+rho_global:
+  | decl = rho_decl
     { GlobalDecl decl }
-  | id = id; COLON; typ = typ; GETS; v = primitive
-    { 
-      let v = primitive_of_unsafe ~pos:$startpos(v) v in
-      GlobalInit (id, typ, v)
+  | id = id; COLON; typ = rho_typ; GETS; global_rhs = global_rhs
+    {
+      GlobalInit (id, typ, global_rhs)
     }
-  | id = id; COLON; typ = typ; GETS; neg = MINUS; i = INT
+  ;
+
+xi_global:
+  | decl = xi_decl
+    { GlobalDecl decl }
+  | id = id; COLON; typ = xi_typ; GETS; global_rhs = global_rhs
+    {
+      GlobalInit (id, typ, global_rhs)
+    }
+  ;
+
+global_rhs:
+  | v = primitive 
+    {
+      primitive_of_unsafe ~pos:$startpos(v) v
+    }
+  | neg = MINUS; i = INT 
     {
       let pos = $startpos(neg) in
       let i = parse_int ~pos ~neg:true i in
-      let v = `Int (int_of_unsafe ~pos i) in
-      GlobalInit (id, typ, v)
+      `Int (int_of_unsafe ~pos i)
     }
   ;
 
-decl:
-  | ids = separated_nonempty_list(COMMA, id); COLON; typ = typ
+rho_decl:
+  | ids = separated_nonempty_list(COMMA, id); COLON; typ = rho_typ
     { (ids, typ) }
-  | id = id; COLON; typ = typ 
-    { ([id], typ)}
+  | id = id; COLON; typ = rho_typ
+    { ([id], typ) }
   ;
 
-typ:
+xi_decl:
+  | id = id; COLON; typ = xi_typ
+    { ([id], typ) }
+  ;
+
+rho_typ:
   | typ = TYPE
     { typ :> Type.tau }
-  | typ = typ; LBRACKET; RBRACKET
+  | typ = rho_typ; LBRACKET; RBRACKET
     { `Array typ }
   | typ = ID
     { `Record typ }
   ;
 
-array_init:
-  | base = typ; e = bracketed(enode); es = bracketed(enode?)*
+xi_typ:
+| typ = TYPE
+  { typ :> Type.tau }
+| typ = xi_typ; LBRACKET; RBRACKET
+  { `Array typ }
+;
+
+rho_array_init:
+  | base = rho_typ; e = bracketed(rho_enode); es = bracketed(rho_enode?)*
     { 
       let es = Some e :: es in
       (List.fold ~f:(fun acc _ -> `Array acc) ~init:base es, es)
     }
   ;
 
-index(lhs):
-  | e1 = lhs; e2 = bracketed(enode)
+xi_array_init:
+  | base = xi_typ; e = bracketed(xi_enode); es = bracketed(xi_enode?)*
+    { 
+      let es = Some e :: es in
+      (List.fold ~f:(fun acc _ -> `Array acc) ~init:base es, es)
+    }
+  ;
+
+rho_index(lhs):
+  | e1 = lhs; e2 = bracketed(rho_enode)
+    { (enode_of_unsafe ~pos:$startpos e1, e2) }
+  ;
+
+xi_index(lhs):
+  | e1 = lhs; e2 = bracketed(xi_enode)
     { (enode_of_unsafe ~pos:$startpos e1, e2) }
   ;
 
@@ -333,20 +438,32 @@ field(lhs):
   | e1 = lhs; DOT; id = id
     { (enode_of_unsafe ~pos:$startpos e1, id) }
 
-expr:
-  | e = bop_expr
+rho_expr:
+  | e = rho_bop_expr
     { expr_of_unsafe ~pos:$startpos(e) e }
   ;
 
-bop_expr:
-  | e1 = enode; bop = binop; e2 = enode
+xi_expr:
+  | e = xi_bop_expr
+    { expr_of_unsafe ~pos:$startpos(e) e }
+  ;
+
+rho_bop_expr:
+  | e1 = rho_enode; bop = binop; e2 = rho_enode
     { SafeExpr (Bop (bop, e1, e2)) }
-  | e = uop_expr
+  | e = rho_uop_expr
     { e }
   ;
 
-uop_expr:
-  | uop = unop; e = uop_expr
+xi_bop_expr:
+  | e1 = xi_enode; bop = binop; e2 = xi_enode
+    { SafeExpr (Bop (bop, e1, e2)) }
+  | e = xi_uop_expr
+    { e }
+  ;
+
+rho_uop_expr:
+  | uop = unop; e = rho_uop_expr
     {
       let pos = $startpos(e) in
       match uop, e with
@@ -360,28 +477,64 @@ uop_expr:
       | _ -> 
          SafeExpr (Uop (uop, (enode_of_unsafe ~pos e)))
     }
-  | e = call_expr
+  | e = rho_call_expr
     { e }
   ;
 
-call_expr:
-  | index = index(call_expr)
+xi_uop_expr:
+  | uop = unop; e = xi_uop_expr
+    {
+      let pos = $startpos(e) in
+      match uop, e with
+      | `IntNeg, SafeExpr (Primitive (`Int i)) ->
+        if Int64.is_negative i then
+         SafeExpr (Uop (uop, (enode_of_unsafe ~pos e)))
+        else
+          UnsafePrimitive (UnsafeInt (SafeInt (Int64.neg i)))
+      | `IntNeg, UnsafePrimitive (UnsafeInt (IntBound _)) ->
+          UnsafePrimitive (UnsafeInt (SafeInt (Int64.min_value)))
+      | _ -> 
+         SafeExpr (Uop (uop, (enode_of_unsafe ~pos e)))
+    }
+  | e = xi_call_expr
+    { e }
+  ;
+
+rho_call_expr:
+  | index = rho_index(rho_call_expr)
     { let (e1, e2) = index in SafeExpr (Index (e1, e2)) }
-  | field = field(call_expr)
+  | field = field(rho_call_expr)
     { let (e1, id) = field in SafeExpr (Field (e1, id)) }
-  | e = parens(expr)
+  | e = parens(rho_expr)
     { SafeExpr e }
   | v = primitive
     { UnsafePrimitive v }
-  | LBRACE; array = array
+  | LBRACE; array = rho_array
     { SafeExpr (Array array) }
   | s = STRING
     { SafeExpr (String s) }
   | NULL
     { SafeExpr (Null) }
-  | LENGTH; e = parens(enode)
+  | LENGTH; e = parens(rho_enode)
     { SafeExpr (Length e) }
-  | e = assign_expr
+  | e = rho_assign_expr
+    { SafeExpr e }
+  ;
+
+xi_call_expr:
+  | index = xi_index(xi_call_expr)
+    { let (e1, e2) = index in SafeExpr (Index (e1, e2)) }
+  | e = parens(xi_expr)
+    { SafeExpr e }
+  | v = primitive
+    { UnsafePrimitive v }
+  | LBRACE; array = xi_array
+    { SafeExpr (Array array) }
+  | s = STRING
+    { SafeExpr (String s) }
+  | LENGTH; e = parens(xi_enode)
+    { SafeExpr (Length e) }
+  | e = xi_assign_expr
     { SafeExpr e }
   ;
 
@@ -406,22 +559,41 @@ unsafe_int:
     }
   ;
 
-array:
-  | e = enode?; RBRACE
+rho_array:
+  | e = rho_enode?; RBRACE
     { Option.to_list e }
-  | e = enode; COMMA; rest = array
+  | e = rho_enode; COMMA; rest = rho_array
     { e :: rest }
   ;
 
-call:
-  | id = id; args = parens(enodes)
+xi_array:
+  | e = xi_enode?; RBRACE
+    { Option.to_list e }
+  | e = xi_enode; COMMA; rest = xi_array
+    { e :: rest }
+  ;
+
+rho_call:
+  | id = id; args = parens(rho_enodes)
+    { (id, args) }
+  ;
+
+xi_call:
+  | id = id; args = parens(xi_enodes)
     { (id, args) }
   ;
 
 (** [assign_expr] is any non-array-index expression [e1] that can appear 
     in the statement [e1[e2] = e3] *)
-assign_expr:
-  | call = call
+rho_assign_expr:
+  | call = rho_call
+    { FnCall call }
+  | id = id
+    { Id id }
+  ;
+
+xi_assign_expr:
+  | call = xi_call
     { FnCall call }
   | id = id
     { Id id }
@@ -429,58 +601,106 @@ assign_expr:
 
 (** [array_assign_lhs] is any expression e1 that can appear in the statement 
     [e1[e2] = e3] *)
-array_assign_lhs:
-  | index = index(array_assign_lhs)
+rho_array_assign_lhs:
+  | index = rho_index(rho_array_assign_lhs)
     { let (e1, e2) = index in SafeExpr (Index (e1, e2)) }
-  | e = assign_expr
+  | e = rho_assign_expr
+    { SafeExpr e }
+
+xi_array_assign_lhs:
+  | index = xi_index(xi_array_assign_lhs)
+    { let (e1, e2) = index in SafeExpr (Index (e1, e2)) }
+  | e = xi_assign_expr
     { SafeExpr e }
 
 field_assign_lhs:
   | field = field(field_assign_lhs)
     { let (e1, id) = field in SafeExpr (Field (e1, id)) }
-  | e = assign_expr
+  | e = rho_assign_expr
     { SafeExpr e }
 
-fn:
-  | signature = signature; body = block
+rho_fn:
+  | signature = rho_signature; body = rho_block
     { (signature, body) }
   ;
 
-signature:
-  | name = id; LPAREN; params = params; RPAREN; ret = loption(types)
+xi_fn:
+  | signature = xi_signature; body = xi_block
+    { (signature, body) }
+  ;
+
+rho_signature:
+  | name = id; LPAREN; params = rho_params; RPAREN; ret = loption(rho_types)
     { Sig.create ~name ~params ~ret }
   ;
 
-params:
-  | params = separated_list(COMMA, param)
+xi_signature:
+  | name = id; LPAREN; params = xi_params; RPAREN; ret = loption(xi_types)
+    { Sig.create ~name ~params ~ret }
+  ;
+
+rho_params:
+  | params = separated_list(COMMA, rho_param)
     { params }
   ;
 
-param:
-  | id = id; COLON; typ = typ 
+xi_params:
+  | params = separated_list(COMMA, xi_param)
+    { params }
+  ;
+
+rho_param:
+  | id = id; COLON; typ = rho_typ
     { (id, typ) }
 
-types:
-  | COLON; types = separated_nonempty_list(COMMA, typ)
+xi_param:
+  | id = id; COLON; typ = xi_typ
+    { (id, typ) }
+
+rho_types:
+  | COLON; types = separated_nonempty_list(COMMA, rho_typ)
     { types }
   ;
 
-block:
-  | LBRACE; body = list_maybe_followed(snode, node(return)); RBRACE
+xi_types:
+  | COLON; types = separated_nonempty_list(COMMA, xi_typ)
+    { types }
+  ;
+
+rho_block:
+  | LBRACE; body = list_maybe_followed(rho_snode, node(rho_return)); RBRACE
     { body }
   ;
 
-return:
-  | RETURN; es = semi(enodes);
+xi_block:
+  | LBRACE; body = list_maybe_followed(xi_snode, node(xi_return)); RBRACE
+    { body }
+  ;
+
+rho_return:
+  | RETURN; es = semi(rho_enodes);
     { Return es }
   ;
 
-stmt:
-  | stmt = if_stmt
-  | stmt = if_else
-  | stmt = while_stmt
+xi_return:
+  | RETURN; es = semi(xi_enodes);
+    { Return es }
+  ;
+
+rho_stmt:
+  | stmt = rho_if_stmt
+  | stmt = rho_if_else
+  | stmt = rho_while_stmt
   | stmt = break
-  | stmt = semi(semicolon_terminated)
+  | stmt = semi(rho_semicolon_terminated)
+    { stmt }
+  ;
+
+xi_stmt:
+  | stmt = xi_if_stmt
+  | stmt = xi_if_else
+  | stmt = xi_while_stmt
+  | stmt = semi(xi_semicolon_terminated)
     { stmt }
   ;
 
@@ -488,18 +708,33 @@ break:
   | BREAK;
     { Break }
 
-if_stmt:
-  | IF; e = enode; s = snode
+rho_if_stmt:
+  | IF; e = rho_enode; s = rho_snode
     { If (e, s) }
   ;
 
-if_else:
-  | IF; e = enode; s1 = snode; ELSE; s2 = snode
+xi_if_stmt:
+  | IF; e = xi_enode; s = xi_snode
+    { If (e, s) }
+  ;
+
+rho_if_else:
+  | IF; e = rho_enode; s1 = rho_snode; ELSE; s2 = rho_snode
     { IfElse (e, s1, s2) }
   ;
 
-while_stmt:
-  | WHILE; e = enode; stmt = snode
+xi_if_else:
+  | IF; e = xi_enode; s1 = xi_snode; ELSE; s2 = xi_snode
+    { IfElse (e, s1, s2) }
+  ;
+
+rho_while_stmt:
+  | WHILE; e = rho_enode; stmt = rho_snode
+    { While (e, stmt) }
+  ;
+
+xi_while_stmt:
+  | WHILE; e = xi_enode; stmt = xi_snode
     { While (e, stmt) }
   ;
 
@@ -507,32 +742,62 @@ separated_multiple_list(sep, X):
   | x = X; sep; xs = separated_nonempty_list(sep, X)
     { x :: xs }
 
-semicolon_terminated:
-  | decl = decl
+rho_semicolon_terminated:
+  | decl = rho_decl
     { VarDecl decl }
-  | id = id; COLON; typ = typ; GETS; e = enode
+  | id = id; COLON; typ = rho_typ; GETS; e = rho_enode
     { VarInit (id, typ, e) }
-  | id = id; COLON; init = array_init
+  | id = id; COLON; init = rho_array_init
     { let (typ, es) = init in ArrayDecl (id, typ, es) }
-  | id = id; GETS; e = enode
+  | id = id; GETS; e = rho_enode
     { Assign (id, e) }
-  | index = index(array_assign_lhs); GETS; e3 = enode
+  | index = rho_index(rho_array_assign_lhs); GETS; e3 = rho_enode
     { let (e1, e2) = index in ArrAssign (e1, e2, e3) }
-  | field = field(field_assign_lhs); GETS; e3 = enode
+  | field = field(field_assign_lhs); GETS; e3 = rho_enode
     { let (e1, id) = field in FieldAssign (e1, id, e3) }
-  | ds = separated_multiple_list(COMMA, d); GETS; rhs = call
+  | ds = separated_multiple_list(COMMA, rho_d); GETS; rhs = rho_call
     { let (id, args) = rhs in MultiAssign (ds, id, args) }
-  | WILDCARD; GETS; rhs = call
+  | WILDCARD; GETS; rhs = rho_call
     { ExprStmt rhs }
-  | call = call
+  | call = rho_call
     { PrCall call }
-  | block = block
+  | block = rho_block
     { Block block }
   ;
 
-d:
-  | id = id; COLON; typ = typ
+xi_semicolon_terminated:
+  | decl = xi_decl
+    { VarDecl decl }
+  | id = id; COLON; typ = xi_typ; GETS; e = xi_enode
+    { VarInit (id, typ, e) }
+  | id = id; COLON; init = xi_array_init
+    { let (typ, es) = init in ArrayDecl (id, typ, es) }
+  | id = id; GETS; e = xi_enode
+    { Assign (id, e) }
+  | index = xi_index(xi_array_assign_lhs); GETS; e3 = xi_enode
+    { let (e1, e2) = index in ArrAssign (e1, e2, e3) }
+  | ds = separated_multiple_list(COMMA, xi_d); GETS; rhs = xi_call
+    { let (id, args) = rhs in MultiAssign (ds, id, args) }
+  | WILDCARD; GETS; rhs = xi_call
+    { ExprStmt rhs }
+  | call = xi_call
+    { PrCall call }
+  | block = xi_block
+    { Block block }
+  ;
+
+rho_d:
+  | id = id; COLON; typ = rho_typ 
     { Some (id, typ) }
   | WILDCARD
     { None }
   ;
+  
+xi_d:
+  | id = id; COLON; typ = xi_typ 
+    { Some (id, typ) }
+  | WILDCARD
+    { None }
+  ;
+
+
