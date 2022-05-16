@@ -1,0 +1,29 @@
+use conv 
+use io 
+
+record Point {
+  x,y,z:int
+}
+
+record Line {
+  x,y,z:int 
+  p1,p2:Point 
+}
+
+record Square {
+  p1,p2,p3,p4:Point 
+  i:int[]
+}
+
+main(args:int[][]) {
+  arr:int[] = {1}
+  a:Point = Point(1,2,3)
+  b:Point = Point(4,5,6)
+  c:Point = Point(7,8,9)
+  d:Point = Point(10,11,12)
+  sq:Square = Square(a,b,c,d,arr)
+  sqarray:Square[1]
+  sqarray[0] = sq 
+  println(unparseInt(sqarray[0].p2.x))
+  println(unparseInt(sqarray[0].i[0]))
+}

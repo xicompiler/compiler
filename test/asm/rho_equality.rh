@@ -1,0 +1,18 @@
+use io 
+
+record Apple {
+  a,l,e:int 
+  p:Apple
+}
+
+main(a:int[][]) {
+  m:Apple
+  v:Apple = Apple(1,2,3,m)
+  z:Apple = v 
+  if(z == v) {
+    println("correct")
+  }
+  if(m == null) {
+    println("correct")
+  }
+}

@@ -1,0 +1,17 @@
+use conv
+use io 
+
+main(args:int[][]) {
+    x:int[][]
+    y:int[] = {1}
+    if(x == null) {
+      println("correct")
+    }
+    if(y != null) {
+      println("correct")
+    }
+    if(null == null) {
+      println("correct")
+    }
+
+}
