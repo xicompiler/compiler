@@ -90,3 +90,8 @@ end
 module CopyProp : module type of struct
   include CopyProp
 end
+
+(** [ValueNumber] contains functions for vn in IR *)
+module ValueNumber : module type of struct
+  include ValueNumber
+end

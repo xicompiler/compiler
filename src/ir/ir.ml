@@ -99,6 +99,7 @@ let translate ~opt ?(gensym = IrGensym.create ()) ast =
   let lir = ast |> Mir.translate ~gensym |> Lir.lower ~opt ~gensym in
   let lir = if opt.copy then CopyProp.propagate lir else lir in
   let lir = if opt.cp then ConstProp.propagate lir else lir in
+  let lir = if opt.vn then ValueNumber.number lir else lir in
   let lir = if opt.dce then DeadCode.eliminate lir else lir in
   let stmts =
     Reorder.reorder ~gensym:(IrGensym.Label.generator gensym) lir
@@ -148,3 +149,4 @@ module Gensym = IrGensym
 module Temp = Temp
 module ConstFold = ConstFold
 module CopyProp = CopyProp
+module ValueNumber = ValueNumber

@@ -1,5 +1,6 @@
 open Core
 open Subtype
+open Util.Fn
 
 type t = Lir.stmt Fdeque.t
 
@@ -10,7 +11,8 @@ let break s1 s2 =
   | (`Return _ | `Jump _ | `CJump _), _ | _, `Label _ -> true
   | _ -> false
 
-let of_lir lir = lir |> List.group ~break |> List.map ~f:Fdeque.of_list
+let group = List.group ~break
+let of_lir = group >> List.map ~f:Fdeque.of_list
 let first = Fdeque.peek_front
 let last = Fdeque.peek_back
 

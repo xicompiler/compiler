@@ -4,6 +4,9 @@ open Subtype
 type t
 (** [t] is the type of a basic block *)
 
+val group : Lir.stmt list -> Lir.stmt list list
+(** [group stmts] is a sequence of basic blocks in list form *)
+
 val of_lir : Lir.stmt list -> t list
 (** [of_lir lir] is a sequence of basic blocks representing [lir] *)
 
