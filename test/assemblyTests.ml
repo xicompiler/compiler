@@ -54,7 +54,6 @@ let asm_file_test_cases =
     [
       asm_file_tests "./test/asm";
       asm_file_tests "./test/asm/autograder";
-      asm_file_tests "./test/asm/benchmark";
     ]
 
 let suite =
